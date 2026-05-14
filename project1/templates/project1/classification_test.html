@@ -1,0 +1,75 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Classification Model</title>
+    <link rel="stylesheet" href="{% static 'project1/style.css' %}">
+</head>
+
+<body>
+
+<div class="page-container">
+
+    <a href="{% url 'project1:classification_train' %}" class="back-arrow">←</a>
+
+    <div class="card centered-text">
+        <h1>Test Classification Model</h1>
+        <p class="help-text">
+            Enter feature values below. The trained model will predict the class label.
+        </p>
+    </div>
+
+    {% if error %}
+        <div class="card">
+            <div class="error">{{ error }}</div>
+        </div>
+    {% endif %}
+
+    <div class="card prediction-card">
+
+        <h2 class="centered-text">
+    Prediction Form
+</h2>
+
+<p class="centered-text">
+    <strong>Model:</strong> {{ model_name }}
+    &nbsp; | &nbsp;
+    <strong>Target:</strong> {{ target_column }}
+</p>
+
+        <form method="POST" class="prediction-form">
+            {% csrf_token %}
+
+            {% for feature in feature_columns %}
+                <div class="prediction-field">
+                    <label>{{ feature }}</label>
+
+                    <input
+                        type="number"
+                        step="any"
+                        name="{{ feature }}"
+                        placeholder="Enter {{ feature }}"
+                        required
+                    >
+                </div>
+            {% endfor %}
+
+            <button type="submit" class="button">
+                Predict
+            </button>
+        </form>
+
+    </div>
+
+    {% if prediction %}
+        <div class="card centered-text">
+            <h2>Prediction Result</h2>
+            <p class="help-text">The predicted class is:</p>
+            <h1 class="prediction-result">{{ prediction }}</h1>
+        </div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>

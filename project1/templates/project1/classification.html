@@ -1,0 +1,65 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Classification Task</title>
+
+    <link rel="stylesheet" href="{% static 'project1/style.css' %}">
+</head>
+
+<body>
+
+<div class="page-container">
+
+    <a href="{% url 'project1:index' %}" class="back-arrow">
+        ←
+    </a>
+
+    <div class="card">
+
+        <h1>Classification Task</h1>
+
+        <p class="help-text">
+            Upload a CSV dataset for a classification problem.
+            The last column should contain the target class label.
+        </p>
+
+        <p class="help-text">
+            After uploading the dataset, you will be able to
+            analyze the data visually and train machine learning models.
+        </p>
+
+        {% if error %}
+            <div class="error">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data">
+
+            {% csrf_token %}
+
+            <div class="upload-box">
+
+                <h3>Select CSV Dataset</h3>
+
+                <input type="file"
+                       name="csv_file"
+                       accept=".csv">
+
+                <br><br>
+
+                <button type="submit" class="button">
+                    Upload Dataset
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+</body>
+</html>

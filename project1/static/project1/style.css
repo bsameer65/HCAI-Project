@@ -1,0 +1,189 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f5f7fb;
+    margin: 0;
+    color: #222;
+}
+
+.page-container {
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.card {
+    background: white;
+    border-radius: 14px;
+    padding: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    margin-bottom: 25px;
+}
+
+.centered-text {
+    text-align: center;
+}
+
+.back-arrow {
+    text-decoration: none;
+    font-size: 28px;
+    color: #333;
+    display: inline-block;
+    margin-bottom: 15px;
+}
+
+.back-arrow:hover {
+    color: #007bff;
+}
+
+h1, h2, h3 {
+    margin-top: 0;
+}
+
+.help-text {
+    color: #666;
+    line-height: 1.6;
+}
+
+.button {
+    background: #007bff;
+    color: white;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 15px;
+    display: inline-block;
+}
+
+.button:hover {
+    background: #0056b3;
+}
+
+.secondary-button {
+    background: #6c757d;
+}
+
+.secondary-button:hover {
+    background: #545b62;
+}
+
+.upload-box {
+    border: 2px dashed #ccc;
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    background: #fafafa;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+select, input[type="file"] {
+    padding: 9px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+.graph-row {
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+}
+
+.graph-card {
+    flex: 1;
+    min-width: 400px;
+}
+
+.graph-card img {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
+
+.action-row {
+    margin-top: 25px;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.data-table th,
+.data-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.data-table th {
+    background: #f0f2f5;
+}
+
+.error {
+    color: #b00020;
+    background: #ffecec;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.success {
+    color: #116b2f;
+    background: #e9f8ef;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.popup {
+    display: none;
+    border: 1px solid #ddd;
+    background: white;
+    padding: 25px;
+    border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    margin-top: 25px;
+}
+.prediction-card .prediction-form {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 520px !important;
+    margin: 30px auto 0 auto !important;
+}
+
+.prediction-card .prediction-field {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    margin-bottom: 20px !important;
+    text-align: left !important;
+}
+
+.prediction-card .prediction-field label {
+    display: block !important;
+    margin-bottom: 8px !important;
+    font-weight: 600 !important;
+}
+
+.prediction-card .prediction-field input {
+    display: block !important;
+    width: 100% !important;
+    height: 46px !important;
+    padding: 12px 16px !important;
+    border-radius: 14px !important;
+    border: 1px solid #ccc !important;
+    box-sizing: border-box !important;
+    font-size: 15px !important;
+}
