@@ -13,7 +13,7 @@ def index(request):
     
     
     students = [
-        {"name": "Muhammad Haseeb", "matriculation": "123456"},
+        {"name": "Muhammad Haseeb", "matriculation": "642790"},
         {"name": "Muhammad Sameer Lund Baloch", "matriculation": "641441"},
 
     ]
