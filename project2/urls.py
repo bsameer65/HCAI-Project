@@ -7,4 +7,5 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('train/', views.train, name='train'),
     path('counterfactual/', views.counterfactual, name='counterfactual'),
+    path('pdp-ale/', views.pdp_ale, name='pdp_ale'),
 ]

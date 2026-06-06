@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <link rel="stylesheet" href="{% static 'project2/style.css' %}">
+</head>
+<body class="p2-page">
+<div class="p2-container">
+
+    <div class="p2-header">
+        <h1>Feature Effect Plots</h1>
+        <p>
+            Explore how each feature influences the model's predictions
+            across the range of its values.
+        </p>
+    </div>
+
+    <nav class="p2-nav">
+        <a href="{% url 'project2:index' %}">Home</a>
+        <a href="{% url 'project2:train' %}">Train</a>
+        <a href="{% url 'project2:counterfactual' %}">Counterfactuals</a>
+        <a href="{% url 'project2:pdp_ale' %}" class="active">PDP / ALE</a>
+    </nav>
+
+    <!-- ── What is PDP? ──────────────────────────────────────────────────── -->
+    <div class="p2-info-box">
+        <strong>What is a PDP (Partial Dependence Plot)?</strong><br>
+        PDP shows how the model's <em>average predicted probability</em> changes
+        when we force one feature to different values, while keeping all other
+        features at their real observed values.<br><br>
+        For example: "On average, what happens to the predicted probability for each
+        species as <em>flipper_length_mm</em> increases?"<br><br>
+        <strong>How to read it:</strong> each coloured line is one species.
+        A rising line means the model becomes more confident about that species
+        as the feature increases. A flat line means that feature doesn't matter much.
+    </div>
+
+    <!-- ── Control form ───────────────────────────────────────────────────── -->
+    <div class="p2-card">
+        <h2>Settings</h2>
+        <form method="POST" action="{% url 'project2:pdp_ale' %}">
+            {% csrf_token %}
+
+            <!-- Model type -->
+            <div class="p2-form-row">
+                <label class="p2-label">Model Type</label>
+                <div class="p2-radio-group">
+                    <label class="p2-radio-label">
+                        <input type="radio" name="model_type" value="dt"
+                               {% if model_type == "dt" %}checked{% endif %}>
+                        Decision Tree
+                    </label>
+                    <label class="p2-radio-label">
+                        <input type="radio" name="model_type" value="lr"
+                               {% if model_type == "lr" %}checked{% endif %}>
+                        Logistic Regression
+                    </label>
+                </div>
+            </div>
+
+            <!-- Lambda slider -->
+            <div class="p2-form-row">
+                <label class="p2-label" for="pdp_lambda">
+                    λ = <span id="pdp_lambda_display">{{ lambda_value }}</span>
+                </label>
+                <div class="p2-slider-row">
+                    <span class="p2-slider-hint">← Prefer Simplicity</span>
+                    <input type="range" id="pdp_lambda" name="lambda_value"
+                           min="0" max="1" step="0.01" value="{{ lambda_value }}"
+                           oninput="document.getElementById('pdp_lambda_display').textContent = parseFloat(this.value).toFixed(2)"
+                           class="p2-slider">
+                    <span class="p2-slider-hint">Prefer Accuracy →</span>
+                </div>
+            </div>
+
+            <!-- Feature selector -->
+            <div class="p2-form-row">
+                <label class="p2-label" for="feature_name">Numerical Feature</label>
+                <select name="feature_name" id="feature_name" class="p2-select">
+                    {% for feat in numerical_features %}
+                        <option value="{{ feat }}"
+                            {% if feat == feature_name %}selected{% endif %}>
+                            {{ feat }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="p2-btn">Generate PDP</button>
+        </form>
+    </div>
+
+    <!-- ── Error ─────────────────────────────────────────────────────────── -->
+    {% if error %}
+    <div class="p2-error-card">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- ── PDP plot ───────────────────────────────────────────────────────── -->
+    {% if pdp_plot_url %}
+    <div class="p2-card">
+        <h2>PDP — {{ feature_name }}</h2>
+        <p class="p2-muted">
+            Each line shows the <strong>average predicted probability</strong>
+            for one species as <strong>{{ feature_name }}</strong> varies from
+            its minimum to maximum observed value.
+            Other features are kept at their real values for each data point.
+        </p>
+
+        <div class="p2-plot-wrapper">
+            <img src="{{ pdp_plot_url }}" alt="PDP plot for {{ feature_name }}"
+                 class="p2-plot-img">
+        </div>
+
+        <!-- Beginner interpretation guide -->
+        <div class="p2-info-box" style="margin-top: 16px;">
+            <strong>How to interpret this plot:</strong><br>
+            • A <strong>rising curve</strong> for a species means larger values of
+              <em>{{ feature_name }}</em> push the model toward predicting that species.<br>
+            • A <strong>falling curve</strong> means larger values make that species
+              less likely to be predicted.<br>
+            • A <strong>flat curve</strong> means <em>{{ feature_name }}</em> has
+              little effect on that species' predicted probability.
+        </div>
+    </div>
+
+    <!-- ALE placeholder — will be filled in the next step -->
+    <div class="p2-card">
+        <h2>ALE — {{ feature_name }}</h2>
+        <div class="p2-placeholder">
+            📉 ALE (Accumulated Local Effects) plot coming in the next step.
+            ALE is more reliable than PDP when features are correlated with each other.
+        </div>
+    </div>
+    {% endif %}
+
+    <a href="{% url 'home:index' %}" class="p2-back">← Back to Project Hub</a>
+
+</div>
+</body>
+</html>

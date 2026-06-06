@@ -3,9 +3,11 @@ import joblib
 from django.shortcuts import render
 from django.conf import settings
 
-from .data_utils import load_penguin_data
+from .data_utils import load_penguin_data, NUMERICAL_FEATURES
 from .model_utils import get_selected_model
 from .counterfactual_utils import generate_counterfactuals
+from .effect_plot_utils import compute_pdp
+from .plot_utils import plot_pdp
 
 # Path where the selected model result is cached so other views can reload it
 MODEL_SAVE_DIR  = os.path.join(settings.MEDIA_ROOT, "project2_models")
@@ -147,3 +149,53 @@ def counterfactual(request):
         "all_features":   num_feats + cat_feats,
     }
     return render(request, "project2/counterfactual.html", context)
+
+
+def pdp_ale(request):
+    """
+    Feature Effect Plots page — shows a PDP for the selected numerical feature
+    and the selected model. ALE will be added in the next step.
+    """
+    model_type    = "dt"
+    lambda_value  = 0.5
+    feature_name  = NUMERICAL_FEATURES[0]
+    pdp_plot_url  = None
+    error         = None
+
+    if request.method == "POST":
+        model_type = request.POST.get("model_type", "dt")
+        try:
+            lambda_value = float(request.POST.get("lambda_value", 0.5))
+            lambda_value = max(0.0, min(1.0, lambda_value))
+        except ValueError:
+            lambda_value = 0.5
+
+        feature_name = request.POST.get("feature_name", NUMERICAL_FEATURES[0])
+        if feature_name not in NUMERICAL_FEATURES:
+            feature_name = NUMERICAL_FEATURES[0]
+
+        try:
+            selected = get_selected_model(model_type, lambda_value)
+            _save_selected(selected)
+
+            pdp_result  = compute_pdp(
+                pipeline     = selected["pipeline"],
+                X            = selected["X"],
+                feature_name = feature_name,
+                class_names  = selected["class_names"],
+            )
+            pdp_plot_url = plot_pdp(pdp_result, feature_name, selected["label"])
+
+        except Exception as exc:
+            error = f"Plot generation failed: {exc}"
+
+    context = {
+        "page_title":       "Feature Effect Plots — Project 2",
+        "model_type":       model_type,
+        "lambda_value":     lambda_value,
+        "feature_name":     feature_name,
+        "numerical_features": NUMERICAL_FEATURES,
+        "pdp_plot_url":     pdp_plot_url,
+        "error":            error,
+    }
+    return render(request, "project2/pdp_ale.html", context)
