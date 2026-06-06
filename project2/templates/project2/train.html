@@ -12,7 +12,7 @@
 
     <div class="p2-header">
         <h1>Train a Model</h1>
-        <p>Choose a model type and move the λ slider to balance accuracy against simplicity.</p>
+        <p>Choose a model type and adjust the λ slider to balance accuracy against simplicity.</p>
     </div>
 
     <nav class="p2-nav">
@@ -24,21 +24,27 @@
 
     <!-- ── Controls form ─────────────────────────────────────────────────── -->
     <div class="p2-card">
-        <h2>Model Settings</h2>
+        <h2>⚙️ Model Settings</h2>
 
+        <!-- HCAI extra: explanation text helps non-expert users understand model behavior -->
         <div class="p2-info-box">
             <strong>What is λ (lambda)?</strong><br>
             λ controls the trade-off between <em>accuracy</em> and <em>simplicity</em>.<br>
-            <strong>λ = 0</strong> → ignore complexity, just pick the most accurate model.<br>
+            <strong>λ = 0</strong> → pick the most accurate model, regardless of complexity.<br>
             <strong>λ = 1</strong> → strongly prefer simpler models, even if less accurate.<br>
-            The model with the lowest <em>objective score</em> is selected.
+            The model with the lowest <em>objective score</em> is selected:
+            <code>objective = (1 − accuracy) + λ × normalised complexity</code>
         </div>
 
         <form method="POST" action="{% url 'project2:train' %}">
             {% csrf_token %}
 
+            <!-- Model type -->
             <div class="p2-form-row">
-                <label class="p2-label">Model Type</label>
+                <label class="p2-label">
+                    Model Type
+                    <span class="p2-label-help">Select the algorithm to train</span>
+                </label>
                 <div class="p2-radio-group">
                     <label class="p2-radio-label">
                         <input type="radio" name="model_type" value="dt"
@@ -53,12 +59,14 @@
                 </div>
             </div>
 
+            <!-- Lambda slider -->
             <div class="p2-form-row">
                 <label class="p2-label" for="lambda_slider">
                     λ = <span id="lambda_display">{{ lambda_value }}</span>
+                    <span class="p2-label-help">Drag to adjust the accuracy/simplicity trade-off</span>
                 </label>
                 <div class="p2-slider-row">
-                    <span class="p2-slider-hint">← Prefer Simplicity</span>
+                    <span class="p2-slider-hint">← Simpler</span>
                     <input
                         type="range" id="lambda_slider" name="lambda_value"
                         min="0" max="1" step="0.01"
@@ -66,20 +74,42 @@
                         oninput="document.getElementById('lambda_display').textContent = parseFloat(this.value).toFixed(2)"
                         class="p2-slider"
                     >
-                    <span class="p2-slider-hint">Prefer Accuracy →</span>
+                    <span class="p2-slider-hint">More accurate →</span>
                 </div>
+                <!-- Dynamic lambda warning -->
+                <div class="p2-warning-box" id="lambda_warning" style="display:none;"></div>
+                <script>
+                (function() {
+                    var slider  = document.getElementById('lambda_slider');
+                    var warning = document.getElementById('lambda_warning');
+                    function update() {
+                        var v = parseFloat(slider.value);
+                        if (v >= 0.8) {
+                            warning.textContent = '⚠ Large λ strongly prefers simpler models — accuracy may drop significantly.';
+                            warning.style.display = 'block';
+                        } else if (v <= 0.1) {
+                            warning.textContent = 'ℹ Small λ prefers more accurate but possibly more complex models.';
+                            warning.style.display = 'block';
+                        } else {
+                            warning.style.display = 'none';
+                        }
+                    }
+                    slider.addEventListener('input', update);
+                    update();
+                })();
+                </script>
             </div>
 
             <button type="submit" class="p2-btn">Train &amp; Select Model</button>
         </form>
     </div>
 
-    <!-- ── Results (shown after POST) ───────────────────────────────────── -->
+    <!-- ── Results ────────────────────────────────────────────────────────── -->
     {% if result %}
 
     <!-- Selected model summary -->
     <div class="p2-card p2-best-card">
-        <h2>✅ Selected Model (lowest objective for λ = {{ result.lambda_value }})</h2>
+        <h2>✅ Selected Model (λ = {{ result.lambda_value }})</h2>
 
         <div class="p2-stat-row">
             <div class="p2-stat-box">
@@ -93,7 +123,7 @@
             <div class="p2-stat-box">
                 <span class="p2-stat-number">{{ result.complexity }}</span>
                 <span class="p2-stat-label">
-                    {% if result.model_type == "dt" %}Leaves (complexity){% else %}Non-zero Coefficients{% endif %}
+                    {% if result.model_type == "dt" %}Leaves{% else %}Non-zero Coefficients{% endif %}
                 </span>
             </div>
             <div class="p2-stat-box">
@@ -108,9 +138,20 @@
             {% endif %}
         </div>
 
-        <!-- Plain-language explanation -->
-        {% if result.model_type == "lr" %}
+        <!-- Beginner explanation of accuracy and complexity -->
         <div class="p2-info-box" style="margin-top:16px;">
+            <strong>What do these numbers mean?</strong><br>
+            • <strong>Accuracy</strong> = percentage of test penguins classified correctly.
+              Higher is better, but a very high accuracy might mean the model is overfitting.<br>
+            • <strong>{% if result.model_type == "dt" %}Leaves{% else %}Non-zero coefficients{% endif %}</strong>
+              = the model's complexity. Fewer = simpler and easier to explain.<br>
+            • <strong>Objective</strong> = the combined score (lower is better).
+              It mixes accuracy error with λ-weighted complexity.
+        </div>
+
+        <!-- Plain-language model explanation -->
+        {% if result.model_type == "lr" %}
+        <div class="p2-info-box">
             <strong>How does Logistic Regression work?</strong><br>
             Logistic Regression assigns a <em>weight (coefficient)</em> to each feature.
             A larger weight means that feature has a stronger influence on the prediction.
@@ -119,7 +160,7 @@
             Fewer non-zero coefficients = simpler model.
         </div>
         {% else %}
-        <div class="p2-info-box" style="margin-top:16px;">
+        <div class="p2-info-box">
             <strong>How does a Decision Tree work?</strong><br>
             A Decision Tree splits the data based on feature thresholds, like a flowchart.
             The number of <em>leaves</em> tells you how many different decision paths the tree has —
@@ -130,8 +171,12 @@
 
     <!-- Candidate comparison table -->
     <div class="p2-card">
-        <h2>All Candidate Models</h2>
-        <p class="p2-muted">The highlighted row is the selected model for the current λ.</p>
+        <h2>📊 All Candidate Models</h2>
+        <p class="p2-muted">
+            Each row is a model trained with a different hyperparameter.
+            The <strong>highlighted row</strong> is the selected model — it has the
+            lowest objective score for the current λ.
+        </p>
         <div class="p2-table-scroll">
             <table class="p2-table">
                 <thead>
@@ -161,11 +206,11 @@
     <!-- Coefficient table (Logistic Regression only) -->
     {% if result.model_type == "lr" and result.coef_table %}
     <div class="p2-card">
-        <h2>Coefficient Table — Selected Logistic Regression</h2>
+        <h2>🔢 Coefficient Table</h2>
         <p class="p2-muted">
             Each row is one feature. Columns show the model's weight for each penguin species.
-            <strong>Highlighted</strong> rows are features the model is actually using (non-zero weight).
-            Rows without a highlight are ignored by this model.
+            <strong>Green rows</strong> are features the model is actually using (non-zero weight).
+            Rows without colour are ignored by this model.
         </p>
         <div class="p2-table-scroll">
             <table class="p2-table">
@@ -194,7 +239,14 @@
     </div>
     {% endif %}
 
-    {% endif %} <!-- end if result -->
+    {% else %}
+    <!-- No model trained yet — friendly hint -->
+    <div class="p2-info-box">
+        👆 <strong>No model trained yet.</strong>
+        Choose a model type and λ value above, then press <em>Train &amp; Select Model</em>
+        to see results here.
+    </div>
+    {% endif %}
 
     <a href="{% url 'home:index' %}" class="p2-back">← Back to Project Hub</a>
 

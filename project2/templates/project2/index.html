@@ -29,23 +29,21 @@
         <a href="{% url 'project2:pdp_ale' %}">PDP / ALE</a>
     </nav>
 
-    <!-- ── What are features and target? ────────────────────────────────── -->
+    <!-- ── Dataset overview ──────────────────────────────────────────────── -->
     <div class="p2-card">
-        <h2>Understanding the Data</h2>
+        <h2>📋 Dataset Overview</h2>
 
         <p>
             <strong>Features</strong> are the measurements we give to the model —
             they are the clues the model uses to make a decision.
             <strong>The target</strong> is what the model is trying to predict.
         </p>
-
         <p>
             In this project, the model looks at penguin measurements
             (<em>features</em>) and predicts which <strong>species</strong>
             the penguin belongs to (<em>target</em>).
         </p>
 
-        <!-- Dataset quick stats -->
         <div class="p2-stat-row">
             <div class="p2-stat-box">
                 <span class="p2-stat-number">{{ num_rows }}</span>
@@ -64,16 +62,14 @@
 
     <!-- ── Feature breakdown ─────────────────────────────────────────────── -->
     <div class="p2-card">
-        <h2>Features Used</h2>
-
+        <h2>📏 Features Used</h2>
         <p class="p2-muted">
-            Numerical features are continuous measurements.
-            Categorical features have a fixed set of possible values.
+            Numerical features are continuous measurements (e.g. bill length in mm).
+            Categorical features have a fixed set of possible values (e.g. island name).
         </p>
-
         <div class="p2-two-col">
             <div>
-                <h3 class="p2-sub-heading">📏 Numerical Features</h3>
+                <h3 class="p2-sub-heading">Numerical</h3>
                 <ul class="p2-feature-list">
                     {% for f in numerical_features %}
                         <li>{{ f }}</li>
@@ -81,7 +77,7 @@
                 </ul>
             </div>
             <div>
-                <h3 class="p2-sub-heading">🏷️ Categorical Features</h3>
+                <h3 class="p2-sub-heading">Categorical / Discrete</h3>
                 <ul class="p2-feature-list">
                     {% for f in categorical_features %}
                         <li>{{ f }}</li>
@@ -93,7 +89,7 @@
 
     <!-- ── Target & class names ──────────────────────────────────────────── -->
     <div class="p2-card">
-        <h2>Target: <code>{{ target_name }}</code></h2>
+        <h2>🎯 Target: <code>{{ target_name }}</code></h2>
         <p>The model will predict which of these three species a penguin belongs to:</p>
         <div class="p2-class-row">
             {% for cls in class_names %}
@@ -104,50 +100,75 @@
 
     <!-- ── Data preview ──────────────────────────────────────────────────── -->
     <div class="p2-card">
-        <h2>First 5 Rows of the Dataset</h2>
+        <h2>🔍 First 5 Rows</h2>
         <p class="p2-muted">
-            Each row is one penguin. Scroll right if the table is wide.
+            Each row is one penguin. Scroll right if the table is wider than your screen.
         </p>
         <div class="p2-table-scroll">
             {{ preview_table|safe }}
         </div>
     </div>
 
-    <!-- ── Placeholder sections ──────────────────────────────────────────── -->
+    <!-- ── Key concepts glossary ─────────────────────────────────────────── -->
+    <!-- HCAI extra: explanation text helps non-expert users understand model behavior -->
     <div class="p2-card">
-        <h2>Step 1 – Model Selection &amp; λ Slider</h2>
-        <div class="p2-placeholder">
-            🔧 Coming soon: Choose between <strong>Decision Tree</strong> and
-            <strong>Logistic Regression</strong>, and use the
-            <strong>λ (lambda) slider</strong> to trade off accuracy against model simplicity.
+        <h2>📖 Key Concepts</h2>
+        <p class="p2-muted">Quick definitions used throughout this app:</p>
+        <div class="p2-glossary">
+            <div class="p2-glossary-item">
+                <strong>Accuracy</strong> — the percentage of test penguins the model
+                classifies correctly. Higher is better.
+            </div>
+            <div class="p2-glossary-item">
+                <strong>Complexity</strong> — how many parameters the model uses.
+                For Decision Trees: number of leaves. For Logistic Regression: number of
+                non-zero coefficients. Lower = simpler.
+            </div>
+            <div class="p2-glossary-item">
+                <strong>λ (Lambda)</strong> — a slider that balances accuracy vs. simplicity.
+                λ = 0 picks the most accurate model; λ = 1 picks the simplest.
+            </div>
+            <div class="p2-glossary-item">
+                <strong>Decision Tree</strong> — a flowchart-like model that splits data at
+                feature thresholds. Easy to visualise but can overfit.
+            </div>
+            <div class="p2-glossary-item">
+                <strong>Logistic Regression</strong> — a model that assigns weights
+                (coefficients) to each feature. Weights of zero mean a feature is ignored.
+            </div>
+            <div class="p2-glossary-item">
+                <strong>Counterfactual</strong> — a nearby example that changes the prediction.
+                It answers: "What would need to change for a different classification?"
+            </div>
+            <div class="p2-glossary-item">
+                <strong>PDP</strong> — Partial Dependence Plot. Shows the average predicted
+                probability as one feature changes, while others stay the same.
+            </div>
+            <div class="p2-glossary-item">
+                <strong>ALE</strong> — Accumulated Local Effects. Like PDP, but only looks at
+                regions where data exists. More reliable when features are correlated.
+            </div>
         </div>
     </div>
 
-    <div class="p2-card">
-        <h2>Step 2 – Model Summary</h2>
-        <div class="p2-placeholder">
-            📊 Coming soon: Accuracy score, complexity score, and a plain-language explanation.
-        </div>
-    </div>
+    <hr class="p2-divider">
 
+    <!-- ── Roadmap — link to each section ────────────────────────────────── -->
     <div class="p2-card">
-        <h2>Step 3 – Counterfactual Explanations</h2>
-        <div class="p2-placeholder">
-            🔀 Coming soon: "What would need to change to get a different prediction?"
-        </div>
-    </div>
-
-    <div class="p2-card">
-        <h2>Step 4 – Partial Dependence Plot (PDP)</h2>
-        <div class="p2-placeholder">
-            📈 Coming soon: "On average, how does changing one feature affect the prediction?"
-        </div>
-    </div>
-
-    <div class="p2-card">
-        <h2>Step 5 – Accumulated Local Effects (ALE)</h2>
-        <div class="p2-placeholder">
-            📉 Coming soon: A more accurate alternative to PDP when features are correlated.
+        <h2>🗺️ Explore the App</h2>
+        <div class="p2-step-grid">
+            <a href="{% url 'project2:train' %}" class="p2-step-link">
+                <strong>1. Train &amp; Select Model</strong>
+                <span>Choose model type, set λ, view candidate comparison table.</span>
+            </a>
+            <a href="{% url 'project2:counterfactual' %}" class="p2-step-link">
+                <strong>2. Counterfactuals</strong>
+                <span>Pick a penguin and see what changes would flip the prediction.</span>
+            </a>
+            <a href="{% url 'project2:pdp_ale' %}" class="p2-step-link">
+                <strong>3. PDP &amp; ALE</strong>
+                <span>See how each numerical feature influences species predictions.</span>
+            </a>
         </div>
     </div>
 
