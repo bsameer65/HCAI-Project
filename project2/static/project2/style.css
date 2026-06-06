@@ -119,5 +119,113 @@
 }
 
 .p2-btn:hover {
-  background: #133d6e;
+    background: #133d6e;
+}
+
+/* ---------- Stat boxes ---------- */
+.p2-stat-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+.p2-stat-box {
+    flex: 1;
+    min-width: 120px;
+    background: #eef3fb;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.p2-stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1a4f8a;
+}
+
+.p2-stat-label {
+    font-size: 0.82rem;
+    color: #5a6d8a;
+}
+
+/* ---------- Two-column layout ---------- */
+.p2-two-col {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.p2-two-col > div {
+    flex: 1;
+    min-width: 180px;
+}
+
+.p2-sub-heading {
+    font-size: 0.95rem;
+    color: #1a4f8a;
+    margin-bottom: 8px;
+}
+
+.p2-feature-list {
+    padding-left: 18px;
+    line-height: 1.9;
+    color: #333;
+    font-size: 0.93rem;
+}
+
+/* ---------- Class badges ---------- */
+.p2-class-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.p2-class-badge {
+    background: #1a4f8a;
+    color: white;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.88rem;
+}
+
+/* ---------- Data preview table ---------- */
+.p2-table-scroll {
+    overflow-x: auto;
+}
+
+.p2-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin-top: 10px;
+}
+
+.p2-table th {
+    background: #1a4f8a;
+    color: white;
+    padding: 9px 12px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.p2-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e8edf5;
+}
+
+.p2-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* ---------- Muted helper text ---------- */
+.p2-muted {
+    color: #6b7a90;
+    font-size: 0.91rem;
+    margin-top: 0;
 }
