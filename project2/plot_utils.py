@@ -78,3 +78,55 @@ def plot_pdp(pdp_result, feature_name, model_label):
     fig.tight_layout()
 
     return _save_fig(fig, f"pdp_{feature_name}")
+
+
+def plot_ale(ale_result, feature_name, model_label):
+    """
+    Plot Accumulated Local Effects curves — one line per species.
+
+    ALE values are centred around zero, so the y-axis shows how much the model's
+    prediction for each species is pushed up or down relative to the average.
+
+    Parameters
+    ----------
+    ale_result   : dict returned by compute_ale()
+    feature_name : str — used for x-axis label and title
+    model_label  : str — e.g. "DT depth=2" shown in the subtitle
+
+    Returns
+    -------
+    str — media URL of the saved PNG, or None if no bins had data
+    """
+    centres = ale_result["bin_centres"]
+    values  = ale_result["ale_values"]
+
+    if not centres:
+        return None   # no data — caller should show a friendly message
+
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+
+    for cls, ale_vals in values.items():
+        colour = SPECIES_COLOURS.get(cls, None)
+        ax.plot(centres, ale_vals, label=cls, linewidth=2.2,
+                color=colour, marker="o", markersize=4)
+
+    # Zero reference line — makes it easy to see positive/negative effects
+    ax.axhline(0, color="#999", linewidth=1, linestyle="--")
+
+    ax.set_xlabel(feature_name, fontsize=12)
+    ax.set_ylabel("ALE (centred local effect)", fontsize=12)
+    ax.set_title(
+        f"ALE — {feature_name}",
+        fontsize=13, fontweight="bold"
+    )
+    ax.text(
+        0.5, 1.02,
+        f"Model: {model_label}  |  bins used: {ale_result['n_bins_used']}",
+        transform=ax.transAxes,
+        ha="center", fontsize=9, color="#555"
+    )
+    ax.legend(title="Species", fontsize=10)
+    ax.grid(True, linestyle="--", alpha=0.4)
+    fig.tight_layout()
+
+    return _save_fig(fig, f"ale_{feature_name}")

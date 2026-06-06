@@ -14,7 +14,7 @@
         <h1>Feature Effect Plots</h1>
         <p>
             Explore how each feature influences the model's predictions
-            across the range of its values.
+            using PDP and ALE — two complementary explanation methods.
         </p>
     </div>
 
@@ -25,17 +25,37 @@
         <a href="{% url 'project2:pdp_ale' %}" class="active">PDP / ALE</a>
     </nav>
 
-    <!-- ── What is PDP? ──────────────────────────────────────────────────── -->
+    <!-- ── Method overview ───────────────────────────────────────────────── -->
     <div class="p2-info-box">
-        <strong>What is a PDP (Partial Dependence Plot)?</strong><br>
-        PDP shows how the model's <em>average predicted probability</em> changes
-        when we force one feature to different values, while keeping all other
-        features at their real observed values.<br><br>
-        For example: "On average, what happens to the predicted probability for each
-        species as <em>flipper_length_mm</em> increases?"<br><br>
-        <strong>How to read it:</strong> each coloured line is one species.
-        A rising line means the model becomes more confident about that species
-        as the feature increases. A flat line means that feature doesn't matter much.
+        <strong>PDP vs ALE — what's the difference?</strong><br><br>
+        <strong>PDP (Partial Dependence Plot)</strong> forces a feature to different
+        values across the <em>entire dataset</em> and averages the model response.
+        It is easy to understand, but can be misleading when features are correlated —
+        it may evaluate the model on unrealistic feature combinations.<br><br>
+        <strong>ALE (Accumulated Local Effects)</strong> only looks at the model's
+        behaviour in the <em>local neighbourhood</em> of each data point, using
+        small steps within quantile bins. It avoids out-of-distribution extrapolation
+        and is generally considered more reliable when features are correlated.<br><br>
+        <em>ALE shows local changes in the model prediction in regions where data
+        actually exists. It is often more realistic than PDP when features are correlated.</em>
+    </div>
+
+    <!-- ── Theoretical note ──────────────────────────────────────────────── -->
+    <div class="p2-card">
+        <h2>📐 Theoretical Note: Why Bin-Based ALE?</h2>
+        <p style="font-size: 0.93rem; line-height: 1.7;">
+            <strong>Logistic Regression</strong> is a smooth, differentiable function —
+            in theory, one could compute the exact partial derivative
+            <em>∂P(y|x) / ∂x<sub>j</sub></em> analytically.
+            However, bin-based ALE is simpler to implement, equally informative in practice,
+            and works directly with <code>predict_proba</code> without needing access to model internals.<br><br>
+            <strong>Decision Trees</strong> are piecewise constant and <em>not</em> smoothly differentiable —
+            their output is a step function that jumps at split thresholds.
+            A derivative-based approach is not defined for them, so discretisation is necessary.<br><br>
+            <strong>This implementation uses bin-based ALE for both models</strong>, giving a
+            consistent, model-agnostic interface that works the same way regardless of
+            which model the user selects on the Train page.
+        </p>
     </div>
 
     <!-- ── Control form ───────────────────────────────────────────────────── -->
@@ -44,7 +64,6 @@
         <form method="POST" action="{% url 'project2:pdp_ale' %}">
             {% csrf_token %}
 
-            <!-- Model type -->
             <div class="p2-form-row">
                 <label class="p2-label">Model Type</label>
                 <div class="p2-radio-group">
@@ -61,7 +80,6 @@
                 </div>
             </div>
 
-            <!-- Lambda slider -->
             <div class="p2-form-row">
                 <label class="p2-label" for="pdp_lambda">
                     λ = <span id="pdp_lambda_display">{{ lambda_value }}</span>
@@ -76,7 +94,6 @@
                 </div>
             </div>
 
-            <!-- Feature selector -->
             <div class="p2-form-row">
                 <label class="p2-label" for="feature_name">Numerical Feature</label>
                 <select name="feature_name" id="feature_name" class="p2-select">
@@ -89,7 +106,7 @@
                 </select>
             </div>
 
-            <button type="submit" class="p2-btn">Generate PDP</button>
+            <button type="submit" class="p2-btn">Generate PDP &amp; ALE</button>
         </form>
     </div>
 
@@ -100,43 +117,68 @@
     </div>
     {% endif %}
 
-    <!-- ── PDP plot ───────────────────────────────────────────────────────── -->
+    <!-- ── Results: PDP and ALE side by side ────────────────────────────── -->
+    {% if pdp_plot_url or ale_plot_url %}
+
+    <!-- PDP -->
     {% if pdp_plot_url %}
     <div class="p2-card">
         <h2>PDP — {{ feature_name }}</h2>
         <p class="p2-muted">
             Each line shows the <strong>average predicted probability</strong>
-            for one species as <strong>{{ feature_name }}</strong> varies from
-            its minimum to maximum observed value.
-            Other features are kept at their real values for each data point.
+            for one species as <strong>{{ feature_name }}</strong> is forced to values
+            across its full range. All other features keep their real observed values.
         </p>
-
         <div class="p2-plot-wrapper">
             <img src="{{ pdp_plot_url }}" alt="PDP plot for {{ feature_name }}"
                  class="p2-plot-img">
         </div>
-
-        <!-- Beginner interpretation guide -->
-        <div class="p2-info-box" style="margin-top: 16px;">
-            <strong>How to interpret this plot:</strong><br>
-            • A <strong>rising curve</strong> for a species means larger values of
-              <em>{{ feature_name }}</em> push the model toward predicting that species.<br>
-            • A <strong>falling curve</strong> means larger values make that species
-              less likely to be predicted.<br>
-            • A <strong>flat curve</strong> means <em>{{ feature_name }}</em> has
-              little effect on that species' predicted probability.
-        </div>
-    </div>
-
-    <!-- ALE placeholder — will be filled in the next step -->
-    <div class="p2-card">
-        <h2>ALE — {{ feature_name }}</h2>
-        <div class="p2-placeholder">
-            📉 ALE (Accumulated Local Effects) plot coming in the next step.
-            ALE is more reliable than PDP when features are correlated with each other.
+        <div class="p2-info-box" style="margin-top:14px;">
+            <strong>How to read the PDP:</strong><br>
+            • A <strong>rising curve</strong> → larger <em>{{ feature_name }}</em>
+              values push the model toward that species.<br>
+            • A <strong>falling curve</strong> → larger values make the model
+              less likely to predict that species.<br>
+            • A <strong>flat curve</strong> → the feature has little effect on
+              that species' probability according to this model.
         </div>
     </div>
     {% endif %}
+
+    <!-- ALE -->
+    {% if ale_plot_url %}
+    <div class="p2-card">
+        <h2>ALE — {{ feature_name }}</h2>
+        <p class="p2-muted">
+            Each point shows the <strong>local change</strong> in predicted probability
+            within the bin around that feature value. Values are centred around zero —
+            positive means the model predicts that species <em>more</em> than average,
+            negative means <em>less</em> than average.
+        </p>
+        <div class="p2-plot-wrapper">
+            <img src="{{ ale_plot_url }}" alt="ALE plot for {{ feature_name }}"
+                 class="p2-plot-img">
+        </div>
+        <div class="p2-info-box" style="margin-top:14px;">
+            <strong>How to read the ALE:</strong><br>
+            • <strong>Above zero</strong> → at this feature value, the model predicts
+              that species more often than average.<br>
+            • <strong>Below zero</strong> → the model predicts it less often than average.<br>
+            • The dashed grey line at zero is the reference — a completely flat ALE
+              means the feature has no local effect at that value.
+        </div>
+    </div>
+    {% else %}
+    <div class="p2-card">
+        <h2>ALE — {{ feature_name }}</h2>
+        <p class="p2-muted">
+            Not enough data in bins to generate an ALE plot for this feature.
+            Try a different feature or a different model.
+        </p>
+    </div>
+    {% endif %}
+
+    {% endif %} <!-- end if pdp_plot_url or ale_plot_url -->
 
     <a href="{% url 'home:index' %}" class="p2-back">← Back to Project Hub</a>
 

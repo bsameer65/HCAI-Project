@@ -82,3 +82,138 @@ def compute_pdp(pipeline, X, feature_name, class_names, n_grid=50):
         "grid_values": grid_values.tolist(),
         "pdp_values":  pdp_values,
     }
+
+
+# ── ALE ───────────────────────────────────────────────────────────────────────
+
+def compute_ale(pipeline, X, feature_name, class_names, n_bins=10):
+    """
+    Compute Accumulated Local Effects (ALE) for one numerical feature.
+
+    ALE is more reliable than PDP when features are correlated, because it only
+    looks at local changes within each bin — it never asks the model to predict
+    on impossible (out-of-distribution) feature combinations.
+
+    # bin-based ALE keeps the method model-agnostic and works
+    # identically for both Decision Trees and Logistic Regression:
+    #   - Logistic Regression is differentiable, so exact partial derivatives
+    #     exist in theory, but bin-based ALE is simpler to implement and explain.
+    #   - Decision Trees are piecewise constant and not smoothly differentiable,
+    #     so a derivative-based approach would not work anyway.
+    #   - Using bin-based ALE for both gives a consistent, model-agnostic interface.
+
+    Algorithm (manual, no library):
+    --------------------------------
+    1. Compute quantile bin edges for the selected feature.
+    2. For each bin [z_low, z_high]:
+        a. Find all rows whose feature value falls inside this bin.
+        b. If no rows → skip this bin.
+        c. Create two copies of those rows:
+               X_low  — feature set to z_low  (lower bin edge)
+               X_high — feature set to z_high (upper bin edge)
+        d. Compute predict_proba for both copies.
+        e. Local effect = mean( proba_high - proba_low )  per class.
+    3. Accumulate local effects across bins (running sum) → raw ALE.
+    4. Centre the ALE by subtracting the weighted mean so the overall
+       average effect is near zero — this makes curves comparable across features.
+
+    Parameters
+    ----------
+    pipeline     : fitted sklearn Pipeline (prep + clf)
+    X            : pd.DataFrame — original feature matrix (un-encoded)
+    feature_name : str — which numerical feature to analyse
+    class_names  : list[str] — species names matching predict_proba columns
+    n_bins       : int — number of quantile bins
+
+    Returns
+    -------
+    dict with:
+        bin_centres : list[float]   — mid-point of each bin (x-axis)
+        ale_values  : dict[str -> list[float]]  — centred ALE per class per bin
+        n_bins_used : int — bins that actually contained data
+    """
+    # Step 1: compute quantile bin edges
+    quantiles  = np.linspace(0, 100, n_bins + 1)
+    bin_edges  = np.percentile(X[feature_name].dropna(), quantiles)
+    # Remove duplicate edges that arise from low-variance columns
+    bin_edges  = np.unique(bin_edges)
+    n_intervals = len(bin_edges) - 1
+
+    if n_intervals == 0:
+        # Degenerate case: feature has no variance
+        return {
+            "bin_centres": [],
+            "ale_values":  {cls: [] for cls in class_names},
+            "n_bins_used": 0,
+        }
+
+    # Accumulators
+    local_effects  = {cls: [] for cls in class_names}  # per-bin Δ
+    bin_centres    = []
+    bin_counts     = []   # number of samples in each bin (for centering)
+
+    X_work = X.copy()
+
+    for i in range(n_intervals):
+        z_low  = bin_edges[i]
+        z_high = bin_edges[i + 1]
+
+        # Step 2a: find rows whose feature lies inside this bin
+        if i == n_intervals - 1:
+            # Include the right edge in the last bin
+            mask = (X_work[feature_name] >= z_low) & (X_work[feature_name] <= z_high)
+        else:
+            mask = (X_work[feature_name] >= z_low) & (X_work[feature_name] < z_high)
+
+        X_bin = X_work[mask].copy()
+
+        if len(X_bin) == 0:
+            # Step 2b: no data in this bin — record a zero effect so the
+            # x-axis stays continuous, but don't let it distort centering
+            bin_centres.append(round(float((z_low + z_high) / 2), 4))
+            bin_counts.append(0)
+            for cls in class_names:
+                local_effects[cls].append(0.0)
+            continue
+
+        # Step 2c: two copies — feature forced to bin edges
+        X_low  = X_bin.copy(); X_low[feature_name]  = z_low
+        X_high = X_bin.copy(); X_high[feature_name] = z_high
+
+        # Step 2d: predicted probabilities for both
+        proba_low  = pipeline.predict_proba(X_low)   # shape (n_bin, n_classes)
+        proba_high = pipeline.predict_proba(X_high)
+
+        # Step 2e: mean local effect per class
+        delta = (proba_high - proba_low).mean(axis=0)
+
+        bin_centres.append(round(float((z_low + z_high) / 2), 4))
+        bin_counts.append(len(X_bin))
+        for j, cls in enumerate(class_names):
+            local_effects[cls].append(round(float(delta[j]), 6))
+
+    # Step 3: accumulate local effects (running sum) → raw ALE
+    ale_raw = {}
+    for cls in class_names:
+        ale_raw[cls] = list(np.cumsum(local_effects[cls]))
+
+    # Step 4: centre — subtract weighted mean so average ALE ≈ 0
+    # Weighting by bin count makes the centering reflect the data distribution.
+    counts = np.array(bin_counts, dtype=float)
+    total  = counts.sum()
+
+    ale_values = {}
+    for cls in class_names:
+        raw = np.array(ale_raw[cls])
+        if total > 0:
+            weighted_mean = float(np.dot(counts, raw) / total)
+        else:
+            weighted_mean = 0.0
+        centred = [round(float(v - weighted_mean), 5) for v in raw]
+        ale_values[cls] = centred
+
+    return {
+        "bin_centres": bin_centres,
+        "ale_values":  ale_values,
+        "n_bins_used": int(sum(1 for c in bin_counts if c > 0)),
+    }
