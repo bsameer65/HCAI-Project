@@ -16,12 +16,15 @@
     # complexity = number of non-zero coefficients
     # because it is easier to explain.
 
+
 """
 model_utils.py — Model training, complexity scoring, and lambda-based selection.
 
-Supports:
-  - Decision Tree  (complexity = number of leaves)
-  - Logistic Regression  (complexity = number of non-zero coefficients)
+Central entry point: get_selected_model(model_type, lambda_value)
+
+# central selected-model function avoids inconsistent explanations
+# across UI sections — every view (train, counterfactual, PDP, ALE) calls this
+# one function and gets the exact same pipeline, split, and metadata.
 """
 
 import numpy as np
@@ -31,166 +34,155 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
-from .data_utils import get_preprocessor, encode_target
+from .data_utils import (
+    load_penguin_data,
+    get_preprocessor,
+    encode_target,
+    NUMERICAL_FEATURES,
+    CATEGORICAL_FEATURES,
+)
 
 # ── Candidate hyperparameter grids ───────────────────────────────────────────
 
 DT_MAX_DEPTHS = [1, 2, 3, 4, 5, 7, 10, None]   # None = fully grown tree
-
-LR_C_VALUES = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30]
+LR_C_VALUES   = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30]
 
 COEF_THRESHOLD = 1e-6   # abs(coef) > threshold → treated as non-zero
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Internal helpers ──────────────────────────────────────────────────────────
 
-def _split(X, y):
-    """Standard 80/20 stratified split, fixed seed for reproducibility."""
-    return train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-
-
-def _dt_complexity(model):
-    """Number of leaves in the fitted Decision Tree."""
-    return int(model.get_n_leaves())
+def _split(X, y_enc):
+    """80/20 stratified split with a fixed seed for reproducibility."""
+    return train_test_split(X, y_enc, test_size=0.2, random_state=42, stratify=y_enc)
 
 
-def _lr_complexity(model):
+def _dt_complexity(clf):
+    """Number of leaves — a simple, explainable proxy for tree complexity."""
+    return int(clf.get_n_leaves())
+
+
+def _lr_complexity(clf):
     """
     Number of non-zero coefficients across all classes.
-    L1 regularisation drives many weights to exactly zero, so this is a
-    natural measure of model sparsity and is easy to explain to beginners.
+    L1 regularisation drives many weights to zero, so this directly measures
+    how many features the model is actually using.
     """
-    return int(np.sum(np.abs(model.coef_) > COEF_THRESHOLD))
+    return int(np.sum(np.abs(clf.coef_) > COEF_THRESHOLD))
 
 
-# ── Main training functions ───────────────────────────────────────────────────
-
-def train_decision_trees(X, y):
+def _train_candidates(model_type, X_train, X_test, y_train, y_test):
     """
-    Train one Decision Tree per max_depth candidate.
-
-    Returns a list of result dicts, each containing:
-        model_type, label, model, pipeline, accuracy, complexity, max_depth
+    Train all candidate models for the given model_type and evaluate them.
+    Returns a list of result dicts (one per candidate).
+    Internal — called only by get_selected_model().
     """
-    y_enc, le = encode_target(y)
-    X_train, X_test, y_train, y_test = _split(X, y_enc)
-
-    preprocessor = get_preprocessor()
-
     results = []
-    for depth in DT_MAX_DEPTHS:
-        dt = DecisionTreeClassifier(max_depth=depth, random_state=42)
-        pipe = Pipeline([("prep", preprocessor), ("clf", dt)])
-        pipe.fit(X_train, y_train)
 
-        acc = accuracy_score(y_test, pipe.predict(X_test))
-        complexity = _dt_complexity(pipe.named_steps["clf"])
+    if model_type == "dt":
+        for depth in DT_MAX_DEPTHS:
+            clf  = DecisionTreeClassifier(max_depth=depth, random_state=42)
+            pipe = Pipeline([("prep", get_preprocessor()), ("clf", clf)])
+            pipe.fit(X_train, y_train)
 
-        label = f"DT depth={depth}" if depth is not None else "DT depth=unlimited"
-        results.append({
-            "model_type": "dt",
-            "label": label,
-            "max_depth": depth,
-            "pipeline": pipe,
-            "accuracy": round(acc, 4),
-            "complexity": complexity,
-        })
+            acc        = accuracy_score(y_test, pipe.predict(X_test))
+            complexity = _dt_complexity(pipe.named_steps["clf"])
+            label      = f"DT depth={depth}" if depth is not None else "DT depth=unlimited"
 
-    return results, le
+            results.append({
+                "model_type": "dt",
+                "label":      label,
+                "hyperparam": depth,          # the varied hyperparameter
+                "pipeline":   pipe,
+                "accuracy":   round(acc, 4),
+                "complexity": complexity,
+            })
+
+    else:  # "lr"
+        for C in LR_C_VALUES:
+            # l1_ratio=1 ≡ pure L1 penalty; uses saga solver which supports L1.
+            # Written this way for forward-compatibility with sklearn >= 1.8
+            # which deprecated the 'penalty' keyword argument.
+            clf  = LogisticRegression(solver="saga", l1_ratio=1.0, C=C,
+                                      max_iter=5000, random_state=42)
+            pipe = Pipeline([("prep", get_preprocessor()), ("clf", clf)])
+            pipe.fit(X_train, y_train)
+
+            acc        = accuracy_score(y_test, pipe.predict(X_test))
+            complexity = _lr_complexity(pipe.named_steps["clf"])
+
+            results.append({
+                "model_type": "lr",
+                "label":      f"LR C={C}",
+                "hyperparam": C,
+                "pipeline":   pipe,
+                "accuracy":   round(acc, 4),
+                "complexity": complexity,
+            })
+
+    return results
 
 
-def train_logistic_regressions(X, y):
+def _apply_objective(results, lambda_value):
     """
-    Train one Logistic Regression per C candidate.
-
-    L1 penalty with the saga solver is used because it produces sparse
-    coefficient vectors — many coefficients become exactly zero, making
-    the model easier to explain.
-
-    Returns a list of result dicts, each containing:
-        model_type, label, pipeline, accuracy, complexity, C
-    """
-    y_enc, le = encode_target(y)
-    X_train, X_test, y_train, y_test = _split(X, y_enc)
-
-    preprocessor = get_preprocessor()
-
-    results = []
-    for C in LR_C_VALUES:
-        # l1_ratio=1 is equivalent to L1 penalty (sparse coefficients).
-        # Using l1_ratio instead of penalty='l1' to be forward-compatible
-        # with sklearn >= 1.8 which deprecated the penalty argument.
-        lr = LogisticRegression(
-            solver="saga",
-            l1_ratio=1.0,
-            C=C,
-            max_iter=5000,
-            random_state=42,
-        )
-        pipe = Pipeline([("prep", preprocessor), ("clf", lr)])
-        pipe.fit(X_train, y_train)
-
-        acc = accuracy_score(y_test, pipe.predict(X_test))
-        complexity = _lr_complexity(pipe.named_steps["clf"])
-
-        results.append({
-            "model_type": "lr",
-            "label": f"LR C={C}",
-            "C": C,
-            "pipeline": pipe,
-            "accuracy": round(acc, 4),
-            "complexity": complexity,
-        })
-
-    return results, le
-
-
-def select_best(results, lambda_value):
-    """
-    Select the model with the lowest objective for the given lambda.
+    Compute and attach objective + normalised complexity to every result dict.
+    Mutates the list in-place and returns the best result.
 
     Objective (lower is better):
-        objective = (1 - accuracy) + lambda * complexity_normalised
+        objective = (1 - accuracy) + lambda * norm_complexity
 
-    # normalising complexity to [0, 1] before combining with
-    # accuracy error makes lambda interpretable across model types —
-    # lambda=0 always means "ignore complexity" and lambda=1 means
-    # "ignore accuracy error", regardless of the raw complexity scale.
+    Normalising complexity to [0, 1] makes lambda interpretable regardless of
+    how large the raw complexity numbers are.
     """
-    complexities = [r["complexity"] for r in results]
-    max_c = max(complexities) if max(complexities) > 0 else 1
+    max_c = max(r["complexity"] for r in results) or 1  # guard against all-zero
 
-    best = None
-    best_obj = float("inf")
-
+    best, best_obj = None, float("inf")
     for r in results:
-        norm_complexity = r["complexity"] / max_c
-        obj = (1 - r["accuracy"]) + lambda_value * norm_complexity
-        r["objective"] = round(obj, 4)
-        r["norm_complexity"] = round(norm_complexity, 4)
+        norm_c = r["complexity"] / max_c
+        obj    = (1 - r["accuracy"]) + lambda_value * norm_c
+        r["norm_complexity"] = round(norm_c, 4)
+        r["objective"]       = round(obj, 4)
         if obj < best_obj:
-            best_obj = obj
-            best = r
+            best_obj, best = obj, r
 
     return best
 
 
-def get_lr_coef_table(pipeline, feature_names_out, class_names):
+# ── Encoded feature name helper ───────────────────────────────────────────────
+
+def get_encoded_feature_names(pipeline):
     """
-    Build a coefficient table for the selected Logistic Regression model.
+    Return the feature names produced by the preprocessing step of a fitted
+    pipeline: numerical names first, then OHE-expanded categorical names.
+
+    # centralising feature-name extraction here means every view
+    # (feature importance, PDP, ALE, coefficient table) labels axes consistently.
+    """
+    prep     = pipeline.named_steps["prep"]
+    ohe      = prep.named_transformers_["cat"].named_steps["onehot"]
+    cat_names = ohe.get_feature_names_out(CATEGORICAL_FEATURES).tolist()
+    return NUMERICAL_FEATURES + cat_names
+
+
+# ── Coefficient table helper (Logistic Regression only) ──────────────────────
+
+def get_lr_coef_table(pipeline, class_names):
+    """
+    Build a per-feature coefficient table for a fitted LR pipeline.
 
     Returns a list of dicts:
-        [{"feature": ..., "class_0_coef": ..., ..., "nonzero": True/False}, ...]
+        [{"feature": str, "coef_<cls>": float, ..., "nonzero": bool}, ...]
 
-    # showing per-class coefficients lets users see which
-    # features push the model towards each species — more informative
-    # than a single importance bar.
+    Showing per-class coefficients lets users see which features push the
+    model towards each species — more informative than a single bar chart.
     """
-    lr = pipeline.named_steps["clf"]
-    coef = lr.coef_          # shape (n_classes, n_features)
+    clf          = pipeline.named_steps["clf"]
+    coef         = clf.coef_   # shape (n_classes, n_features_encoded)
+    feature_names = get_encoded_feature_names(pipeline)
+
     table = []
-    for i, feat in enumerate(feature_names_out):
-        row = {"feature": feat}
+    for i, feat in enumerate(feature_names):
+        row         = {"feature": feat}
         any_nonzero = False
         for j, cls in enumerate(class_names):
             val = round(float(coef[j, i]), 4)
@@ -200,3 +192,97 @@ def get_lr_coef_table(pipeline, feature_names_out, class_names):
         row["nonzero"] = any_nonzero
         table.append(row)
     return table
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+def get_selected_model(model_type, lambda_value):
+    """
+    End-to-end function: load data → train candidates → select best → return
+    everything that downstream views need.
+
+    Parameters
+    ----------
+    model_type   : "dt" | "lr"
+    lambda_value : float in [0, 1]
+
+    Returns
+    -------
+    A single dict with keys:
+        pipeline          — fitted sklearn Pipeline (prep + clf)
+        model_type        — "dt" or "lr"
+        lambda_value      — the lambda that was used
+        hyperparam        — selected hyperparameter value (depth or C)
+        label             — human-readable model name
+        accuracy          — test-set accuracy (float)
+        complexity        — raw complexity score (int)
+        objective         — objective value (float)
+        candidates        — list of all candidate result dicts
+        X                 — full feature DataFrame (un-encoded, original values)
+        y                 — full target Series (string labels)
+        X_train           — training split (un-encoded)
+        X_test            — test split (un-encoded)
+        y_train           — training target (integer-encoded)
+        y_test            — test target (integer-encoded)
+        le                — fitted LabelEncoder (int → species name)
+        df                — cleaned full DataFrame
+        numerical_features
+        categorical_features
+        feature_names     — all original feature column names
+        class_names       — sorted list of species strings
+        coef_table        — coefficient table (LR only, else None)
+
+    # central selected-model function avoids inconsistent explanations
+    # across UI sections — every view (train, counterfactual, PDP, ALE) calls this
+    # one function and gets the exact same pipeline, split, and metadata.
+    """
+    # 1. Load data
+    df, X, y, num_feats, cat_feats, class_names = load_penguin_data()
+
+    # 2. Encode target once; keep the same split for every candidate
+    y_enc, le = encode_target(y)
+    X_train, X_test, y_train, y_test = _split(X, y_enc)
+
+    # 3. Train all candidates
+    candidates = _train_candidates(model_type, X_train, X_test, y_train, y_test)
+
+    # 4. Score with objective and pick best
+    best = _apply_objective(candidates, lambda_value)
+
+    # 5. Build coefficient table for LR (None for DT)
+    coef_table = (
+        get_lr_coef_table(best["pipeline"], class_names)
+        if model_type == "lr"
+        else None
+    )
+
+    return {
+        # Model identity
+        "pipeline":           best["pipeline"],
+        "model_type":         model_type,
+        "lambda_value":       lambda_value,
+        "hyperparam":         best["hyperparam"],
+        "label":              best["label"],
+        # Scores
+        "accuracy":           best["accuracy"],
+        "complexity":         best["complexity"],
+        "objective":          best["objective"],
+        # Candidate list (for the comparison table in the UI)
+        "candidates":         candidates,
+        # Data (needed by PDP, ALE, counterfactuals)
+        "X":                  X,
+        "y":                  y,
+        "X_train":            X_train,
+        "X_test":             X_test,
+        "y_train":            y_train,
+        "y_test":             y_test,
+        "le":                 le,
+        "df":                 df,
+        # Feature / class metadata
+        "numerical_features":   num_feats,
+        "categorical_features": cat_feats,
+        "feature_names":        num_feats + cat_feats,
+        "class_names":          class_names,
+        # LR-specific
+        "coef_table":         coef_table,
+    }
