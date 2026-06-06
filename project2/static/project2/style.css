@@ -1,0 +1,123 @@
+/* ---------- Page shell ---------- */
+.p2-page {
+  font-family: Arial, sans-serif;
+  background: #f5f7fb;
+  min-height: 100vh;
+  margin: 0;
+  color: #222;
+}
+
+.p2-container {
+  max-width: 1000px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+/* ---------- Header / hero ---------- */
+.p2-header {
+  background: #1a4f8a;
+  color: white;
+  border-radius: 14px;
+  padding: 30px 35px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.p2-header h1 {
+  margin: 0 0 10px 0;
+  font-size: 1.9rem;
+}
+
+.p2-header p {
+  margin: 0;
+  opacity: 0.88;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* ---------- Navigation ---------- */
+.p2-nav {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+  justify-content: center;
+}
+
+.p2-nav a {
+  background: white;
+  border: 1.5px solid #1a4f8a;
+  color: #1a4f8a;
+  padding: 8px 18px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.92rem;
+  transition:
+    background 0.18s,
+    color 0.18s;
+}
+
+.p2-nav a:hover,
+.p2-nav a.active {
+  background: #1a4f8a;
+  color: white;
+}
+
+/* ---------- Cards ---------- */
+.p2-card {
+  background: white;
+  border-radius: 14px;
+  padding: 25px 30px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.07);
+  margin-bottom: 25px;
+}
+
+.p2-card h2 {
+  margin-top: 0;
+  color: #1a4f8a;
+  font-size: 1.2rem;
+  border-bottom: 2px solid #e8edf5;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+
+/* ---------- Placeholder sections ---------- */
+.p2-placeholder {
+  background: #f0f4fb;
+  border: 2px dashed #b0c4de;
+  border-radius: 10px;
+  padding: 22px;
+  color: #5a6d8a;
+  font-size: 0.93rem;
+  text-align: center;
+}
+
+/* ---------- Back link ---------- */
+.p2-back {
+  display: inline-block;
+  margin-top: 10px;
+  color: #1a4f8a;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.p2-back:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Buttons ---------- */
+.p2-btn {
+  background: #1a4f8a;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.p2-btn:hover {
+  background: #133d6e;
+}

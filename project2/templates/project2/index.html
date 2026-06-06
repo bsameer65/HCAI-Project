@@ -1,0 +1,112 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title|default:"Project 2: Explainability" }}</title>
+
+    <link rel="stylesheet" href="{% static 'project2/style.css' %}">
+</head>
+<body class="p2-page">
+<div class="p2-container">
+
+    <!-- ===== Header ===== -->
+    <div class="p2-header">
+        <h1>Project 2: Explainability</h1>
+        <p>
+            This app trains and explains machine learning models on the
+            <strong>Palmer Penguins</strong> dataset.
+            It is designed to help beginners understand <em>why</em> a model
+            makes a prediction, not just <em>what</em> it predicts.
+        </p>
+    </div>
+
+    <!-- ===== Navigation bar ===== -->
+    <nav class="p2-nav">
+        <a href="{% url 'project2:index' %}" class="active">Home</a>
+    </nav>
+
+    <!-- ===== Dataset introduction card ===== -->
+    <div class="p2-card">
+        <h2>About the Dataset</h2>
+        <p>
+            The <strong>Palmer Penguins</strong> dataset contains measurements of
+            344 penguins from three species — <em>Adelie</em>, <em>Chinstrap</em>,
+            and <em>Gentoo</em> — collected at the Palmer Station in Antarctica.
+        </p>
+        <p>
+            We use the following features to predict <strong>species</strong>:
+        </p>
+        <ul>
+            <li><strong>bill_length_mm</strong> – length of the penguin's bill</li>
+            <li><strong>bill_depth_mm</strong> – depth of the penguin's bill</li>
+            <li><strong>flipper_length_mm</strong> – length of the flipper</li>
+            <li><strong>body_mass_g</strong> – body mass in grams</li>
+            <li><strong>island</strong> – island where the penguin was found (Biscoe, Dream, Torgersen)</li>
+            <li><strong>sex</strong> – male or female</li>
+        </ul>
+    </div>
+
+    <!-- ===== Placeholder: Model Selection ===== -->
+    <div class="p2-card">
+        <h2>Step 1 – Model Selection &amp; λ Slider</h2>
+        <!-- Placeholder: this section will allow users to pick a model type and
+             adjust the lambda slider to balance accuracy vs. simplicity -->
+        <div class="p2-placeholder">
+            🔧 Coming soon: Choose between <strong>Decision Tree</strong> and
+            <strong>Logistic Regression</strong>, and use the
+            <strong>λ (lambda) slider</strong> to trade off accuracy against model simplicity.
+        </div>
+    </div>
+
+    <!-- ===== Placeholder: Model Summary ===== -->
+    <div class="p2-card">
+        <h2>Step 2 – Model Summary</h2>
+        <!-- Placeholder: will show accuracy, complexity score, and a plain-language
+             explanation of what these numbers mean for beginners -->
+        <div class="p2-placeholder">
+            📊 Coming soon: Accuracy score, complexity score, and a beginner-friendly
+            explanation of the trained model.
+        </div>
+    </div>
+
+    <!-- ===== Placeholder: Counterfactuals ===== -->
+    <div class="p2-card">
+        <h2>Step 3 – Counterfactual Explanations</h2>
+        <!-- Placeholder: will let users ask "What would need to change for this
+             penguin to be classified as a different species?" -->
+        <div class="p2-placeholder">
+            🔀 Coming soon: <strong>Counterfactual explanations</strong> — "What
+            would need to change to get a different prediction?"
+        </div>
+    </div>
+
+    <!-- ===== Placeholder: PDP ===== -->
+    <div class="p2-card">
+        <h2>Step 4 – Partial Dependence Plot (PDP)</h2>
+        <!-- Placeholder: will show how the model's average prediction changes
+             as one feature varies, holding all others constant -->
+        <div class="p2-placeholder">
+            📈 Coming soon: <strong>PDP</strong> — "On average, how does changing
+            one feature affect the model's prediction?"
+        </div>
+    </div>
+
+    <!-- ===== Placeholder: ALE ===== -->
+    <div class="p2-card">
+        <h2>Step 5 – Accumulated Local Effects (ALE)</h2>
+        <!-- Placeholder: will show the local (not global average) effect of a
+             feature, more robust than PDP when features are correlated -->
+        <div class="p2-placeholder">
+            📉 Coming soon: <strong>ALE</strong> — a more accurate alternative to
+            PDP when features are correlated with each other.
+        </div>
+    </div>
+
+    <!-- ===== Back to home ===== -->
+    <a href="{% url 'home:index' %}" class="p2-back">← Back to Project Hub</a>
+
+</div>
+</body>
+</html>
