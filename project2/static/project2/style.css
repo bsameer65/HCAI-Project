@@ -307,3 +307,49 @@
 .p2-row-nonzero {
     background: #f0fff4;
 }
+
+/* ---------- Select input ---------- */
+.p2-select {
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #b0c4de;
+    background: white;
+    font-size: 0.93rem;
+    min-width: 240px;
+    max-width: 100%;
+}
+
+/* ---------- Counterfactual cell highlight ---------- */
+.p2-cell-changed {
+    background: #fff3cd;
+    font-weight: 600;
+}
+
+/* ---------- CF summary row (original pred + desired) ---------- */
+.p2-cf-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+
+.p2-cf-label {
+    font-size: 0.9rem;
+    color: #5a6d8a;
+}
+
+/* Target class badge (different colour from default) */
+.p2-badge-target {
+    background: #2e7d32;
+}
+
+/* ---------- Error card ---------- */
+.p2-error-card {
+    background: #fff0f0;
+    border: 1.5px solid #e57373;
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: #b71c1c;
+    margin-bottom: 20px;
+}

@@ -1,0 +1,201 @@
+{% load static project2_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <link rel="stylesheet" href="{% static 'project2/style.css' %}">
+</head>
+<body class="p2-page">
+<div class="p2-container">
+
+    <div class="p2-header">
+        <h1>Counterfactual Explanations</h1>
+        <p>
+            Select a penguin and a desired species. The app will find the
+            <em>smallest realistic changes</em> that would make the model
+            predict that species instead.
+        </p>
+    </div>
+
+    <nav class="p2-nav">
+        <a href="{% url 'project2:index' %}">Home</a>
+        <a href="{% url 'project2:train' %}">Train</a>
+        <a href="{% url 'project2:counterfactual' %}" class="active">Counterfactuals</a>
+    </nav>
+
+    <!-- ── What are counterfactuals? ─────────────────────────────────────── -->
+    <div class="p2-info-box">
+        <strong>What are counterfactuals?</strong><br>
+        These are artificial penguin examples with <em>small, realistic changes</em>
+        to features that are enough to flip the model's prediction to your chosen species.
+        They answer the question:
+        <em>"What would need to change for this penguin to be classified differently?"</em><br><br>
+        These counterfactuals show small realistic changes that would make the selected model
+        predict another species. They are ranked by how much they differ from the original.
+    </div>
+
+    <!-- ── Control form ───────────────────────────────────────────────────── -->
+    <div class="p2-card">
+        <h2>Settings</h2>
+        <form method="POST" action="{% url 'project2:counterfactual' %}">
+            {% csrf_token %}
+
+            <!-- Model type -->
+            <div class="p2-form-row">
+                <label class="p2-label">Model Type</label>
+                <div class="p2-radio-group">
+                    <label class="p2-radio-label">
+                        <input type="radio" name="model_type" value="dt"
+                               {% if model_type == "dt" %}checked{% endif %}>
+                        Decision Tree
+                    </label>
+                    <label class="p2-radio-label">
+                        <input type="radio" name="model_type" value="lr"
+                               {% if model_type == "lr" %}checked{% endif %}>
+                        Logistic Regression
+                    </label>
+                </div>
+            </div>
+
+            <!-- Lambda slider -->
+            <div class="p2-form-row">
+                <label class="p2-label" for="cf_lambda">
+                    λ = <span id="cf_lambda_display">{{ lambda_value }}</span>
+                </label>
+                <div class="p2-slider-row">
+                    <span class="p2-slider-hint">← Prefer Simplicity</span>
+                    <input type="range" id="cf_lambda" name="lambda_value"
+                           min="0" max="1" step="0.01" value="{{ lambda_value }}"
+                           oninput="document.getElementById('cf_lambda_display').textContent = parseFloat(this.value).toFixed(2)"
+                           class="p2-slider">
+                    <span class="p2-slider-hint">Prefer Accuracy →</span>
+                </div>
+            </div>
+
+            <!-- Penguin row selector -->
+            <div class="p2-form-row">
+                <label class="p2-label" for="row_index">Select a Penguin (row index)</label>
+                <select name="row_index" id="row_index" class="p2-select">
+                    {% for opt in sample_options %}
+                        <option value="{{ opt.index }}"
+                            {% if opt.index == row_index %}selected{% endif %}>
+                            {{ opt.label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Target class selector -->
+            <div class="p2-form-row">
+                <label class="p2-label" for="target_class">Desired Species (target)</label>
+                <select name="target_class" id="target_class" class="p2-select">
+                    {% for cls in class_names %}
+                        <option value="{{ cls }}"
+                            {% if cls == target_class %}selected{% endif %}>
+                            {{ cls }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="p2-btn">Generate Counterfactuals</button>
+        </form>
+    </div>
+
+    <!-- ── Error ─────────────────────────────────────────────────────────── -->
+    {% if error %}
+    <div class="p2-card p2-error-card">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- ── Results ───────────────────────────────────────────────────────── -->
+    {% if cf_result %}
+
+    <!-- Status message -->
+    <div class="p2-info-box">{{ cf_result.message }}</div>
+
+    <!-- Original penguin summary -->
+    <div class="p2-card">
+        <h2>Original Penguin (Row {{ row_index }})</h2>
+        <div class="p2-cf-summary">
+            <span class="p2-cf-label">Model predicted:</span>
+            <span class="p2-class-badge">{{ cf_result.original_prediction }}</span>
+            <span class="p2-cf-label" style="margin-left:16px;">Desired species:</span>
+            <span class="p2-class-badge p2-badge-target">{{ cf_result.target_class }}</span>
+        </div>
+
+        <div class="p2-table-scroll" style="margin-top:14px;">
+            <table class="p2-table">
+                <thead>
+                    <tr>
+                        {% for feat in all_features %}
+                            <th>{{ feat }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {% for feat in all_features %}
+                            <td>{{ cf_result.original_row|get_dict_value:feat }}</td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Counterfactual rows -->
+    {% if cf_result.counterfactuals %}
+    <div class="p2-card">
+        <h2>Top Counterfactuals</h2>
+        <p class="p2-muted">
+            🟡 Highlighted cells are features that <strong>changed</strong> from the original.
+            The distance score shows how far each counterfactual is from the original penguin
+            (lower = more similar, better counterfactual).
+        </p>
+        <div class="p2-table-scroll">
+            <table class="p2-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        {% for feat in all_features %}
+                            <th>{{ feat }}</th>
+                        {% endfor %}
+                        <th>Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cf in cf_result.counterfactuals %}
+                    <tr>
+                        <td><strong>{{ forloop.counter }}</strong></td>
+                        {% for feat in all_features %}
+                            <td {% if cf.changes|get_dict_value:feat %}class="p2-cell-changed"{% endif %}>
+                                {{ cf|get_dict_value:feat }}
+                            </td>
+                        {% endfor %}
+                        <td>{{ cf.distance }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="p2-card">
+        <p class="p2-muted">
+            No counterfactuals were found. Try selecting a different target species,
+            adjusting λ, or switching model type.
+        </p>
+    </div>
+    {% endif %}
+
+    {% endif %} <!-- end cf_result -->
+
+    <a href="{% url 'home:index' %}" class="p2-back">← Back to Project Hub</a>
+
+</div>
+</body>
+</html>

@@ -5,6 +5,7 @@ from django.conf import settings
 
 from .data_utils import load_penguin_data
 from .model_utils import get_selected_model
+from .counterfactual_utils import generate_counterfactuals
 
 # Path where the selected model result is cached so other views can reload it
 MODEL_SAVE_DIR  = os.path.join(settings.MEDIA_ROOT, "project2_models")
@@ -78,3 +79,71 @@ def train(request):
         "result":       result,
     }
     return render(request, "project2/train.html", context)
+
+
+def counterfactual(request):
+    """
+    Counterfactual page — user picks model settings, a penguin row, and a
+    desired target species, then sees the closest counterfactual examples.
+    """
+    from .data_utils import load_penguin_data
+
+    df, X, y, num_feats, cat_feats, class_names = load_penguin_data()
+
+    # Form state defaults
+    model_type   = "dt"
+    lambda_value = 0.5
+    row_index    = 0
+    target_class = class_names[0]
+    cf_result    = None
+    error        = None
+
+    # Build a sample list for the dropdown: "Row 0 — Adelie"
+    sample_options = [
+        {"index": i, "label": f"Row {i} — {row['species']}"}
+        for i, row in df.iterrows()
+    ]
+
+    if request.method == "POST":
+        model_type = request.POST.get("model_type", "dt")
+        try:
+            lambda_value = float(request.POST.get("lambda_value", 0.5))
+            lambda_value = max(0.0, min(1.0, lambda_value))
+        except ValueError:
+            lambda_value = 0.5
+
+        try:
+            row_index = int(request.POST.get("row_index", 0))
+        except ValueError:
+            row_index = 0
+
+        target_class = request.POST.get("target_class", class_names[0])
+
+        # Train / select model fresh for the chosen settings
+        selected = get_selected_model(model_type, lambda_value)
+        _save_selected(selected)
+
+        try:
+            cf_result = generate_counterfactuals(
+                selected_model_info=selected,
+                row_index=row_index,
+                target_class_name=target_class,
+            )
+        except Exception as exc:
+            error = f"Counterfactual generation failed: {exc}"
+
+    context = {
+        "page_title":     "Counterfactuals — Project 2",
+        "model_type":     model_type,
+        "lambda_value":   lambda_value,
+        "class_names":    class_names,
+        "sample_options": sample_options,
+        "row_index":      row_index,
+        "target_class":   target_class,
+        "cf_result":      cf_result,
+        "error":          error,
+        "num_features":   num_feats,
+        "cat_features":   cat_feats,
+        "all_features":   num_feats + cat_feats,
+    }
+    return render(request, "project2/counterfactual.html", context)
