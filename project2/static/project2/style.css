@@ -1,0 +1,485 @@
+/* ---------- Page shell ---------- */
+.p2-page {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f5f7fb;
+  min-height: 100vh;
+  margin: 0;
+  color: #222;
+  line-height: 1.55;
+}
+
+.p2-container {
+  max-width: 1020px;
+  margin: 36px auto;
+  padding: 0 20px;
+}
+
+/* ---------- Header / hero ---------- */
+.p2-header {
+  background: linear-gradient(135deg, #1a4f8a 0%, #2d6cb4 100%);
+  color: white;
+  border-radius: 14px;
+  padding: 30px 35px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.p2-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 1.85rem;
+  font-weight: 700;
+}
+
+.p2-header p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+/* ---------- Navigation ---------- */
+.p2-nav {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+  justify-content: center;
+}
+
+.p2-nav a {
+  background: white;
+  border: 1.5px solid #1a4f8a;
+  color: #1a4f8a;
+  padding: 8px 18px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 500;
+  transition: background 0.18s, color 0.18s;
+}
+
+.p2-nav a:hover,
+.p2-nav a.active {
+  background: #1a4f8a;
+  color: white;
+}
+
+/* ---------- Cards ---------- */
+.p2-card {
+  background: white;
+  border-radius: 14px;
+  padding: 24px 28px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 24px;
+}
+
+.p2-card h2 {
+  margin-top: 0;
+  color: #1a4f8a;
+  font-size: 1.15rem;
+  border-bottom: 2px solid #e8edf5;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+
+.p2-card h3 {
+  margin-top: 18px;
+  color: #1a4f8a;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+/* ---------- Placeholder sections ---------- */
+.p2-placeholder {
+  background: #f0f4fb;
+  border: 2px dashed #b0c4de;
+  border-radius: 10px;
+  padding: 22px;
+  color: #5a6d8a;
+  font-size: 0.93rem;
+  text-align: center;
+}
+
+/* ---------- Back link ---------- */
+.p2-back {
+  display: inline-block;
+  margin-top: 10px;
+  margin-bottom: 30px;
+  color: #1a4f8a;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.p2-back:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Buttons ---------- */
+.p2-btn {
+  background: #1a4f8a;
+  color: white;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-block;
+  transition: background 0.15s;
+}
+
+.p2-btn:hover {
+  background: #133d6e;
+}
+
+/* ---------- Stat boxes ---------- */
+.p2-stat-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.p2-stat-box {
+  flex: 1;
+  min-width: 115px;
+  background: #eef3fb;
+  border-radius: 10px;
+  padding: 14px 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.p2-stat-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a4f8a;
+}
+
+.p2-stat-label {
+  font-size: 0.82rem;
+  color: #5a6d8a;
+}
+
+/* ---------- Two-column layout ---------- */
+.p2-two-col {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.p2-two-col > div {
+  flex: 1;
+  min-width: 180px;
+}
+
+.p2-sub-heading {
+  font-size: 0.95rem;
+  color: #1a4f8a;
+  margin-bottom: 8px;
+}
+
+.p2-feature-list {
+  padding-left: 18px;
+  line-height: 1.9;
+  color: #333;
+  font-size: 0.93rem;
+}
+
+/* ---------- Class badges ---------- */
+.p2-class-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.p2-class-badge {
+  background: #1a4f8a;
+  color: white;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.88rem;
+}
+
+/* Target class badge (green) */
+.p2-badge-target {
+  background: #2e7d32;
+}
+
+/* ---------- Tables ---------- */
+.p2-table-scroll {
+  overflow-x: auto;
+}
+
+.p2-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin-top: 10px;
+}
+
+.p2-table th {
+  background: #1a4f8a;
+  color: white;
+  padding: 9px 12px;
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.p2-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e8edf5;
+}
+
+.p2-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Zebra striping for readability */
+/* HCAI extra: alternating row colours help users track across wide tables */
+.p2-table tbody tr:nth-child(even) {
+  background: #fafbfe;
+}
+
+/* ---------- Muted helper text ---------- */
+.p2-muted {
+  color: #6b7a90;
+  font-size: 0.91rem;
+  margin-top: 0;
+  line-height: 1.6;
+}
+
+/* ---------- Info / explainer box ---------- */
+/* HCAI extra: explanation text helps non-expert users understand model behavior */
+.p2-info-box {
+  background: #eef3fb;
+  border-left: 4px solid #1a4f8a;
+  border-radius: 6px;
+  padding: 14px 16px;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  margin-bottom: 18px;
+}
+
+/* ---------- Warning / help text ---------- */
+/* HCAI extra: warning boxes give immediate feedback for common pitfalls */
+.p2-warning-box {
+  background: #fff8e1;
+  border-left: 4px solid #f9a825;
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-top: 8px;
+  margin-bottom: 14px;
+  color: #5d4037;
+}
+
+/* ---------- Success box ---------- */
+.p2-success-box {
+  background: #e8f5e9;
+  border-left: 4px solid #2e7d32;
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 14px;
+  color: #1b5e20;
+}
+
+/* ---------- Form controls ---------- */
+.p2-form-row {
+  margin-bottom: 20px;
+}
+
+.p2-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.p2-label-help {
+  font-weight: 400;
+  color: #6b7a90;
+  font-size: 0.85rem;
+  display: block;
+  margin-top: 2px;
+}
+
+.p2-radio-group {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.p2-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.93rem;
+}
+
+/* ---------- Lambda slider ---------- */
+.p2-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.p2-slider {
+  flex: 1;
+  min-width: 180px;
+  accent-color: #1a4f8a;
+  height: 6px;
+  cursor: pointer;
+}
+
+.p2-slider-hint {
+  font-size: 0.8rem;
+  color: #6b7a90;
+  white-space: nowrap;
+}
+
+/* ---------- Select input ---------- */
+.p2-select {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #b0c4de;
+  background: white;
+  font-size: 0.93rem;
+  min-width: 240px;
+  max-width: 100%;
+}
+
+/* ---------- Best model card ---------- */
+.p2-best-card {
+  border: 2px solid #1a4f8a;
+}
+
+.p2-best-card .p2-stat-number {
+  font-size: 1.15rem;
+}
+
+/* ---------- Table row highlights ---------- */
+.p2-row-best {
+  background: #ddeeff !important;
+  font-weight: 600;
+}
+
+.p2-row-nonzero {
+  background: #e8f5e9 !important;
+}
+
+/* ---------- Counterfactual cell highlight ---------- */
+.p2-cell-changed {
+  background: #fff3cd;
+  font-weight: 600;
+}
+
+/* ---------- CF summary row (original pred + desired) ---------- */
+.p2-cf-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.p2-cf-label {
+  font-size: 0.9rem;
+  color: #5a6d8a;
+}
+
+/* ---------- Error card ---------- */
+.p2-error-card {
+  background: #fff0f0;
+  border: 1.5px solid #e57373;
+  border-radius: 10px;
+  padding: 14px 18px;
+  color: #b71c1c;
+  margin-bottom: 20px;
+}
+
+/* ---------- Plot image ---------- */
+.p2-plot-wrapper {
+  text-align: center;
+  margin: 10px 0;
+}
+
+.p2-plot-img {
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid #dde4f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+/* ---------- Section divider ---------- */
+.p2-divider {
+  border: none;
+  border-top: 2px solid #e8edf5;
+  margin: 28px 0;
+}
+
+/* ---------- Roadmap step links ---------- */
+.p2-step-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.p2-step-link {
+  display: block;
+  background: #f0f4fb;
+  border: 1.5px solid #d0daf0;
+  border-radius: 10px;
+  padding: 16px;
+  text-decoration: none;
+  color: #1a4f8a;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.p2-step-link:hover {
+  border-color: #1a4f8a;
+  box-shadow: 0 2px 8px rgba(26, 79, 138, 0.12);
+}
+
+.p2-step-link strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.95rem;
+}
+
+.p2-step-link span {
+  font-size: 0.85rem;
+  color: #5a6d8a;
+}
+
+/* ---------- Glossary terms ---------- */
+.p2-glossary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.p2-glossary-item {
+  background: #f8fafd;
+  border: 1px solid #e0e8f4;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.p2-glossary-item strong {
+  color: #1a4f8a;
+}
