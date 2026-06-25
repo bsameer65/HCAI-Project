@@ -33,6 +33,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+import io
+import base64
+from sklearn.tree import plot_tree
 
 from .data_utils import (
     load_penguin_data,
@@ -163,6 +167,30 @@ def get_encoded_feature_names(pipeline):
     cat_names = ohe.get_feature_names_out(CATEGORICAL_FEATURES).tolist()
     return NUMERICAL_FEATURES + cat_names
 
+def get_tree_image(pipeline, class_names):
+    clf = pipeline.named_steps["clf"]
+
+    feature_names = get_encoded_feature_names(pipeline)
+
+    fig, ax = plt.subplots(figsize=(18, 10))
+
+    plot_tree(
+        clf,
+        feature_names=feature_names,
+        class_names=class_names,
+        filled=True,
+        rounded=True,
+        fontsize=9,
+        ax=ax
+    )
+
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format="png", bbox_inches="tight")
+    plt.close(fig)
+
+    buffer.seek(0)
+
+    return base64.b64encode(buffer.read()).decode()
 
 # ── Coefficient table helper (Logistic Regression only) ──────────────────────
 
@@ -255,6 +283,10 @@ def get_selected_model(model_type, lambda_value):
         if model_type == "lr"
         else None
     )
+    tree_image = None
+
+    if model_type == "dt":
+        tree_image = get_tree_image(best["pipeline"], class_names)
 
     return {
         # Model identity
@@ -285,4 +317,5 @@ def get_selected_model(model_type, lambda_value):
         "class_names":          class_names,
         # LR-specific
         "coef_table":         coef_table,
+        "tree_image": tree_image,
     }
