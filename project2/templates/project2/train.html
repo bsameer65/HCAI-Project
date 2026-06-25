@@ -168,6 +168,28 @@
         </div>
         {% endif %}
     </div>
+    {% if result.model_type == "dt" and result.tree_image %}
+        <div class="p2-card">
+            <h2>🌳 Decision Tree Visualization</h2>
+
+            <p class="p2-muted">
+                This flowchart shows how the selected decision tree makes predictions.
+                Each split is a question about a feature, and each leaf is a final decision path.
+            </p>
+
+            <div class="p2-tree-wrapper">
+                <img
+                    src="data:image/png;base64,{{ result.tree_image }}"
+                    alt="Decision tree visualization"
+                    class="p2-tree-image"
+                >
+
+                <p class="p2-tree-note">
+                    Tip: if the tree is wide, scroll horizontally inside this box.
+                </p>
+            </div>
+        </div>
+    {% endif %}
 
     <!-- Candidate comparison table -->
     <div class="p2-card">

@@ -169,10 +169,9 @@ def get_encoded_feature_names(pipeline):
 
 def get_tree_image(pipeline, class_names):
     clf = pipeline.named_steps["clf"]
-
     feature_names = get_encoded_feature_names(pipeline)
 
-    fig, ax = plt.subplots(figsize=(18, 10))
+    fig, ax = plt.subplots(figsize=(9, 5), dpi=130)
 
     plot_tree(
         clf,
@@ -180,17 +179,16 @@ def get_tree_image(pipeline, class_names):
         class_names=class_names,
         filled=True,
         rounded=True,
-        fontsize=9,
+        fontsize=7,
         ax=ax
     )
 
     buffer = io.BytesIO()
-    plt.savefig(buffer, format="png", bbox_inches="tight")
+    plt.savefig(buffer, format="png", bbox_inches="tight", pad_inches=0.05)
     plt.close(fig)
 
     buffer.seek(0)
-
-    return base64.b64encode(buffer.read()).decode()
+    return base64.b64encode(buffer.read()).decode("utf-8")
 
 # ── Coefficient table helper (Logistic Regression only) ──────────────────────
 
