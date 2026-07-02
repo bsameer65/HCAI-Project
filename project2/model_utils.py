@@ -48,7 +48,7 @@ from .data_utils import (
 
 # ── Candidate hyperparameter grids ───────────────────────────────────────────
 
-DT_MAX_DEPTHS = [1, 2, 3, 4, 5, 7, 10, None]   # None = fully grown tree
+MAX_LEAF_NODES = [2, 4, 6, 8, 12, 16, 20, 32]
 LR_C_VALUES   = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30]
 
 COEF_THRESHOLD = 1e-6   # abs(coef) > threshold → treated as non-zero
@@ -84,19 +84,19 @@ def _train_candidates(model_type, X_train, X_test, y_train, y_test):
     results = []
 
     if model_type == "dt":
-        for depth in DT_MAX_DEPTHS:
-            clf  = DecisionTreeClassifier(max_depth=depth, random_state=42)
+        for max_leaves in MAX_LEAF_NODES:
+            clf  = DecisionTreeClassifier(max_leaf_nodes=max_leaves, random_state=42)
             pipe = Pipeline([("prep", get_preprocessor()), ("clf", clf)])
             pipe.fit(X_train, y_train)
 
             acc        = accuracy_score(y_test, pipe.predict(X_test))
             complexity = _dt_complexity(pipe.named_steps["clf"])
-            label      = f"DT depth={depth}" if depth is not None else "DT depth=unlimited"
+            label = f"Decision Tree ({max_leaves} max leaves)"
 
             results.append({
                 "model_type": "dt",
                 "label":      label,
-                "hyperparam": depth,          # the varied hyperparameter
+                "hyperparam": max_leaves,     
                 "pipeline":   pipe,
                 "accuracy":   round(acc, 4),
                 "complexity": complexity,
@@ -128,27 +128,12 @@ def _train_candidates(model_type, X_train, X_test, y_train, y_test):
 
 
 def _apply_objective(results, lambda_value):
-    """
-    Compute and attach objective + normalised complexity to every result dict.
-    Mutates the list in-place and returns the best result.
-
-    Objective (lower is better):
-        objective = (1 - accuracy) + lambda * norm_complexity
-
-    Normalising complexity to [0, 1] makes lambda interpretable regardless of
-    how large the raw complexity numbers are.
-    """
-    max_c = max(r["complexity"] for r in results) or 1  # guard against all-zero
-
-    best, best_obj = None, float("inf")
+    best, best_score = None, float("-inf")
     for r in results:
-        norm_c = r["complexity"] / max_c
-        obj    = (1 - r["accuracy"]) + lambda_value * norm_c
-        r["norm_complexity"] = round(norm_c, 4)
-        r["objective"]       = round(obj, 4)
-        if obj < best_obj:
-            best_obj, best = obj, r
-
+        score = r["accuracy"] - lambda_value * r["complexity"]
+        r["objective"] = round(score, 4)
+        if score > best_score:
+            best_score, best = score, r
     return best
 
 
