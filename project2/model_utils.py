@@ -104,10 +104,8 @@ def _train_candidates(model_type, X_train, X_test, y_train, y_test):
 
     else:  # "lr"
         for C in LR_C_VALUES:
-            # l1_ratio=1 ≡ pure L1 penalty; uses saga solver which supports L1.
-            # Written this way for forward-compatibility with sklearn >= 1.8
-            # which deprecated the 'penalty' keyword argument.
-            clf  = LogisticRegression(solver="saga", l1_ratio=1.0, C=C,
+            
+            clf  = LogisticRegression(solver="saga", penalty="l1", C=C,
                                       max_iter=5000, random_state=42)
             pipe = Pipeline([("prep", get_preprocessor()), ("clf", clf)])
             pipe.fit(X_train, y_train)

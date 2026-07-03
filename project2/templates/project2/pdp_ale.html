@@ -25,39 +25,6 @@
         <a href="{% url 'project2:pdp_ale' %}" class="active">PDP / ALE</a>
     </nav>
 
-    <!-- ── Method overview ───────────────────────────────────────────────── -->
-    <!-- HCAI extra: explanation text helps non-expert users understand model behavior -->
-    <div class="p2-info-box">
-        <strong>PDP vs ALE — what's the difference?</strong><br><br>
-        <strong>PDP (Partial Dependence Plot)</strong> forces a feature to different
-        values across the <em>entire dataset</em> and averages the model response.
-        It is intuitive, but can be misleading when features are correlated —
-        it may evaluate the model on unrealistic feature combinations.<br><br>
-        <strong>ALE (Accumulated Local Effects)</strong> only looks at the model's
-        behaviour in the <em>local neighbourhood</em> of each data point, using
-        small steps within quantile bins. It avoids out-of-distribution extrapolation
-        and is generally considered more reliable when features are correlated.<br><br>
-        <em>ALE shows local changes in the model prediction in regions where data
-        actually exists. It is often more realistic than PDP when features are correlated.</em>
-    </div>
-
-    <!-- ── Theoretical note ──────────────────────────────────────────────── -->
-    <div class="p2-card">
-        <h2>📐 Theoretical Note: Why Bin-Based ALE?</h2>
-        <p class="p2-muted" style="line-height:1.7;">
-            <strong>Logistic Regression</strong> is a smooth, differentiable function —
-            in theory, one could compute the exact partial derivative
-            <em>∂P(y|x) / ∂x<sub>j</sub></em> analytically.
-            However, bin-based ALE is simpler to implement, equally informative in practice,
-            and works directly with <code>predict_proba</code> without needing access to model internals.<br><br>
-            <strong>Decision Trees</strong> are piecewise constant and <em>not</em> smoothly differentiable —
-            their output is a step function that jumps at split thresholds.
-            A derivative-based approach is not defined for them, so discretisation is necessary.<br><br>
-            <strong>This implementation uses bin-based ALE for both models</strong>, giving a
-            consistent, model-agnostic interface that works the same way regardless of
-            which model the user selects on the Train page.
-        </p>
-    </div>
 
     <!-- ── Control form ───────────────────────────────────────────────────── -->
     <div class="p2-card">

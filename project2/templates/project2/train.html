@@ -28,12 +28,8 @@
 
         <!-- HCAI extra: explanation text helps non-expert users understand model behavior -->
         <div class="p2-info-box">
-            <strong>What is λ (lambda)?</strong><br>
-            λ controls the trade-off between <em>accuracy</em> and <em>simplicity</em>.<br>
             <strong>λ = 0</strong> → pick the most accurate model, regardless of complexity.<br>
             <strong>λ = 1</strong> → strongly prefer simpler models, even if less accurate.<br>
-            The model with the lowest <em>objective score</em> is selected:
-            <code>objective = (1 − accuracy) + λ × normalised complexity</code>
         </div>
 
         <form method="POST" action="{% url 'project2:train' %}">
@@ -138,35 +134,7 @@
             {% endif %}
         </div>
 
-        <!-- Beginner explanation of accuracy and complexity -->
-        <div class="p2-info-box" style="margin-top:16px;">
-            <strong>What do these numbers mean?</strong><br>
-            • <strong>Accuracy</strong> = percentage of test penguins classified correctly.
-              Higher is better, but a very high accuracy might mean the model is overfitting.<br>
-            • <strong>{% if result.model_type == "dt" %}Leaves{% else %}Non-zero coefficients{% endif %}</strong>
-              = the model's complexity. Fewer = simpler and easier to explain.<br>
-            • <strong>Objective</strong> = the combined score (lower is better).
-              It mixes accuracy error with λ-weighted complexity.
-        </div>
-
-        <!-- Plain-language model explanation -->
-        {% if result.model_type == "lr" %}
-        <div class="p2-info-box">
-            <strong>How does Logistic Regression work?</strong><br>
-            Logistic Regression assigns a <em>weight (coefficient)</em> to each feature.
-            A larger weight means that feature has a stronger influence on the prediction.
-            <strong>Non-zero coefficients</strong> are the features the model is actually using —
-            zero coefficients mean those features are ignored.
-            Fewer non-zero coefficients = simpler model.
-        </div>
-        {% else %}
-        <div class="p2-info-box">
-            <strong>How does a Decision Tree work?</strong><br>
-            A Decision Tree splits the data based on feature thresholds, like a flowchart.
-            The number of <em>leaves</em> tells you how many different decision paths the tree has —
-            more leaves means a more complex model.
-        </div>
-        {% endif %}
+        
     </div>
     {% if result.model_type == "dt" and result.tree_image %}
         <div class="p2-card">
