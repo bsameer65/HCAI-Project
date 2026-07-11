@@ -33,6 +33,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+import io
+import base64
+from sklearn.tree import plot_tree
 
 from .data_utils import (
     load_penguin_data,
@@ -44,7 +48,7 @@ from .data_utils import (
 
 # ── Candidate hyperparameter grids ───────────────────────────────────────────
 
-DT_MAX_DEPTHS = [1, 2, 3, 4, 5, 7, 10, None]   # None = fully grown tree
+MAX_LEAF_NODES = [2, 4, 6, 8, 12, 16, 20, 32]
 LR_C_VALUES   = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30]
 
 COEF_THRESHOLD = 1e-6   # abs(coef) > threshold → treated as non-zero
@@ -80,19 +84,19 @@ def _train_candidates(model_type, X_train, X_test, y_train, y_test):
     results = []
 
     if model_type == "dt":
-        for depth in DT_MAX_DEPTHS:
-            clf  = DecisionTreeClassifier(max_depth=depth, random_state=42)
+        for max_leaves in MAX_LEAF_NODES:
+            clf  = DecisionTreeClassifier(max_leaf_nodes=max_leaves, random_state=42)
             pipe = Pipeline([("prep", get_preprocessor()), ("clf", clf)])
             pipe.fit(X_train, y_train)
 
             acc        = accuracy_score(y_test, pipe.predict(X_test))
             complexity = _dt_complexity(pipe.named_steps["clf"])
-            label      = f"DT depth={depth}" if depth is not None else "DT depth=unlimited"
+            label = f"Decision Tree ({max_leaves} max leaves)"
 
             results.append({
                 "model_type": "dt",
                 "label":      label,
-                "hyperparam": depth,          # the varied hyperparameter
+                "hyperparam": max_leaves,     
                 "pipeline":   pipe,
                 "accuracy":   round(acc, 4),
                 "complexity": complexity,
@@ -100,10 +104,8 @@ def _train_candidates(model_type, X_train, X_test, y_train, y_test):
 
     else:  # "lr"
         for C in LR_C_VALUES:
-            # l1_ratio=1 ≡ pure L1 penalty; uses saga solver which supports L1.
-            # Written this way for forward-compatibility with sklearn >= 1.8
-            # which deprecated the 'penalty' keyword argument.
-            clf  = LogisticRegression(solver="saga", l1_ratio=1.0, C=C,
+            
+            clf  = LogisticRegression(solver="saga", penalty="l1", C=C,
                                       max_iter=5000, random_state=42)
             pipe = Pipeline([("prep", get_preprocessor()), ("clf", clf)])
             pipe.fit(X_train, y_train)
@@ -124,27 +126,12 @@ def _train_candidates(model_type, X_train, X_test, y_train, y_test):
 
 
 def _apply_objective(results, lambda_value):
-    """
-    Compute and attach objective + normalised complexity to every result dict.
-    Mutates the list in-place and returns the best result.
-
-    Objective (lower is better):
-        objective = (1 - accuracy) + lambda * norm_complexity
-
-    Normalising complexity to [0, 1] makes lambda interpretable regardless of
-    how large the raw complexity numbers are.
-    """
-    max_c = max(r["complexity"] for r in results) or 1  # guard against all-zero
-
-    best, best_obj = None, float("inf")
+    best, best_score = None, float("-inf")
     for r in results:
-        norm_c = r["complexity"] / max_c
-        obj    = (1 - r["accuracy"]) + lambda_value * norm_c
-        r["norm_complexity"] = round(norm_c, 4)
-        r["objective"]       = round(obj, 4)
-        if obj < best_obj:
-            best_obj, best = obj, r
-
+        score = r["accuracy"] - lambda_value * r["complexity"]
+        r["objective"] = round(score, 4)
+        if score > best_score:
+            best_score, best = score, r
     return best
 
 
@@ -163,6 +150,28 @@ def get_encoded_feature_names(pipeline):
     cat_names = ohe.get_feature_names_out(CATEGORICAL_FEATURES).tolist()
     return NUMERICAL_FEATURES + cat_names
 
+def get_tree_image(pipeline, class_names):
+    clf = pipeline.named_steps["clf"]
+    feature_names = get_encoded_feature_names(pipeline)
+
+    fig, ax = plt.subplots(figsize=(9, 5), dpi=130)
+
+    plot_tree(
+        clf,
+        feature_names=feature_names,
+        class_names=class_names,
+        filled=True,
+        rounded=True,
+        fontsize=7,
+        ax=ax
+    )
+
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format="png", bbox_inches="tight", pad_inches=0.05)
+    plt.close(fig)
+
+    buffer.seek(0)
+    return base64.b64encode(buffer.read()).decode("utf-8")
 
 # ── Coefficient table helper (Logistic Regression only) ──────────────────────
 
@@ -255,6 +264,10 @@ def get_selected_model(model_type, lambda_value):
         if model_type == "lr"
         else None
     )
+    tree_image = None
+
+    if model_type == "dt":
+        tree_image = get_tree_image(best["pipeline"], class_names)
 
     return {
         # Model identity
@@ -285,4 +298,5 @@ def get_selected_model(model_type, lambda_value):
         "class_names":          class_names,
         # LR-specific
         "coef_table":         coef_table,
+        "tree_image": tree_image,
     }

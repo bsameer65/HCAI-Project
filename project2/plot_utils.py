@@ -61,10 +61,7 @@ def plot_pdp(pdp_result, feature_name, model_label):
 
     ax.set_xlabel(feature_name, fontsize=12)
     ax.set_ylabel("Average predicted probability", fontsize=12)
-    ax.set_title(
-        f"PDP — {feature_name}",
-        fontsize=13, fontweight="bold"
-    )
+
     ax.set_subtitle = lambda *a, **kw: None   # no-op guard
     ax.text(
         0.5, 1.02,
@@ -115,10 +112,7 @@ def plot_ale(ale_result, feature_name, model_label):
 
     ax.set_xlabel(feature_name, fontsize=12)
     ax.set_ylabel("ALE (centred local effect)", fontsize=12)
-    ax.set_title(
-        f"ALE — {feature_name}",
-        fontsize=13, fontweight="bold"
-    )
+
     ax.text(
         0.5, 1.02,
         f"Model: {model_label}  |  bins used: {ale_result['n_bins_used']}",

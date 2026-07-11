@@ -427,7 +427,25 @@
   border-top: 2px solid #e8edf5;
   margin: 28px 0;
 }
+/* ---------- Decision tree visualization ---------- */
+.p2-tree-wrapper {
+  background: #f8fafd;
+  border: 1px solid #dde4f0;
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 14px;
+  overflow: hidden;
+  text-align: center;
+}
 
+.p2-tree-image {
+  width: 100%;
+  max-width: 860px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  object-fit: contain;
+}
 /* ---------- Roadmap step links ---------- */
 .p2-step-grid {
   display: grid;
