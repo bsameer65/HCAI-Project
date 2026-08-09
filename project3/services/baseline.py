@@ -56,3 +56,82 @@ def build_baseline_pipeline() -> Pipeline:
             ),
         ]
     )
+
+def train_and_evaluate_baseline() -> dict:
+    """
+    Train the baseline on the complete AG News training set and evaluate it
+    on the official test set.
+    """
+
+    dataset = load_ag_news()
+
+    pipeline = build_baseline_pipeline()
+
+    pipeline.fit(
+        dataset.train["text"],
+        dataset.train["label"],
+    )
+
+    predictions = pipeline.predict(dataset.test["text"])
+
+    metrics = evaluate_predictions(
+        dataset.test["label"],
+        predictions,
+    )
+
+    result = {
+        "model_name": "TF-IDF with Logistic Regression",
+        "train_samples": int(len(dataset.train)),
+        "test_samples": int(len(dataset.test)),
+        "accuracy": metrics["accuracy"],
+        "macro_f1": metrics["macro_f1"],
+        "weighted_f1": metrics["weighted_f1"],
+        "classification_report": metrics["classification_report"],
+        "confusion_matrix": metrics["confusion_matrix"],
+        "class_names": metrics["class_names"],
+        "configuration": {
+            "ngram_range": [1, 2],
+            "max_features": 100_000,
+            "minimum_document_frequency": 2,
+            "regularization_c": 4.0,
+            "random_state": 42,
+        },
+    }
+
+    save_baseline_artifacts(pipeline, result)
+
+    return result
+
+
+def save_baseline_artifacts(
+    pipeline: Pipeline,
+    result: dict,
+) -> None:
+    """
+    Save the trained model and evaluation results.
+    """
+
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    METRICS_DIR.mkdir(parents=True, exist_ok=True)
+
+    joblib.dump(pipeline, MODEL_PATH)
+
+    with METRICS_PATH.open("w", encoding="utf-8") as file:
+        json.dump(
+            result,
+            file,
+            indent=2,
+            ensure_ascii=False,
+        )
+
+
+def load_baseline_results() -> dict | None:
+    """
+    Load previously generated baseline results.
+    """
+
+    if not METRICS_PATH.exists():
+        return None
+
+    with METRICS_PATH.open("r", encoding="utf-8") as file:
+        return json.load(file)
