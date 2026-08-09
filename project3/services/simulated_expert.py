@@ -316,4 +316,123 @@ def get_region_accuracy(
         profile.general_accuracy,
     )
 
+# ---------------------------------------------------------------------------
+# Prediction simulation
+# ---------------------------------------------------------------------------
+
+def _choose_incorrect_label(
+    true_label: int,
+    random_generator: random.Random,
+) -> int:
+    """
+    Return an incorrect label using a plausible confusion pattern.
+
+    Duplicate labels in each candidate list give related classes a greater
+    chance of being selected as the expert's mistake.
+    """
+
+    confusion_options = {
+        # World is more often confused with Business or Sci/Tech.
+        0: [2, 2, 3, 3, 1],
+
+        # Sports is usually distinctive, but mistakes may map elsewhere.
+        1: [0, 0, 2, 3],
+
+        # Business is commonly confused with World and Sci/Tech.
+        2: [0, 0, 3, 3, 1],
+
+        # Sci/Tech is commonly confused with Business.
+        3: [2, 2, 2, 0, 1],
+    }
+
+    return random_generator.choice(
+        confusion_options[int(true_label)]
+    )
+
+
+def simulate_single_prediction(
+    text: str,
+    true_label: int,
+    random_generator: random.Random,
+    profile: ExpertProfile,
+) -> ExpertPrediction:
+    """
+    Generate one simulated expert prediction.
+    """
+
+    true_label = int(true_label)
+
+    if true_label not in CLASS_NAMES:
+        raise ValueError(
+            f"Unexpected class label: {true_label}"
+        )
+
+    region = identify_expertise_region(
+        text=text,
+        profile=profile,
+    )
+
+    expected_accuracy = get_region_accuracy(
+        region=region,
+        profile=profile,
+    )
+
+    expert_is_correct = (
+        random_generator.random() < expected_accuracy
+    )
+
+    if expert_is_correct:
+        prediction = true_label
+    else:
+        prediction = _choose_incorrect_label(
+            true_label=true_label,
+            random_generator=random_generator,
+        )
+
+    return ExpertPrediction(
+        prediction=prediction,
+        region=region,
+        expected_accuracy=expected_accuracy,
+        was_correct=prediction == true_label,
+    )
+
+
+def simulate_expert_predictions(
+    texts: Iterable[str],
+    true_labels: Iterable[int],
+    profile: ExpertProfile,
+) -> list[ExpertPrediction]:
+    """
+    Generate reproducible predictions for one expert profile.
+    """
+
+    text_list = list(texts)
+    label_list = list(true_labels)
+
+    if len(text_list) != len(label_list):
+        raise ValueError(
+            "Texts and labels must contain the same number of samples."
+        )
+
+    if not text_list:
+        raise ValueError(
+            "At least one sample is required."
+        )
+
+    random_generator = random.Random(
+        profile.random_state
+    )
+
+    return [
+        simulate_single_prediction(
+            text=text,
+            true_label=true_label,
+            random_generator=random_generator,
+            profile=profile,
+        )
+        for text, true_label in zip(
+            text_list,
+            label_list,
+        )
+    ]
 
