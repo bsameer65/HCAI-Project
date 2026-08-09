@@ -684,3 +684,99 @@ def calculate_region_analysis(
         }
 
     return analysis
+
+# ---------------------------------------------------------------------------
+# Human-readable analysis
+# ---------------------------------------------------------------------------
+
+def get_profile_strengths(
+    profile_key: str,
+) -> list[str]:
+    """
+    Return strengths used by the interface and report.
+    """
+
+    strengths = {
+        "sports_business": [
+            (
+                "Very high reliability when articles contain clear Sports "
+                "terminology."
+            ),
+            (
+                "Strong performance for articles with repeated financial or "
+                "commercial terminology."
+            ),
+            (
+                "Its expertise regions are transparent and easy to inspect."
+            ),
+        ],
+        "technology_world": [
+            (
+                "Very high reliability for articles containing explicit "
+                "technology and computing terminology."
+            ),
+            (
+                "Strong performance for political and international-news "
+                "articles."
+            ),
+            (
+                "Provides complementary expertise to the Sports and Business "
+                "specialist."
+            ),
+        ],
+    }
+
+    try:
+        return strengths[profile_key]
+
+    except KeyError as exc:
+        raise ValueError(
+            f"No strengths are defined for profile '{profile_key}'."
+        ) from exc
+
+
+def get_profile_weaknesses(
+    profile_key: str,
+) -> list[str]:
+    """
+    Return weaknesses used by the interface and report.
+    """
+
+    weaknesses = {
+        "sports_business": [
+            (
+                "Lower reliability for World and Sci/Tech articles outside "
+                "its specialist regions."
+            ),
+            (
+                "Indirectly written Sports or Business articles may not "
+                "contain enough matching terminology."
+            ),
+            (
+                "The expert remains imperfect even in its specialist "
+                "regions."
+            ),
+        ],
+        "technology_world": [
+            (
+                "Lower reliability for Sports and Business articles outside "
+                "its specialist regions."
+            ),
+            (
+                "General terms such as security may occur in several domains "
+                "and introduce ambiguity."
+            ),
+            (
+                "The expert remains imperfect even in its specialist "
+                "regions."
+            ),
+        ],
+    }
+
+    try:
+        return weaknesses[profile_key]
+
+    except KeyError as exc:
+        raise ValueError(
+            f"No weaknesses are defined for profile '{profile_key}'."
+        ) from exc
