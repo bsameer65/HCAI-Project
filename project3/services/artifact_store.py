@@ -75,3 +75,32 @@ def load_json(path: Path) -> dict[str, Any]:
         return json.load(file)
 
 
+def save_joblib_atomic(model: Any, path: Path) -> None:
+    """
+    Save a Joblib artifact atomically.
+    """
+
+    ensure_parent_directory(path)
+
+    temporary_path = path.with_suffix(path.suffix + ".tmp")
+
+    try:
+        joblib.dump(model, temporary_path)
+        os.replace(temporary_path, path)
+
+    except Exception:
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+        raise
+
+
+def load_joblib(path: Path) -> Any:
+    """
+    Load a Joblib model artifact.
+    """
+
+    if not path.exists():
+        raise FileNotFoundError(f"Model artifact does not exist: {path}")
+
+    return joblib.load(path)
