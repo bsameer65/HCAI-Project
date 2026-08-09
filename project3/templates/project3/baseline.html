@@ -1,0 +1,279 @@
+{% extends "project3/base.html" %}
+
+{% block title %}
+    Baseline Classifier
+{% endblock %}
+
+{% block content %}
+
+<section class="p3-card">
+    <h2>Baseline Classifier</h2>
+
+    <p>
+        The baseline combines TF-IDF text features with Logistic Regression
+        to classify AG News articles as World, Sports, Business, or Sci/Tech.
+    </p>
+
+    <div class="p3-info-box">
+        The model is trained on the complete official training split and
+        evaluated on the untouched official test split.
+    </div>
+</section>
+
+<section class="p3-card">
+    <h2>Run Experiment</h2>
+
+    <p class="p3-muted">
+        Training uses the complete official AG News training split and
+        evaluates the model on the official test split.
+    </p>
+
+    <form
+        id="baseline-training-form"
+        method="post"
+        data-training-form
+    >
+        {% csrf_token %}
+
+        <button
+            id="baseline-training-button"
+            class="p3-btn"
+            type="submit"
+        >
+            {% if results_available %}
+                Retrain Baseline Model
+            {% else %}
+                Run Baseline Experiment
+            {% endif %}
+        </button>
+    </form>
+</section>
+<div
+    id="training-overlay"
+    class="p3-training-overlay"
+    role="status"
+    aria-live="polite"
+    aria-hidden="true"
+>
+    <div class="p3-training-dialog">
+        <div class="p3-spinner" aria-hidden="true"></div>
+
+        <h2>Training the baseline model</h2>
+
+        <p id="training-status-text">
+            Loading AG News and preparing the text features...
+        </p>
+
+        <div
+            class="p3-progress-track"
+            aria-label="Training in progress"
+        >
+            <div class="p3-progress-bar"></div>
+        </div>
+
+        <p class="p3-muted">
+            Please keep this page open. The results will appear automatically
+            after the experiment finishes.
+        </p>
+    </div>
+</div>
+
+{% if results_available %}
+
+<section class="p3-card">
+    <h2>Dataset</h2>
+
+    <div class="p3-stat-row">
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ result.train_samples }}
+            </span>
+            <span class="p3-stat-label">
+                Training samples
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ result.test_samples }}
+            </span>
+            <span class="p3-stat-label">
+                Test samples
+            </span>
+        </div>
+    </div>
+</section>
+
+<section class="p3-card">
+    <h2>Test Performance</h2>
+
+    <div class="p3-stat-row">
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ result.accuracy|floatformat:4 }}
+            </span>
+            <span class="p3-stat-label">
+                Test accuracy
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ result.macro_f1|floatformat:4 }}
+            </span>
+            <span class="p3-stat-label">
+                Macro F1
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ result.weighted_f1|floatformat:4 }}
+            </span>
+            <span class="p3-stat-label">
+                Weighted F1
+            </span>
+        </div>
+    </div>
+</section>
+
+<section class="p3-card">
+    <h2>Per-Class Performance</h2>
+
+    <div class="p3-table-scroll">
+        <table class="p3-table">
+            <thead>
+                <tr>
+                    <th>Class</th>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                    <th>F1-score</th>
+                    <th>Support</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for class_name, metrics in result.classification_report.items %}
+                    {% if class_name == "World" or class_name == "Sports" or class_name == "Business" or class_name == "Sci/Tech" %}
+                    <tr>
+                        <td>{{ class_name }}</td>
+                        <td>{{ metrics.precision|floatformat:4 }}</td>
+                        <td>{{ metrics.recall|floatformat:4 }}</td>
+                        <td>{{ metrics.f1_score|floatformat:4 }}</td>
+                        <td>{{ metrics.support|floatformat:0 }}</td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="p3-card">
+    <h2>Model Configuration</h2>
+
+    <div class="p3-two-col">
+        <div>
+            <h3 class="p3-sub-heading">Text representation</h3>
+
+            <ul class="p3-feature-list">
+                <li>TF-IDF</li>
+                <li>Unigrams and bigrams</li>
+                <li>
+                    Maximum features:
+                    {{ result.configuration.max_features }}
+                </li>
+                <li>
+                    Minimum document frequency:
+                    {{ result.configuration.minimum_document_frequency }}
+                </li>
+            </ul>
+        </div>
+
+        <div>
+            <h3 class="p3-sub-heading">Classifier</h3>
+
+            <ul class="p3-feature-list">
+                <li>Logistic Regression</li>
+                <li>
+                    Regularization C:
+                    {{ result.configuration.regularization_c }}
+                </li>
+                <li>
+                    Random seed:
+                    {{ result.configuration.random_state }}
+                </li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+{% else %}
+
+<section class="p3-card">
+    <div class="p3-warning-box">
+        Baseline results have not been generated yet. Run the baseline
+        experiment once from the Django shell.
+    </div>
+</section>
+
+{% endif %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("baseline-training-form");
+    const button = document.getElementById("baseline-training-button");
+    const overlay = document.getElementById("training-overlay");
+    const statusText = document.getElementById("training-status-text");
+
+    function hideTrainingOverlay() {
+        if (!overlay) {
+            return;
+        }
+
+        overlay.classList.remove("is-visible");
+        overlay.setAttribute("aria-hidden", "true");
+
+        if (button) {
+            button.disabled = false;
+        }
+    }
+
+    // Always start with the overlay hidden after page load or redirect.
+    hideTrainingOverlay();
+
+    if (!form || !button || !overlay || !statusText) {
+        return;
+    }
+
+    form.addEventListener("submit", function () {
+        button.disabled = true;
+        button.textContent = "Training...";
+
+        overlay.classList.add("is-visible");
+        overlay.setAttribute("aria-hidden", "false");
+
+        const messages = [
+            "Loading AG News and preparing the text features...",
+            "Building the TF-IDF feature representation...",
+            "Training the Logistic Regression classifier...",
+            "Evaluating predictions on the test set...",
+            "Saving the trained model and evaluation results..."
+        ];
+
+        let index = 0;
+
+        window.setInterval(function () {
+            index = (index + 1) % messages.length;
+            statusText.textContent = messages[index];
+        }, 4000);
+    });
+
+    // Reset the loader if the browser restores the page from its cache.
+    window.addEventListener("pageshow", function () {
+        hideTrainingOverlay();
+    });
+});
+</script>
+
+{% endblock %}
