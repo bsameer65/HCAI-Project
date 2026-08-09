@@ -436,3 +436,49 @@ def simulate_expert_predictions(
         )
     ]
 
+# ---------------------------------------------------------------------------
+# Template-friendly formatting
+# ---------------------------------------------------------------------------
+
+def build_confusion_matrix_rows(
+    matrix: list[list[int]],
+    class_names: list[str],
+) -> list[dict]:
+    """
+    Convert a confusion matrix into template-friendly rows.
+
+    Each row represents the true class. Each cell represents one predicted
+    class and its count.
+    """
+
+    if len(matrix) != len(class_names):
+        raise ValueError(
+            "Confusion matrix and class names have incompatible sizes."
+        )
+
+    rows = []
+
+    for true_class, matrix_row in zip(
+        class_names,
+        matrix,
+    ):
+        if len(matrix_row) != len(class_names):
+            raise ValueError(
+                "Confusion matrix must be square."
+            )
+
+        rows.append(
+            {
+                "true_class": true_class,
+                "cells": [
+                    {
+                        "predicted_class": predicted_class,
+                        "count": int(count),
+                    }
+                    for predicted_class, count
+                    in zip(class_names, matrix_row)
+                ],
+            }
+        )
+
+    return rows
