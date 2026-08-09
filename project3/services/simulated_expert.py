@@ -780,3 +780,83 @@ def get_profile_weaknesses(
         raise ValueError(
             f"No weaknesses are defined for profile '{profile_key}'."
         ) from exc
+
+# ---------------------------------------------------------------------------
+# Persistence
+# ---------------------------------------------------------------------------
+
+def save_expert_results(
+    result: dict,
+) -> None:
+    """
+    Save all expert evaluation results atomically as JSON.
+    """
+
+    EXPERT_METRICS_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    temporary_path = EXPERT_METRICS_PATH.with_suffix(
+        ".json.tmp"
+    )
+
+    try:
+        with temporary_path.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
+            json.dump(
+                result,
+                file,
+                indent=2,
+                ensure_ascii=False,
+            )
+
+        temporary_path.replace(
+            EXPERT_METRICS_PATH
+        )
+
+    except Exception:
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+        raise
+
+
+def load_expert_results() -> dict | None:
+    """
+    Load saved expert evaluation results.
+    """
+
+    if not EXPERT_METRICS_PATH.exists():
+        return None
+
+    with EXPERT_METRICS_PATH.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+        return json.load(file)
+
+
+def get_expert_profile(
+    profile_key: str,
+) -> ExpertProfile:
+    """
+    Retrieve one expert profile by key.
+
+    This helper will later be reused by the learning-to-defer component.
+    """
+
+    try:
+        return EXPERT_PROFILES[profile_key]
+
+    except KeyError as exc:
+        valid_keys = ", ".join(
+            EXPERT_PROFILES.keys()
+        )
+
+        raise ValueError(
+            f"Unknown expert profile '{profile_key}'. "
+            f"Valid profiles: {valid_keys}."
+        ) from exc
