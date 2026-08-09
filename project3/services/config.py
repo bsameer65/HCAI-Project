@@ -1,10 +1,3 @@
-"""
-Central configuration for HCAI Project 3.
-
-Keeping experimental settings in one location makes the experiments
-reproducible and avoids duplicated constants across modules.
-"""
-
 from pathlib import Path
 
 
