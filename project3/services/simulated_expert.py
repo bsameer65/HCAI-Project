@@ -482,3 +482,121 @@ def build_confusion_matrix_rows(
         )
 
     return rows
+
+# ---------------------------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------------------------
+
+def evaluate_one_expert(
+    profile: ExpertProfile,
+    texts: Iterable[str],
+    true_labels: Iterable[int],
+) -> dict:
+    """
+    Evaluate one simulated expert on a supplied dataset.
+    """
+
+    text_list = list(texts)
+    label_list = [
+        int(label)
+        for label in true_labels
+    ]
+
+    expert_outputs = simulate_expert_predictions(
+        texts=text_list,
+        true_labels=label_list,
+        profile=profile,
+    )
+
+    predictions = [
+        output.prediction
+        for output in expert_outputs
+    ]
+
+    metrics = evaluate_predictions(
+        label_list,
+        predictions,
+    )
+
+    return {
+        "key": profile.key,
+        "name": profile.name,
+        "description": profile.description,
+        "test_samples": len(label_list),
+        "accuracy": metrics["accuracy"],
+        "macro_f1": metrics["macro_f1"],
+        "weighted_f1": metrics["weighted_f1"],
+        "classification_report": metrics[
+            "classification_report"
+        ],
+        "confusion_matrix": metrics["confusion_matrix"],
+        "confusion_matrix_rows": build_confusion_matrix_rows(
+            matrix=metrics["confusion_matrix"],
+            class_names=metrics["class_names"],
+        ),
+        "class_names": metrics["class_names"],
+        "configuration": {
+            **asdict(profile),
+            "region_accuracies": {
+                region_name: float(accuracy)
+                for region_name, accuracy
+                in profile.region_accuracies.items()
+            },
+        },
+        "region_analysis": calculate_region_analysis(
+            true_labels=label_list,
+            expert_outputs=expert_outputs,
+            profile=profile,
+        ),
+        "strengths": get_profile_strengths(
+            profile.key
+        ),
+        "weaknesses": get_profile_weaknesses(
+            profile.key
+        ),
+    }
+
+
+def evaluate_all_simulated_experts() -> dict:
+    """
+    Evaluate all configured experts on the official AG News test set.
+    """
+
+    dataset = load_ag_news()
+
+    texts = dataset.test["text"].tolist()
+    true_labels = dataset.test["label"].tolist()
+
+    expert_results = {
+        profile_key: evaluate_one_expert(
+            profile=profile,
+            texts=texts,
+            true_labels=true_labels,
+        )
+        for profile_key, profile
+        in EXPERT_PROFILES.items()
+    }
+
+    best_expert_key = max(
+        expert_results,
+        key=lambda key: expert_results[key]["accuracy"],
+    )
+
+    for expert_key, expert_result in expert_results.items():
+        expert_result["is_best"] = (
+            expert_key == best_expert_key
+        )
+
+    result = {
+        "test_samples": len(true_labels),
+        "expert_count": len(expert_results),
+        "best_expert_key": best_expert_key,
+        "best_expert_name": expert_results[
+            best_expert_key
+        ]["name"],
+        "experts": expert_results,
+    }
+
+    save_expert_results(result)
+
+    return result
