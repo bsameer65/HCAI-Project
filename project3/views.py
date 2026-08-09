@@ -6,6 +6,10 @@ from .services.baseline import (
     train_and_evaluate_baseline,
 )
 
+from .services.simulated_expert import (
+    evaluate_all_simulated_experts,
+    load_expert_results,
+)
 
 def index(request):
     return render(request, "project3/index.html")
@@ -42,7 +46,33 @@ def baseline(request):
 
 
 def expert(request):
-    return render(request, "project3/expert.html")
+    if request.method == "POST":
+        try:
+            evaluate_all_simulated_experts()
+
+            messages.success(
+                request,
+                "Both simulated experts were evaluated successfully.",
+            )
+
+        except Exception as exc:
+            messages.error(
+                request,
+                f"Simulated expert evaluation failed: {exc}",
+            )
+
+        return redirect("project3:expert")
+
+    result = load_expert_results()
+
+    return render(
+        request,
+        "project3/expert.html",
+        {
+            "result": result,
+            "results_available": result is not None,
+        },
+    )
 
 
 def learning_to_defer(request):
