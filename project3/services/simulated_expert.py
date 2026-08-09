@@ -600,3 +600,87 @@ def evaluate_all_simulated_experts() -> dict:
     save_expert_results(result)
 
     return result
+
+def calculate_region_analysis(
+    true_labels: list[int],
+    expert_outputs: list[ExpertPrediction],
+    profile: ExpertProfile,
+) -> dict:
+    """
+    Calculate coverage and observed performance for each competence region.
+    """
+
+    if len(true_labels) != len(expert_outputs):
+        raise ValueError(
+            "True labels and expert outputs must have equal length."
+        )
+
+    region_names = [
+        *profile.region_accuracies.keys(),
+        "General region",
+    ]
+
+    total_samples = len(expert_outputs)
+    analysis = {}
+
+    for region_name in region_names:
+        matching_indices = [
+            index
+            for index, output in enumerate(expert_outputs)
+            if output.region == region_name
+        ]
+
+        sample_count = len(matching_indices)
+
+        correct_count = sum(
+            expert_outputs[index].was_correct
+            for index in matching_indices
+        )
+
+        observed_accuracy = (
+            correct_count / sample_count
+            if sample_count > 0
+            else 0.0
+        )
+
+        coverage = (
+            sample_count / total_samples
+            if total_samples > 0
+            else 0.0
+        )
+
+        configured_accuracy = get_region_accuracy(
+            region=region_name,
+            profile=profile,
+        )
+
+        analysis[region_name] = {
+            "internal_name": region_name,
+            "display_name": REGION_DISPLAY_NAMES.get(
+                region_name,
+                region_name,
+            ),
+            "samples": sample_count,
+            "correct_predictions": correct_count,
+            "coverage": float(coverage),
+            "coverage_percent": round(
+                float(coverage * 100),
+                2,
+            ),
+            "configured_accuracy": float(
+                configured_accuracy
+            ),
+            "configured_percent": round(
+                float(configured_accuracy * 100),
+                2,
+            ),
+            "observed_accuracy": float(
+                observed_accuracy
+            ),
+            "observed_percent": round(
+                float(observed_accuracy * 100),
+                2,
+            ),
+        }
+
+    return analysis
