@@ -462,4 +462,82 @@
         </p>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById(
+        "expert-evaluation-form"
+    );
+
+    const button = document.getElementById(
+        "expert-evaluation-button"
+    );
+
+    const overlay = document.getElementById(
+        "expert-loading-overlay"
+    );
+
+    const statusText = document.getElementById(
+        "expert-status-text"
+    );
+
+    let messageTimer = null;
+
+    function hideOverlay() {
+        if (overlay) {
+            overlay.classList.remove("is-visible");
+            overlay.setAttribute("aria-hidden", "true");
+        }
+
+        if (button) {
+            button.disabled = false;
+        }
+
+        if (messageTimer !== null) {
+            window.clearInterval(messageTimer);
+            messageTimer = null;
+        }
+    }
+
+    hideOverlay();
+
+    if (!form || !button || !overlay || !statusText) {
+        return;
+    }
+
+    form.addEventListener("submit", function () {
+        button.disabled = true;
+        button.textContent = "Evaluating...";
+
+        overlay.classList.add("is-visible");
+        overlay.setAttribute("aria-hidden", "false");
+
+        const statusMessages = [
+            "Loading AG News and preparing both expert profiles...",
+            "Generating predictions from the Sports and Business specialist...",
+            "Generating predictions from the Technology and World Affairs specialist...",
+            "Measuring competence-region coverage and accuracy...",
+            "Saving the expert comparison results..."
+        ];
+
+        let messageIndex = 0;
+
+        messageTimer = window.setInterval(function () {
+            messageIndex = (
+                messageIndex + 1
+            ) % statusMessages.length;
+
+            statusText.textContent = (
+                statusMessages[messageIndex]
+            );
+        }, 3000);
+    });
+
+    window.addEventListener(
+        "pageshow",
+        hideOverlay
+    );
+});
+</script>
+
 {% endblock %}
