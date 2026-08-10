@@ -6,6 +6,11 @@ from .services.baseline import (
     train_and_evaluate_baseline,
 )
 
+from .services.learning_to_defer import (
+    load_learning_to_defer_results,
+    run_learning_to_defer_experiment,
+)
+
 from .services.simulated_expert import (
     evaluate_all_simulated_experts,
     load_expert_results,
@@ -76,7 +81,33 @@ def expert(request):
 
 
 def learning_to_defer(request):
-    return render(request, "project3/defer.html")
+    if request.method == "POST":
+        try:
+            run_learning_to_defer_experiment()
+
+            messages.success(
+                request,
+                "Learning-to-defer experiment completed successfully.",
+            )
+
+        except Exception as exc:
+            messages.error(
+                request,
+                f"Learning-to-defer experiment failed: {exc}",
+            )
+
+        return redirect("project3:learning_to_defer")
+
+    result = load_learning_to_defer_results()
+
+    return render(
+        request,
+        "project3/defer.html",
+        {
+            "result": result,
+            "results_available": result is not None,
+        },
+    )
 
 
 def active_learning(request):
