@@ -1,0 +1,103 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {% block title %}
+            Active Learning for Learning-to-Defer
+        {% endblock %}
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'project3/css/style.css' %}"
+    >
+</head>
+
+<body class="p3-page">
+    <div class="p3-container">
+
+        <header class="p3-header">
+            <h1>Active Learning for Learning-to-Defer</h1>
+
+            <p>
+                A human-AI collaboration system for news classification,
+                expert deferral, and efficient expert competence discovery.
+            </p>
+        </header>
+
+        <nav class="p3-nav">
+            <a
+                href="{% url 'project3:index' %}"
+                class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}"
+            >
+                Overview
+            </a>
+
+            <a
+                href="{% url 'project3:baseline' %}"
+                class="{% if request.resolver_match.url_name == 'baseline' %}active{% endif %}"
+            >
+                Baseline Classifier
+            </a>
+
+            <a
+                href="{% url 'project3:expert' %}"
+                class="{% if request.resolver_match.url_name == 'expert' %}active{% endif %}"
+            >
+                Simulated Expert
+            </a>
+
+            <a
+                href="{% url 'project3:learning_to_defer' %}"
+                class="{% if request.resolver_match.url_name == 'learning_to_defer' %}active{% endif %}"
+            >
+                Learning to Defer
+            </a>
+
+            <a
+                href="{% url 'project3:active_learning' %}"
+                class="{% if request.resolver_match.url_name == 'active_learning' %}active{% endif %}"
+            >
+                Active Learning
+            </a>
+
+            <a
+                href="{% url 'project3:compare_results' %}"
+                class="{% if request.resolver_match.url_name == 'compare_results' %}active{% endif %}"
+            >
+                Results
+            </a>
+        </nav>
+
+        {% if messages %}
+            {% for message in messages %}
+                {% if message.tags == "success" %}
+                    <div class="p3-success-box">
+                        {{ message }}
+                    </div>
+                {% else %}
+                    <div class="p3-error-card">
+                        {{ message }}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}
+        {% endblock %}
+
+        <a href="{% url 'home:index' %}" class="p3-back">
+            Back to all projects
+        </a>
+    </div>
+</body>
+</html>
