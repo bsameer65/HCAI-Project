@@ -815,3 +815,540 @@ def select_learned_threshold(
     )
 
 
+# ---------------------------------------------------------------------------
+# Complete experiment
+# ---------------------------------------------------------------------------
+
+def run_learning_to_defer_experiment() -> dict:
+    """
+    Run learning-to-defer experiments for both simulated experts.
+
+    The classifier is trained only once for the development stage and once
+    for final test evaluation, making the experiment efficient across expert
+    profiles.
+    """
+
+    dataset = load_ag_news()
+
+    (
+        classifier_train,
+        meta_train,
+        meta_validation,
+    ) = create_deferral_development_splits(
+        dataset.train
+    )
+
+    # ---------------------------------------------------------------
+    # Development classifier
+    # ---------------------------------------------------------------
+
+    development_classifier = (
+        build_baseline_pipeline()
+    )
+
+    development_classifier.fit(
+        classifier_train["text"],
+        classifier_train["label"],
+    )
+
+    meta_train_predictions = (
+        development_classifier.predict(
+            meta_train["text"]
+        )
+    )
+
+    meta_train_probabilities = (
+        development_classifier.predict_proba(
+            meta_train["text"]
+        )
+    )
+
+    meta_validation_predictions = (
+        development_classifier.predict(
+            meta_validation["text"]
+        )
+    )
+
+    meta_validation_probabilities = (
+        development_classifier.predict_proba(
+            meta_validation["text"]
+        )
+    )
+
+    development_validation_accuracy = float(
+        accuracy_score(
+            meta_validation["label"],
+            meta_validation_predictions,
+        )
+    )
+
+    # ---------------------------------------------------------------
+    # Final classifier
+    # ---------------------------------------------------------------
+
+    final_classifier = build_baseline_pipeline()
+
+    final_classifier.fit(
+        dataset.train["text"],
+        dataset.train["label"],
+    )
+
+    test_classifier_predictions = (
+        final_classifier.predict(
+            dataset.test["text"]
+        )
+    )
+
+    test_classifier_probabilities = (
+        final_classifier.predict_proba(
+            dataset.test["text"]
+        )
+    )
+
+    classifier_test_accuracy = float(
+        accuracy_score(
+            dataset.test["label"],
+            test_classifier_predictions,
+        )
+    )
+
+    # ---------------------------------------------------------------
+    # Experts
+    # ---------------------------------------------------------------
+
+    expert_results = {}
+
+    for profile_key, profile in EXPERT_PROFILES.items():
+
+        meta_train_expert_outputs = (
+            simulate_expert_for_split(
+                texts=meta_train["text"],
+                true_labels=meta_train["label"],
+                profile=profile,
+                seed_offset=101,
+            )
+        )
+
+        meta_validation_expert_outputs = (
+            simulate_expert_for_split(
+                texts=meta_validation["text"],
+                true_labels=meta_validation[
+                    "label"
+                ],
+                profile=profile,
+                seed_offset=202,
+            )
+        )
+
+        test_expert_outputs = (
+            simulate_expert_for_split(
+                texts=dataset.test["text"],
+                true_labels=dataset.test["label"],
+                profile=profile,
+                seed_offset=303,
+            )
+        )
+
+        meta_validation_expert_predictions = (
+            np.asarray(
+                [
+                    output.prediction
+                    for output
+                    in meta_validation_expert_outputs
+                ],
+                dtype=int,
+            )
+        )
+
+        test_expert_predictions = np.asarray(
+            [
+                output.prediction
+                for output in test_expert_outputs
+            ],
+            dtype=int,
+        )
+
+        # -----------------------------------------------------------
+        # Strategy 1: confidence threshold
+        # -----------------------------------------------------------
+
+        (
+            confidence_threshold,
+            confidence_search,
+        ) = select_confidence_threshold(
+            true_labels=meta_validation[
+                "label"
+            ].to_numpy(),
+            classifier_predictions=(
+                meta_validation_predictions
+            ),
+            classifier_probabilities=(
+                meta_validation_probabilities
+            ),
+            expert_predictions=(
+                meta_validation_expert_predictions
+            ),
+        )
+
+        test_confidence = calculate_confidence(
+            test_classifier_probabilities
+        )
+
+        confidence_defer_mask = (
+            test_confidence
+            < confidence_threshold
+        )
+
+        confidence_metrics = (
+            calculate_deferral_metrics(
+                true_labels=dataset.test[
+                    "label"
+                ],
+                classifier_predictions=(
+                    test_classifier_predictions
+                ),
+                expert_predictions=(
+                    test_expert_predictions
+                ),
+                defer_mask=(
+                    confidence_defer_mask
+                ),
+            )
+        )
+
+        # -----------------------------------------------------------
+        # Strategy 2: learned competence-aware deferral
+        # -----------------------------------------------------------
+
+        meta_train_features = (
+            build_deferral_features(
+                texts=meta_train["text"],
+                classifier_predictions=(
+                    meta_train_predictions
+                ),
+                classifier_probabilities=(
+                    meta_train_probabilities
+                ),
+                expert_outputs=(
+                    meta_train_expert_outputs
+                ),
+            )
+        )
+
+        meta_train_target = (
+            build_beneficial_deferral_target(
+                true_labels=meta_train[
+                    "label"
+                ],
+                classifier_predictions=(
+                    meta_train_predictions
+                ),
+                expert_outputs=(
+                    meta_train_expert_outputs
+                ),
+            )
+        )
+
+        if len(np.unique(meta_train_target)) < 2:
+            raise ValueError(
+                f"Deferral target for '{profile.name}' "
+                "contains only one class."
+            )
+
+        competence_model = (
+            build_competence_model()
+        )
+
+        competence_model.fit(
+            meta_train_features,
+            meta_train_target,
+        )
+
+        validation_features = (
+            build_deferral_features(
+                texts=meta_validation["text"],
+                classifier_predictions=(
+                    meta_validation_predictions
+                ),
+                classifier_probabilities=(
+                    meta_validation_probabilities
+                ),
+                expert_outputs=(
+                    meta_validation_expert_outputs
+                ),
+            )
+        )
+
+        validation_benefit_probability = (
+            competence_model.predict_proba(
+                validation_features
+            )[:, 1]
+        )
+
+        (
+            learned_threshold,
+            learned_search,
+        ) = select_learned_threshold(
+            true_labels=meta_validation[
+                "label"
+            ].to_numpy(),
+            classifier_predictions=(
+                meta_validation_predictions
+            ),
+            expert_predictions=(
+                meta_validation_expert_predictions
+            ),
+            benefit_probabilities=(
+                validation_benefit_probability
+            ),
+        )
+
+        # Refit on all available development expert labels after the
+        # decision threshold has been selected.
+
+        validation_target = (
+            build_beneficial_deferral_target(
+                true_labels=meta_validation[
+                    "label"
+                ],
+                classifier_predictions=(
+                    meta_validation_predictions
+                ),
+                expert_outputs=(
+                    meta_validation_expert_outputs
+                ),
+            )
+        )
+
+        all_meta_features = pd.concat(
+            [
+                meta_train_features,
+                validation_features,
+            ],
+            ignore_index=True,
+        )
+
+        all_meta_targets = np.concatenate(
+            [
+                meta_train_target,
+                validation_target,
+            ]
+        )
+
+        final_competence_model = (
+            build_competence_model()
+        )
+
+        final_competence_model.fit(
+            all_meta_features,
+            all_meta_targets,
+        )
+
+        test_features = build_deferral_features(
+            texts=dataset.test["text"],
+            classifier_predictions=(
+                test_classifier_predictions
+            ),
+            classifier_probabilities=(
+                test_classifier_probabilities
+            ),
+            expert_outputs=test_expert_outputs,
+        )
+
+        test_benefit_probability = (
+            final_competence_model.predict_proba(
+                test_features
+            )[:, 1]
+        )
+
+        learned_defer_mask = (
+            test_benefit_probability
+            >= learned_threshold
+        )
+
+        learned_metrics = (
+            calculate_deferral_metrics(
+                true_labels=dataset.test[
+                    "label"
+                ],
+                classifier_predictions=(
+                    test_classifier_predictions
+                ),
+                expert_predictions=(
+                    test_expert_predictions
+                ),
+                defer_mask=(
+                    learned_defer_mask
+                ),
+            )
+        )
+        
+        confidence_accuracy = (
+            confidence_metrics["team_accuracy"]
+        )
+
+        learned_accuracy = (
+            learned_metrics["team_accuracy"]
+        )
+
+        if learned_accuracy > confidence_accuracy:
+            best_strategy_key = "learned"
+            best_strategy_name = (
+                "Competence-Aware Learned Deferral"
+            )
+
+        elif confidence_accuracy > learned_accuracy:
+            best_strategy_key = "confidence"
+            best_strategy_name = (
+                "Confidence-Threshold Deferral"
+            )
+
+        else:
+            # Tie-break:
+            # prefer the strategy that uses less expert effort.
+            if (
+                learned_metrics["deferral_rate"]
+                < confidence_metrics["deferral_rate"]
+            ):
+                best_strategy_key = "learned"
+                best_strategy_name = (
+                    "Competence-Aware Learned Deferral"
+                )
+            else:
+                best_strategy_key = "confidence"
+                best_strategy_name = (
+                    "Confidence-Threshold Deferral"
+                )
+
+        expert_results[profile_key] = {
+            "name": profile.name,
+            "description": profile.description,
+
+            "best_strategy_key": best_strategy_key,
+            "best_strategy_name": best_strategy_name,
+
+            "confidence_strategy": {
+                "name": (
+                    "Confidence-Threshold Deferral"
+                ),
+                "selected_threshold": (
+                    confidence_threshold
+                ),
+                "is_best": (
+                    best_strategy_key == "confidence"
+                ),
+                "metrics": confidence_metrics,
+                "threshold_search": confidence_search,
+            },
+
+            "learned_strategy": {
+                "name": (
+                    "Competence-Aware "
+                    "Learned Deferral"
+                ),
+                "selected_threshold": (
+                    learned_threshold
+                ),
+                "is_best": (
+                    best_strategy_key == "learned"
+                ),
+                "metrics": learned_metrics,
+                "threshold_search": learned_search,
+            },
+        }
+
+    result = {
+        "experiment": {
+            "name": "Learning to Defer",
+            "random_state": RANDOM_STATE,
+        },
+
+        "development_split": {
+            "classifier_train_samples": int(
+                len(classifier_train)
+            ),
+            "deferral_train_samples": int(
+                len(meta_train)
+            ),
+            "deferral_validation_samples": int(
+                len(meta_validation)
+            ),
+        },
+
+        "classifier": {
+            "development_validation_accuracy": (
+                development_validation_accuracy
+            ),
+            "final_test_accuracy": (
+                classifier_test_accuracy
+            ),
+        },
+
+        "experts": expert_results,
+    }
+
+    save_learning_to_defer_results(
+        result
+    )
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Persistence
+# ---------------------------------------------------------------------------
+
+def save_learning_to_defer_results(
+    result: dict,
+) -> None:
+    """
+    Persist the learning-to-defer experiment results atomically.
+    """
+
+    DEFER_METRICS_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    temporary_path = (
+        DEFER_METRICS_PATH.with_suffix(
+            ".json.tmp"
+        )
+    )
+
+    try:
+        with temporary_path.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
+            json.dump(
+                result,
+                file,
+                indent=2,
+                ensure_ascii=False,
+            )
+
+        temporary_path.replace(
+            DEFER_METRICS_PATH
+        )
+
+    except Exception:
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+        raise
+
+
+def load_learning_to_defer_results() -> dict | None:
+    """
+    Load saved learning-to-defer results.
+    """
+
+    if not DEFER_METRICS_PATH.exists():
+        return None
+
+    with DEFER_METRICS_PATH.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+        return json.load(file)
