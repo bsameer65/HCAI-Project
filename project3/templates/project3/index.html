@@ -1,0 +1,123 @@
+{% extends "project3/base.html" %}
+
+{% block title %}
+    Project 3 | Active Learning for Learning-to-Defer
+{% endblock %}
+
+{% block content %}
+
+<section class="p3-card">
+    <h2>Project Overview</h2>
+
+    <p>
+        This project investigates how an artificial intelligence system can
+        collaborate with a human expert when classifying news articles from
+        the AG News dataset.
+    </p>
+
+    <p>
+        Instead of always making an autonomous prediction, the system can
+        defer difficult or appropriate decisions to an expert. Active
+        learning is then used to discover the expert's competence using a
+        limited number of expert queries.
+    </p>
+
+    <div class="p3-info-box">
+        The central question is not only whether the classifier or expert is
+        accurate, but whether the system can learn who should make each
+        decision.
+    </div>
+</section>
+
+<section class="p3-card">
+    <h2>Experimental Workflow</h2>
+
+    <div class="p3-step-grid">
+
+        <a
+            class="p3-step-link"
+            href="{% url 'project3:baseline' %}"
+        >
+            <strong>Baseline Classifier</strong>
+            <span>
+                Train and evaluate a text classifier using the complete
+                labeled training dataset.
+            </span>
+        </a>
+
+        <a
+            class="p3-step-link"
+            href="{% url 'project3:expert' %}"
+        >
+            <strong>Simulated Expert</strong>
+            <span>
+                Model a non-perfect expert with identifiable strengths and
+                weaknesses.
+            </span>
+        </a>
+
+        <a
+            class="p3-step-link"
+            href="{% url 'project3:learning_to_defer' %}"
+        >
+            <strong>Learning to Defer</strong>
+            <span>
+                Learn whether the classifier or the expert should handle a
+                particular article.
+            </span>
+        </a>
+
+        <a
+            class="p3-step-link"
+            href="{% url 'project3:active_learning' %}"
+        >
+            <strong>Active Learning</strong>
+            <span>
+                Query informative examples to discover the expert's
+                competence efficiently.
+            </span>
+        </a>
+
+        <a
+            class="p3-step-link"
+            href="{% url 'project3:compare_results' %}"
+        >
+            <strong>Results Comparison</strong>
+            <span>
+                Compare classifier, expert, deferral, and active learning
+                performance.
+            </span>
+        </a>
+
+    </div>
+</section>
+
+<section class="p3-card">
+    <h2>AG News Classification</h2>
+
+    <p class="p3-muted">
+        News articles are classified into one of four topic categories.
+    </p>
+
+    <div class="p3-class-row">
+        <span class="p3-class-badge">World</span>
+        <span class="p3-class-badge">Sports</span>
+        <span class="p3-class-badge">Business</span>
+        <span class="p3-class-badge">Sci/Tech</span>
+    </div>
+</section>
+
+<section class="p3-card">
+    <h2>Project Report</h2>
+
+    <p>
+        The final report should explain the experimental design, motivate the
+        selected methods, and present a detailed analysis of the results.
+    </p>
+
+    <button class="p3-btn" type="button" disabled>
+        Report available after completion
+    </button>
+</section>
+
+{% endblock %}
