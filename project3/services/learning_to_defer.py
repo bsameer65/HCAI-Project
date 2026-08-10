@@ -415,3 +415,403 @@ def build_competence_model() -> Pipeline:
 
 
 # ---------------------------------------------------------------------------
+# Policy evaluation
+# ---------------------------------------------------------------------------
+
+def calculate_deferral_metrics(
+    true_labels: Iterable[int],
+    classifier_predictions: Iterable[int],
+    expert_predictions: Iterable[int],
+    defer_mask: Iterable[bool],
+) -> dict:
+    """
+    Calculate final team performance and deferral-quality metrics.
+    """
+
+    y_true = np.asarray(
+        list(true_labels),
+        dtype=int,
+    )
+
+    classifier_predictions = np.asarray(
+        list(classifier_predictions),
+        dtype=int,
+    )
+
+    expert_predictions = np.asarray(
+        list(expert_predictions),
+        dtype=int,
+    )
+
+    defer_mask = np.asarray(
+        list(defer_mask),
+        dtype=bool,
+    )
+
+    sample_count = len(y_true)
+
+    if not (
+        len(classifier_predictions)
+        == len(expert_predictions)
+        == len(defer_mask)
+        == sample_count
+    ):
+        raise ValueError(
+            "All deferral evaluation arrays must have equal length."
+        )
+
+    classifier_correct = (
+        classifier_predictions == y_true
+    )
+
+    expert_correct = (
+        expert_predictions == y_true
+    )
+
+    team_predictions = np.where(
+        defer_mask,
+        expert_predictions,
+        classifier_predictions,
+    )
+
+    team_metrics = evaluate_predictions(
+        y_true,
+        team_predictions,
+    )
+
+    beneficial_available = (
+        (~classifier_correct)
+        & expert_correct
+    )
+
+    harmful_possible = (
+        classifier_correct
+        & (~expert_correct)
+    )
+
+    both_correct = (
+        classifier_correct
+        & expert_correct
+    )
+
+    both_wrong = (
+        (~classifier_correct)
+        & (~expert_correct)
+    )
+
+    beneficial_deferrals = (
+        defer_mask
+        & beneficial_available
+    )
+
+    harmful_deferrals = (
+        defer_mask
+        & harmful_possible
+    )
+
+    unnecessary_deferrals = (
+        defer_mask
+        & both_correct
+    )
+
+    hopeless_deferrals = (
+        defer_mask
+        & both_wrong
+    )
+
+    missed_beneficial = (
+        (~defer_mask)
+        & beneficial_available
+    )
+
+    deferred_count = int(
+        defer_mask.sum()
+    )
+
+    non_deferred_count = (
+        sample_count - deferred_count
+    )
+
+    deferred_correct = (
+        team_predictions[defer_mask]
+        == y_true[defer_mask]
+    )
+
+    non_deferred_correct = (
+        team_predictions[~defer_mask]
+        == y_true[~defer_mask]
+    )
+
+    beneficial_available_count = int(
+        beneficial_available.sum()
+    )
+
+    beneficial_deferral_count = int(
+        beneficial_deferrals.sum()
+    )
+
+    harmful_deferral_count = int(
+        harmful_deferrals.sum()
+    )
+
+    unnecessary_deferral_count = int(
+        unnecessary_deferrals.sum()
+    )
+
+    hopeless_deferral_count = int(
+        hopeless_deferrals.sum()
+    )
+
+    missed_beneficial_count = int(
+        missed_beneficial.sum()
+    )
+
+    oracle_correct = (
+        classifier_correct
+        | expert_correct
+    )
+
+    return {
+        "sample_count": sample_count,
+
+        "classifier_accuracy": float(
+            classifier_correct.mean()
+        ),
+
+        "expert_accuracy": float(
+            expert_correct.mean()
+        ),
+
+        "team_accuracy": team_metrics[
+            "accuracy"
+        ],
+
+        "team_macro_f1": team_metrics[
+            "macro_f1"
+        ],
+
+        "team_weighted_f1": team_metrics[
+            "weighted_f1"
+        ],
+
+        "oracle_accuracy": float(
+            oracle_correct.mean()
+        ),
+
+        "deferred_count": deferred_count,
+
+        "deferral_rate": (
+            deferred_count / sample_count
+            if sample_count
+            else 0.0
+        ),
+
+        "deferred_accuracy": (
+            float(deferred_correct.mean())
+            if deferred_count > 0
+            else None
+        ),
+
+        "non_deferred_accuracy": (
+            float(non_deferred_correct.mean())
+            if non_deferred_count > 0
+            else None
+        ),
+
+        "beneficial_opportunities": (
+            beneficial_available_count
+        ),
+
+        "beneficial_deferrals": (
+            beneficial_deferral_count
+        ),
+
+        "beneficial_deferral_precision": (
+            beneficial_deferral_count
+            / deferred_count
+            if deferred_count > 0
+            else 0.0
+        ),
+
+        "beneficial_deferral_recall": (
+            beneficial_deferral_count
+            / beneficial_available_count
+            if beneficial_available_count > 0
+            else 0.0
+        ),
+
+        "harmful_deferrals": (
+            harmful_deferral_count
+        ),
+
+        "harmful_deferral_rate": (
+            harmful_deferral_count
+            / deferred_count
+            if deferred_count > 0
+            else 0.0
+        ),
+
+        "unnecessary_deferrals": (
+            unnecessary_deferral_count
+        ),
+
+        "unnecessary_deferral_rate": (
+            unnecessary_deferral_count
+            / deferred_count
+            if deferred_count > 0
+            else 0.0
+        ),
+
+        "hopeless_deferrals": (
+            hopeless_deferral_count
+        ),
+
+        "missed_beneficial_deferrals": (
+            missed_beneficial_count
+        ),
+
+        "missed_beneficial_rate": (
+            missed_beneficial_count
+            / beneficial_available_count
+            if beneficial_available_count > 0
+            else 0.0
+        ),
+
+        "classification_report": team_metrics[
+            "classification_report"
+        ],
+
+        "confusion_matrix": team_metrics[
+            "confusion_matrix"
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Confidence-threshold policy
+# ---------------------------------------------------------------------------
+
+def select_confidence_threshold(
+    true_labels: Iterable[int],
+    classifier_predictions: np.ndarray,
+    classifier_probabilities: np.ndarray,
+    expert_predictions: np.ndarray,
+) -> tuple[float, list[dict]]:
+    """
+    Select a confidence threshold using development validation data.
+
+    Highest team accuracy wins. If two thresholds have the same accuracy,
+    the threshold with the lower human deferral rate is preferred.
+    """
+
+    confidence = calculate_confidence(
+        classifier_probabilities
+    )
+
+    search_results = []
+
+    for threshold in CONFIDENCE_THRESHOLDS:
+        defer_mask = (
+            confidence < threshold
+        )
+
+        team_predictions = np.where(
+            defer_mask,
+            expert_predictions,
+            classifier_predictions,
+        )
+
+        team_accuracy = float(
+            accuracy_score(
+                true_labels,
+                team_predictions,
+            )
+        )
+
+        deferral_rate = float(
+            defer_mask.mean()
+        )
+
+        search_results.append(
+            {
+                "threshold": float(threshold),
+                "team_accuracy": team_accuracy,
+                "deferral_rate": deferral_rate,
+            }
+        )
+
+    best_result = max(
+        search_results,
+        key=lambda result: (
+            result["team_accuracy"],
+            -result["deferral_rate"],
+        ),
+    )
+
+    return (
+        best_result["threshold"],
+        search_results,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Learned-policy threshold selection
+# ---------------------------------------------------------------------------
+
+def select_learned_threshold(
+    true_labels: Iterable[int],
+    classifier_predictions: np.ndarray,
+    expert_predictions: np.ndarray,
+    benefit_probabilities: np.ndarray,
+) -> tuple[float, list[dict]]:
+    """
+    Select the deferral probability threshold on validation data.
+    """
+
+    search_results = []
+
+    for threshold in LEARNED_THRESHOLDS:
+        defer_mask = (
+            benefit_probabilities
+            >= threshold
+        )
+
+        team_predictions = np.where(
+            defer_mask,
+            expert_predictions,
+            classifier_predictions,
+        )
+
+        team_accuracy = float(
+            accuracy_score(
+                true_labels,
+                team_predictions,
+            )
+        )
+
+        deferral_rate = float(
+            defer_mask.mean()
+        )
+
+        search_results.append(
+            {
+                "threshold": float(threshold),
+                "team_accuracy": team_accuracy,
+                "deferral_rate": deferral_rate,
+            }
+        )
+
+    best_result = max(
+        search_results,
+        key=lambda result: (
+            result["team_accuracy"],
+            -result["deferral_rate"],
+        ),
+    )
+
+    return (
+        best_result["threshold"],
+        search_results,
+    )
+
+
