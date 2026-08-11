@@ -466,4 +466,128 @@
 
 </div>
 
+<script>
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        const form = document.getElementById(
+            "active-learning-form"
+        );
+
+        const button = document.getElementById(
+            "active-learning-button"
+        );
+
+        const overlay = document.getElementById(
+            "active-learning-overlay"
+        );
+
+        const status = document.getElementById(
+            "active-learning-status"
+        );
+
+        let timer = null;
+
+
+        function hideOverlay() {
+
+            if (overlay) {
+                overlay.classList.remove(
+                    "is-visible"
+                );
+
+                overlay.setAttribute(
+                    "aria-hidden",
+                    "true"
+                );
+            }
+
+            if (button) {
+                button.disabled = false;
+            }
+
+            if (timer !== null) {
+                window.clearInterval(
+                    timer
+                );
+
+                timer = null;
+            }
+        }
+
+
+        hideOverlay();
+
+
+        if (
+            !form
+            || !button
+            || !overlay
+            || !status
+        ) {
+            return;
+        }
+
+
+        form.addEventListener(
+            "submit",
+            function () {
+
+                button.disabled = true;
+
+                button.textContent =
+                    "Running active learning...";
+
+                overlay.classList.add(
+                    "is-visible"
+                );
+
+                overlay.setAttribute(
+                    "aria-hidden",
+                    "false"
+                );
+
+
+                const messages = [
+                    "Training the news classifier...",
+                    "Preparing the unlabeled expert-query pool...",
+                    "Creating the initial expert-query set...",
+                    "Training expert competence models...",
+                    "Selecting informative expert queries...",
+                    "Comparing uncertainty and diversity strategies...",
+                    "Evaluating competence discovery...",
+                    "Measuring human-AI team performance...",
+                    "Saving active-learning results..."
+                ];
+
+
+                let index = 0;
+
+
+                timer = window.setInterval(
+                    function () {
+
+                        index = (
+                            index + 1
+                        ) % messages.length;
+
+                        status.textContent =
+                            messages[index];
+
+                    },
+                    4000
+                );
+            }
+        );
+
+
+        window.addEventListener(
+            "pageshow",
+            hideOverlay
+        );
+    }
+);
+</script>
+
 {% endblock %}
