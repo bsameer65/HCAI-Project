@@ -1,0 +1,448 @@
+{% extends "project3/base.html" %}
+
+{% block title %}
+    Results Comparison
+{% endblock %}
+
+{% block content %}
+
+<section class="p3-card">
+    <h2>Results Comparison</h2>
+
+    <p>
+        This page summarizes the complete human–AI collaboration pipeline,
+        from autonomous classification to expert simulation, learning to
+        defer, and active learning for expert competence discovery.
+    </p>
+
+    <div class="p3-info-box">
+        The central goal is not only to maximize classification accuracy, but
+        to use expert intervention selectively and efficiently.
+    </div>
+</section>
+
+
+{% if not results_available %}
+
+<section class="p3-card">
+    <div class="p3-warning-box">
+        Some experiment results are missing. Run the Baseline, Simulated
+        Experts, Learning to Defer, and Active Learning experiments before
+        opening the full comparison.
+    </div>
+</section>
+
+{% else %}
+
+
+<section class="p3-card">
+    <h2>System Overview</h2>
+
+    <div class="p3-stat-row">
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ baseline.accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Baseline accuracy
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ experts.experts.sports_business.accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Sports/Business expert
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ experts.experts.technology_world.accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Technology/World expert
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ defer.classifier.final_test_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Deferral classifier
+            </span>
+        </div>
+
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Expert Comparison</h2>
+
+    <div class="p3-table-scroll">
+        <table class="p3-table">
+
+            <thead>
+                <tr>
+                    <th>Expert</th>
+                    <th>Accuracy</th>
+                    <th>Macro F1</th>
+                    <th>Best Competence Region</th>
+                    <th>Best Region Accuracy</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for expert in expert_summary %}
+
+                <tr>
+                    <td>{{ expert.name }}</td>
+
+                    <td>
+                        {{ expert.accuracy|floatformat:4 }}
+                    </td>
+
+                    <td>
+                        {{ expert.macro_f1|floatformat:4 }}
+                    </td>
+
+                    <td>
+                        {{ expert.best_region_name }}
+                    </td>
+
+                    <td>
+                        {{ expert.best_region_accuracy|floatformat:4 }}
+                    </td>
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+    </div>
+
+    <div class="p3-info-box" style="margin-top: 18px;">
+        Both experts are deliberately weaker than the autonomous classifier
+        overall, but they achieve much higher reliability inside their
+        specialist regions. This makes selective deferral meaningful.
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Learning-to-Defer Comparison</h2>
+
+    <div class="p3-table-scroll">
+
+        <table class="p3-table">
+
+            <thead>
+                <tr>
+                    <th>Expert</th>
+                    <th>Best Strategy</th>
+                    <th>Team Accuracy</th>
+                    <th>Deferral Rate</th>
+                    <th>Oracle Accuracy</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for expert_key, expert in defer.experts.items %}
+
+                <tr>
+                    <td>
+                        {{ expert.name }}
+                    </td>
+
+                    <td>
+                        {{ expert.best_strategy_name }}
+                    </td>
+
+                    {% if expert.best_strategy_key == "confidence" %}
+                        <td>
+                            {{ expert.confidence_strategy.metrics.team_accuracy|floatformat:4 }}
+                        </td>
+
+                        <td>
+                            {% widthratio expert.confidence_strategy.metrics.deferral_rate 1 100 %}%
+                        </td>
+
+                        <td>
+                            {{ expert.confidence_strategy.metrics.oracle_accuracy|floatformat:4 }}
+                        </td>
+
+                    {% else %}
+                        <td>
+                            {{ expert.learned_strategy.metrics.team_accuracy|floatformat:4 }}
+                        </td>
+
+                        <td>
+                            {% widthratio expert.learned_strategy.metrics.deferral_rate 1 100 %}%
+                        </td>
+
+                        <td>
+                            {{ expert.learned_strategy.metrics.oracle_accuracy|floatformat:4 }}
+                        </td>
+                    {% endif %}
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <div class="p3-info-box" style="margin-top: 18px;">
+        The best strategy depends on the expert profile. This shows that a
+        more complex learned policy is not automatically superior to a simple
+        confidence-based baseline.
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Active Learning Comparison</h2>
+
+    <div class="p3-table-scroll">
+
+        <table class="p3-table">
+
+            <thead>
+                <tr>
+                    <th>Expert</th>
+                    <th>Best Query Strategy</th>
+                    <th>Queries</th>
+                    <th>Competence AUROC</th>
+                    <th>Team Accuracy</th>
+                    <th>Deferral Rate</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for expert_key, expert in active_learning.experts.items %}
+
+                {% for strategy_key, strategy in expert.strategies.items %}
+
+                    {% if strategy.is_best %}
+
+                    <tr class="p3-row-best">
+                        <td>
+                            {{ expert.name }}
+                        </td>
+
+                        <td>
+                            {{ strategy.name }}
+                        </td>
+
+                        <td>
+                            {{ strategy.final.query_budget }}
+                        </td>
+
+                        <td>
+                            {{ strategy.final.competence_auroc|floatformat:4 }}
+                        </td>
+
+                        <td>
+                            {{ strategy.final.team_accuracy|floatformat:4 }}
+                        </td>
+
+                        <td>
+                            {% widthratio strategy.final.deferral_rate 1 100 %}%
+                        </td>
+                    </tr>
+
+                    {% endif %}
+
+                {% endfor %}
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <div class="p3-info-box" style="margin-top: 18px;">
+        Active learning reduces the amount of expert supervision required by
+        selecting informative examples instead of querying expert labels for
+        the entire training set.
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Human–AI Collaboration Summary</h2>
+
+    <div class="p3-two-col">
+
+        <div>
+            <h3 class="p3-sub-heading">
+                Autonomous AI
+            </h3>
+
+            <p class="p3-muted">
+                The baseline classifier already achieves strong predictive
+                performance on AG News.
+            </p>
+
+            <div class="p3-stat-box">
+                <span class="p3-stat-number">
+                    {{ baseline.accuracy|floatformat:4 }}
+                </span>
+
+                <span class="p3-stat-label">
+                    Baseline accuracy
+                </span>
+            </div>
+        </div>
+
+
+        <div>
+            <h3 class="p3-sub-heading">
+                Human–AI Collaboration
+            </h3>
+
+            <p class="p3-muted">
+                Selective expert intervention can improve system performance
+                while querying the expert for only a small fraction of cases.
+            </p>
+
+            <div class="p3-info-box">
+                Expert intervention is most useful when the classifier is
+                uncertain and the selected expert is competent for the
+                current input.
+            </div>
+        </div>
+
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Key Findings</h2>
+
+    <div class="p3-finding-grid">
+
+        <article class="p3-finding-card">
+            <strong>Strong autonomous baseline</strong>
+
+            <p>
+                TF-IDF with Logistic Regression achieves high test accuracy,
+                so expert intervention must be selective rather than frequent.
+            </p>
+        </article>
+
+
+        <article class="p3-finding-card">
+            <strong>Expert competence is local</strong>
+
+            <p>
+                The simulated experts perform best only in specific regions
+                of the input space and are substantially weaker elsewhere.
+            </p>
+        </article>
+
+
+        <article class="p3-finding-card">
+            <strong>Deferral quality matters</strong>
+
+            <p>
+                Deferring more examples does not automatically improve the
+                system because harmful and unnecessary deferrals consume human
+                effort or introduce errors.
+            </p>
+        </article>
+
+
+        <article class="p3-finding-card">
+            <strong>No universally best deferral rule</strong>
+
+            <p>
+                Confidence-based and learned competence-aware policies behave
+                differently depending on the selected expert profile.
+            </p>
+        </article>
+
+
+        <article class="p3-finding-card">
+            <strong>Active selection can outperform passive querying</strong>
+
+            <p>
+                Query strategies can improve team performance using only a
+                subset of available expert labels instead of requesting every
+                possible expert response.
+            </p>
+        </article>
+
+
+        <article class="p3-finding-card">
+            <strong>Human effort is a resource</strong>
+
+            <p>
+                A useful human-centric system balances predictive performance
+                against the number of expert queries required.
+            </p>
+        </article>
+
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Project Pipeline</h2>
+
+    <div class="p3-pipeline">
+
+        <div class="p3-pipeline-item">
+            <strong>Baseline Classifier</strong>
+            <span>Autonomous news classification</span>
+        </div>
+
+        <div class="p3-pipeline-arrow">
+            ↓
+        </div>
+
+        <div class="p3-pipeline-item">
+            <strong>Simulated Experts</strong>
+            <span>Localized strengths and weaknesses</span>
+        </div>
+
+        <div class="p3-pipeline-arrow">
+            ↓
+        </div>
+
+        <div class="p3-pipeline-item">
+            <strong>Learning to Defer</strong>
+            <span>Choose AI or expert</span>
+        </div>
+
+        <div class="p3-pipeline-arrow">
+            ↓
+        </div>
+
+        <div class="p3-pipeline-item">
+            <strong>Active Learning</strong>
+            <span>Discover expertise efficiently</span>
+        </div>
+
+    </div>
+</section>
+
+{% endif %}
+
+{% endblock %}
