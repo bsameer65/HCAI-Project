@@ -1,0 +1,89 @@
+{
+  "model_name": "TF-IDF with Logistic Regression",
+  "train_samples": 120000,
+  "test_samples": 7600,
+  "accuracy": 0.9236842105263158,
+  "macro_f1": 0.9235693364411439,
+  "weighted_f1": 0.9235693364411439,
+  "classification_report": {
+    "World": {
+      "precision": 0.9373988127361036,
+      "recall": 0.9142105263157895,
+      "f1_score": 0.9256594724220624,
+      "support": 1900.0
+    },
+    "Sports": {
+      "precision": 0.959278350515464,
+      "recall": 0.9794736842105263,
+      "f1_score": 0.9692708333333333,
+      "support": 1900.0
+    },
+    "Business": {
+      "precision": 0.8952380952380953,
+      "recall": 0.8905263157894737,
+      "f1_score": 0.8928759894459103,
+      "support": 1900.0
+    },
+    "Sci/Tech": {
+      "precision": 0.9024517475221701,
+      "recall": 0.9105263157894737,
+      "f1_score": 0.9064710505632696,
+      "support": 1900.0
+    },
+    "accuracy": 0.9236842105263158,
+    "macro avg": {
+      "precision": 0.9235917515029582,
+      "recall": 0.9236842105263158,
+      "f1_score": 0.9235693364411439,
+      "support": 7600.0
+    },
+    "weighted avg": {
+      "precision": 0.9235917515029582,
+      "recall": 0.9236842105263158,
+      "f1_score": 0.9235693364411439,
+      "support": 7600.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      1737,
+      49,
+      70,
+      44
+    ],
+    [
+      19,
+      1861,
+      14,
+      6
+    ],
+    [
+      56,
+      15,
+      1692,
+      137
+    ],
+    [
+      41,
+      15,
+      114,
+      1730
+    ]
+  ],
+  "class_names": [
+    "World",
+    "Sports",
+    "Business",
+    "Sci/Tech"
+  ],
+  "configuration": {
+    "ngram_range": [
+      1,
+      2
+    ],
+    "max_features": 100000,
+    "minimum_document_frequency": 2,
+    "regularization_c": 4.0,
+    "random_state": 42
+  }
+}

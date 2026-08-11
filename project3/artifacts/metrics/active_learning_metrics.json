@@ -1,0 +1,769 @@
+{
+  "experiment": {
+    "name": "Active Learning for Expert Competence Discovery",
+    "initial_query_size": 100,
+    "batch_size": 100,
+    "query_budgets": [
+      100,
+      200,
+      400,
+      600,
+      800,
+      1000
+    ],
+    "random_state": 42
+  },
+  "dataset": {
+    "training_samples": 120000,
+    "test_samples": 7600
+  },
+  "classifier": {
+    "test_accuracy": 0.9236842105263158
+  },
+  "experts": {
+    "sports_business": {
+      "name": "Sports and Business Specialist",
+      "description": "Highly reliable for articles with clear Sports terminology and strong for Business-oriented articles, but substantially less reliable outside these areas.",
+      "best_strategy_key": "classifier_entropy",
+      "best_strategy_name": "Classifier Entropy",
+      "strategies": {
+        "random": {
+          "key": "random",
+          "name": "Random Sampling",
+          "learning_curve": [
+            {
+              "query_budget": 100,
+              "query_fraction": 0.0008333333333333334,
+              "competence_accuracy": 0.5763157894736842,
+              "competence_f1": 0.684437475499804,
+              "competence_auroc": 0.5265892153421536,
+              "brier_score": 0.2515348882766101,
+              "team_accuracy": 0.9234210526315789,
+              "deferral_rate": 0.034473684210526316,
+              "beneficial_deferrals": 66,
+              "harmful_deferrals": 68
+            },
+            {
+              "query_budget": 200,
+              "query_fraction": 0.0016666666666666668,
+              "competence_accuracy": 0.5344736842105263,
+              "competence_f1": 0.6038961038961039,
+              "competence_auroc": 0.5361752402351361,
+              "brier_score": 0.25685366614813576,
+              "team_accuracy": 0.9236842105263158,
+              "deferral_rate": 0.00013157894736842105,
+              "beneficial_deferrals": 0,
+              "harmful_deferrals": 0
+            },
+            {
+              "query_budget": 400,
+              "query_fraction": 0.0033333333333333335,
+              "competence_accuracy": 0.5273684210526316,
+              "competence_f1": 0.5857933579335793,
+              "competence_auroc": 0.5305088868579854,
+              "brier_score": 0.25519696959005506,
+              "team_accuracy": 0.9236842105263158,
+              "deferral_rate": 0.00013157894736842105,
+              "beneficial_deferrals": 0,
+              "harmful_deferrals": 0
+            },
+            {
+              "query_budget": 600,
+              "query_fraction": 0.005,
+              "competence_accuracy": 0.5322368421052631,
+              "competence_f1": 0.6024823884602483,
+              "competence_auroc": 0.5284050062696011,
+              "brier_score": 0.2522816607481285,
+              "team_accuracy": 0.9238157894736843,
+              "deferral_rate": 0.002368421052631579,
+              "beneficial_deferrals": 6,
+              "harmful_deferrals": 5
+            },
+            {
+              "query_budget": 800,
+              "query_fraction": 0.006666666666666667,
+              "competence_accuracy": 0.5373684210526316,
+              "competence_f1": 0.6082887700534759,
+              "competence_auroc": 0.5337845238322652,
+              "brier_score": 0.2514293059307647,
+              "team_accuracy": 0.9238157894736843,
+              "deferral_rate": 0.0025,
+              "beneficial_deferrals": 6,
+              "harmful_deferrals": 5
+            },
+            {
+              "query_budget": 1000,
+              "query_fraction": 0.008333333333333333,
+              "competence_accuracy": 0.5268421052631579,
+              "competence_f1": 0.585809721262382,
+              "competence_auroc": 0.5381950393556586,
+              "brier_score": 0.2512662024872452,
+              "team_accuracy": 0.9238157894736843,
+              "deferral_rate": 0.001973684210526316,
+              "beneficial_deferrals": 6,
+              "harmful_deferrals": 5
+            }
+          ],
+          "final": {
+            "query_budget": 1000,
+            "query_fraction": 0.008333333333333333,
+            "competence_accuracy": 0.5268421052631579,
+            "competence_f1": 0.585809721262382,
+            "competence_auroc": 0.5381950393556586,
+            "brier_score": 0.2512662024872452,
+            "team_accuracy": 0.9238157894736843,
+            "deferral_rate": 0.001973684210526316,
+            "beneficial_deferrals": 6,
+            "harmful_deferrals": 5
+          },
+          "is_best": false
+        },
+        "classifier_entropy": {
+          "key": "classifier_entropy",
+          "name": "Classifier Entropy",
+          "learning_curve": [
+            {
+              "query_budget": 100,
+              "query_fraction": 0.0008333333333333334,
+              "competence_accuracy": 0.5247368421052632,
+              "competence_f1": 0.5577864838393731,
+              "competence_auroc": 0.5483154978592785,
+              "brier_score": 0.25898096184529273,
+              "team_accuracy": 0.9242105263157895,
+              "deferral_rate": 0.0007894736842105263,
+              "beneficial_deferrals": 4,
+              "harmful_deferrals": 0
+            },
+            {
+              "query_budget": 200,
+              "query_fraction": 0.0016666666666666668,
+              "competence_accuracy": 0.5775,
+              "competence_f1": 0.6852269385354377,
+              "competence_auroc": 0.5534365017861043,
+              "brier_score": 0.238904283659138,
+              "team_accuracy": 0.925,
+              "deferral_rate": 0.021973684210526315,
+              "beneficial_deferrals": 51,
+              "harmful_deferrals": 41
+            },
+            {
+              "query_budget": 400,
+              "query_fraction": 0.0033333333333333335,
+              "competence_accuracy": 0.6051315789473685,
+              "competence_f1": 0.7419382578037664,
+              "competence_auroc": 0.5550242401708948,
+              "brier_score": 0.2342128054317996,
+              "team_accuracy": 0.9273684210526316,
+              "deferral_rate": 0.02986842105263158,
+              "beneficial_deferrals": 74,
+              "harmful_deferrals": 46
+            },
+            {
+              "query_budget": 600,
+              "query_fraction": 0.005,
+              "competence_accuracy": 0.6167105263157895,
+              "competence_f1": 0.756254706719103,
+              "competence_auroc": 0.5512856388336602,
+              "brier_score": 0.23363644920924684,
+              "team_accuracy": 0.9265789473684211,
+              "deferral_rate": 0.034473684210526316,
+              "beneficial_deferrals": 81,
+              "harmful_deferrals": 59
+            },
+            {
+              "query_budget": 800,
+              "query_fraction": 0.006666666666666667,
+              "competence_accuracy": 0.6197368421052631,
+              "competence_f1": 0.7591265210868479,
+              "competence_auroc": 0.5487234404897554,
+              "brier_score": 0.2336314110721867,
+              "team_accuracy": 0.9261842105263158,
+              "deferral_rate": 0.035394736842105264,
+              "beneficial_deferrals": 80,
+              "harmful_deferrals": 61
+            },
+            {
+              "query_budget": 1000,
+              "query_fraction": 0.008333333333333333,
+              "competence_accuracy": 0.6156578947368421,
+              "competence_f1": 0.7566036163653029,
+              "competence_auroc": 0.5499648959871677,
+              "brier_score": 0.2339101017593811,
+              "team_accuracy": 0.9275,
+              "deferral_rate": 0.03973684210526316,
+              "beneficial_deferrals": 96,
+              "harmful_deferrals": 67
+            }
+          ],
+          "final": {
+            "query_budget": 1000,
+            "query_fraction": 0.008333333333333333,
+            "competence_accuracy": 0.6156578947368421,
+            "competence_f1": 0.7566036163653029,
+            "competence_auroc": 0.5499648959871677,
+            "brier_score": 0.2339101017593811,
+            "team_accuracy": 0.9275,
+            "deferral_rate": 0.03973684210526316,
+            "beneficial_deferrals": 96,
+            "harmful_deferrals": 67
+          },
+          "is_best": true
+        },
+        "competence_uncertainty": {
+          "key": "competence_uncertainty",
+          "name": "Competence Uncertainty",
+          "learning_curve": [
+            {
+              "query_budget": 100,
+              "query_fraction": 0.0008333333333333334,
+              "competence_accuracy": 0.5501315789473684,
+              "competence_f1": 0.6203220433092727,
+              "competence_auroc": 0.5281548270248753,
+              "brier_score": 0.25283941464912346,
+              "team_accuracy": 0.9217105263157894,
+              "deferral_rate": 0.07039473684210526,
+              "beneficial_deferrals": 124,
+              "harmful_deferrals": 139
+            },
+            {
+              "query_budget": 200,
+              "query_fraction": 0.0016666666666666668,
+              "competence_accuracy": 0.5481578947368421,
+              "competence_f1": 0.6175946547884187,
+              "competence_auroc": 0.5216776037725732,
+              "brier_score": 0.25506987695306393,
+              "team_accuracy": 0.9217105263157894,
+              "deferral_rate": 0.07105263157894737,
+              "beneficial_deferrals": 123,
+              "harmful_deferrals": 138
+            },
+            {
+              "query_budget": 400,
+              "query_fraction": 0.0033333333333333335,
+              "competence_accuracy": 0.535921052631579,
+              "competence_f1": 0.5991589953403796,
+              "competence_auroc": 0.5279542853484576,
+              "brier_score": 0.2571715264418663,
+              "team_accuracy": 0.9231578947368421,
+              "deferral_rate": 0.07657894736842105,
+              "beneficial_deferrals": 141,
+              "harmful_deferrals": 145
+            },
+            {
+              "query_budget": 600,
+              "query_fraction": 0.005,
+              "competence_accuracy": 0.5464473684210527,
+              "competence_f1": 0.6140409808532079,
+              "competence_auroc": 0.5435491112109435,
+              "brier_score": 0.25358756479589833,
+              "team_accuracy": 0.9219736842105263,
+              "deferral_rate": 0.07013157894736842,
+              "beneficial_deferrals": 124,
+              "harmful_deferrals": 137
+            },
+            {
+              "query_budget": 800,
+              "query_fraction": 0.006666666666666667,
+              "competence_accuracy": 0.5013157894736842,
+              "competence_f1": 0.5113460546673543,
+              "competence_auroc": 0.5466187485889618,
+              "brier_score": 0.25299238444505656,
+              "team_accuracy": 0.9231578947368421,
+              "deferral_rate": 0.0643421052631579,
+              "beneficial_deferrals": 117,
+              "harmful_deferrals": 121
+            },
+            {
+              "query_budget": 1000,
+              "query_fraction": 0.008333333333333333,
+              "competence_accuracy": 0.5376315789473685,
+              "competence_f1": 0.5968334098210188,
+              "competence_auroc": 0.5456451736979303,
+              "brier_score": 0.254095795241761,
+              "team_accuracy": 0.9223684210526316,
+              "deferral_rate": 0.06828947368421052,
+              "beneficial_deferrals": 121,
+              "harmful_deferrals": 131
+            }
+          ],
+          "final": {
+            "query_budget": 1000,
+            "query_fraction": 0.008333333333333333,
+            "competence_accuracy": 0.5376315789473685,
+            "competence_f1": 0.5968334098210188,
+            "competence_auroc": 0.5456451736979303,
+            "brier_score": 0.254095795241761,
+            "team_accuracy": 0.9223684210526316,
+            "deferral_rate": 0.06828947368421052,
+            "beneficial_deferrals": 121,
+            "harmful_deferrals": 131
+          },
+          "is_best": false
+        },
+        "hybrid": {
+          "key": "hybrid",
+          "name": "Hybrid Uncertainty + Diversity",
+          "learning_curve": [
+            {
+              "query_budget": 100,
+              "query_fraction": 0.0008333333333333334,
+              "competence_accuracy": 0.5426315789473685,
+              "competence_f1": 0.6046405823475887,
+              "competence_auroc": 0.5496719384517755,
+              "brier_score": 0.2448957283975867,
+              "team_accuracy": 0.9255263157894736,
+              "deferral_rate": 0.053289473684210525,
+              "beneficial_deferrals": 107,
+              "harmful_deferrals": 93
+            },
+            {
+              "query_budget": 200,
+              "query_fraction": 0.0016666666666666668,
+              "competence_accuracy": 0.549078947368421,
+              "competence_f1": 0.6215350635008283,
+              "competence_auroc": 0.5507924346445445,
+              "brier_score": 0.24355123321499167,
+              "team_accuracy": 0.9232894736842105,
+              "deferral_rate": 0.06223684210526316,
+              "beneficial_deferrals": 113,
+              "harmful_deferrals": 116
+            },
+            {
+              "query_budget": 400,
+              "query_fraction": 0.0033333333333333335,
+              "competence_accuracy": 0.5414473684210527,
+              "competence_f1": 0.5963164600949844,
+              "competence_auroc": 0.5559962661927815,
+              "brier_score": 0.24246910206764213,
+              "team_accuracy": 0.925,
+              "deferral_rate": 0.03302631578947368,
+              "beneficial_deferrals": 66,
+              "harmful_deferrals": 56
+            },
+            {
+              "query_budget": 600,
+              "query_fraction": 0.005,
+              "competence_accuracy": 0.545,
+              "competence_f1": 0.6042572671091783,
+              "competence_auroc": 0.5570890302522908,
+              "brier_score": 0.24385354224690645,
+              "team_accuracy": 0.9252631578947368,
+              "deferral_rate": 0.04802631578947368,
+              "beneficial_deferrals": 93,
+              "harmful_deferrals": 81
+            },
+            {
+              "query_budget": 800,
+              "query_fraction": 0.006666666666666667,
+              "competence_accuracy": 0.545921052631579,
+              "competence_f1": 0.6072607260726073,
+              "competence_auroc": 0.5566599934991749,
+              "brier_score": 0.24456377073660074,
+              "team_accuracy": 0.9239473684210526,
+              "deferral_rate": 0.0506578947368421,
+              "beneficial_deferrals": 92,
+              "harmful_deferrals": 90
+            },
+            {
+              "query_budget": 1000,
+              "query_fraction": 0.008333333333333333,
+              "competence_accuracy": 0.5439473684210526,
+              "competence_f1": 0.6069403492855523,
+              "competence_auroc": 0.5567074921529495,
+              "brier_score": 0.2431074326308031,
+              "team_accuracy": 0.9251315789473684,
+              "deferral_rate": 0.04407894736842105,
+              "beneficial_deferrals": 86,
+              "harmful_deferrals": 75
+            }
+          ],
+          "final": {
+            "query_budget": 1000,
+            "query_fraction": 0.008333333333333333,
+            "competence_accuracy": 0.5439473684210526,
+            "competence_f1": 0.6069403492855523,
+            "competence_auroc": 0.5567074921529495,
+            "brier_score": 0.2431074326308031,
+            "team_accuracy": 0.9251315789473684,
+            "deferral_rate": 0.04407894736842105,
+            "beneficial_deferrals": 86,
+            "harmful_deferrals": 75
+          },
+          "is_best": false
+        }
+      }
+    },
+    "technology_world": {
+      "name": "Technology and World Affairs Specialist",
+      "description": "Highly reliable for articles containing clear technology terms and strong for international or political news, but weaker for Sports and Business articles.",
+      "best_strategy_key": "classifier_entropy",
+      "best_strategy_name": "Classifier Entropy",
+      "strategies": {
+        "random": {
+          "key": "random",
+          "name": "Random Sampling",
+          "learning_curve": [
+            {
+              "query_budget": 100,
+              "query_fraction": 0.0008333333333333334,
+              "competence_accuracy": 0.5064473684210526,
+              "competence_f1": 0.5472540736270368,
+              "competence_auroc": 0.5120285337952508,
+              "brier_score": 0.24974165125791464,
+              "team_accuracy": 0.9211842105263158,
+              "deferral_rate": 0.07289473684210526,
+              "beneficial_deferrals": 117,
+              "harmful_deferrals": 136
+            },
+            {
+              "query_budget": 200,
+              "query_fraction": 0.0016666666666666668,
+              "competence_accuracy": 0.520921052631579,
+              "competence_f1": 0.6170995898622358,
+              "competence_auroc": 0.48567499316564694,
+              "brier_score": 0.2522133893449728,
+              "team_accuracy": 0.9256578947368421,
+              "deferral_rate": 0.05105263157894737,
+              "beneficial_deferrals": 97,
+              "harmful_deferrals": 82
+            },
+            {
+              "query_budget": 400,
+              "query_fraction": 0.0033333333333333335,
+              "competence_accuracy": 0.4906578947368421,
+              "competence_f1": 0.517512152561386,
+              "competence_auroc": 0.5184480073649438,
+              "brier_score": 0.2507560344675904,
+              "team_accuracy": 0.925,
+              "deferral_rate": 0.028421052631578948,
+              "beneficial_deferrals": 59,
+              "harmful_deferrals": 49
+            },
+            {
+              "query_budget": 600,
+              "query_fraction": 0.005,
+              "competence_accuracy": 0.5276315789473685,
+              "competence_f1": 0.5705741626794258,
+              "competence_auroc": 0.5434960470884569,
+              "brier_score": 0.25035131901594204,
+              "team_accuracy": 0.9244736842105263,
+              "deferral_rate": 0.004078947368421053,
+              "beneficial_deferrals": 12,
+              "harmful_deferrals": 6
+            },
+            {
+              "query_budget": 800,
+              "query_fraction": 0.006666666666666667,
+              "competence_accuracy": 0.5328947368421053,
+              "competence_f1": 0.5874012087401209,
+              "competence_auroc": 0.542157289166277,
+              "brier_score": 0.25033804254079894,
+              "team_accuracy": 0.9244736842105263,
+              "deferral_rate": 0.005526315789473684,
+              "beneficial_deferrals": 15,
+              "harmful_deferrals": 9
+            },
+            {
+              "query_budget": 1000,
+              "query_fraction": 0.008333333333333333,
+              "competence_accuracy": 0.525921052631579,
+              "competence_f1": 0.567830154731918,
+              "competence_auroc": 0.5365425774216451,
+              "brier_score": 0.2507741365815646,
+              "team_accuracy": 0.9239473684210526,
+              "deferral_rate": 0.006578947368421052,
+              "beneficial_deferrals": 15,
+              "harmful_deferrals": 13
+            }
+          ],
+          "final": {
+            "query_budget": 1000,
+            "query_fraction": 0.008333333333333333,
+            "competence_accuracy": 0.525921052631579,
+            "competence_f1": 0.567830154731918,
+            "competence_auroc": 0.5365425774216451,
+            "brier_score": 0.2507741365815646,
+            "team_accuracy": 0.9239473684210526,
+            "deferral_rate": 0.006578947368421052,
+            "beneficial_deferrals": 15,
+            "harmful_deferrals": 13
+          },
+          "is_best": false
+        },
+        "classifier_entropy": {
+          "key": "classifier_entropy",
+          "name": "Classifier Entropy",
+          "learning_curve": [
+            {
+              "query_budget": 100,
+              "query_fraction": 0.0008333333333333334,
+              "competence_accuracy": 0.5101315789473684,
+              "competence_f1": 0.5174335709656513,
+              "competence_auroc": 0.536512653352702,
+              "brier_score": 0.24984899346326103,
+              "team_accuracy": 0.9257894736842105,
+              "deferral_rate": 0.05263157894736842,
+              "beneficial_deferrals": 101,
+              "harmful_deferrals": 85
+            },
+            {
+              "query_budget": 200,
+              "query_fraction": 0.0016666666666666668,
+              "competence_accuracy": 0.5577631578947368,
+              "competence_f1": 0.6663357490320659,
+              "competence_auroc": 0.5084291682434767,
+              "brier_score": 0.24776713233094733,
+              "team_accuracy": 0.9260526315789473,
+              "deferral_rate": 0.027763157894736844,
+              "beneficial_deferrals": 59,
+              "harmful_deferrals": 41
+            },
+            {
+              "query_budget": 400,
+              "query_fraction": 0.0033333333333333335,
+              "competence_accuracy": 0.4702631578947368,
+              "competence_f1": 0.5244507441530829,
+              "competence_auroc": 0.46556645356816995,
+              "brier_score": 0.253668839869674,
+              "team_accuracy": 0.9252631578947368,
+              "deferral_rate": 0.03276315789473684,
+              "beneficial_deferrals": 64,
+              "harmful_deferrals": 52
+            },
+            {
+              "query_budget": 600,
+              "query_fraction": 0.005,
+              "competence_accuracy": 0.47657894736842105,
+              "competence_f1": 0.540964689591507,
+              "competence_auroc": 0.46341938350766454,
+              "brier_score": 0.25241482144027333,
+              "team_accuracy": 0.9248684210526316,
+              "deferral_rate": 0.030263157894736843,
+              "beneficial_deferrals": 58,
+              "harmful_deferrals": 49
+            },
+            {
+              "query_budget": 800,
+              "query_fraction": 0.006666666666666667,
+              "competence_accuracy": 0.47578947368421054,
+              "competence_f1": 0.540590405904059,
+              "competence_auroc": 0.46215706600372897,
+              "brier_score": 0.2504185064825878,
+              "team_accuracy": 0.9252631578947368,
+              "deferral_rate": 0.026973684210526316,
+              "beneficial_deferrals": 55,
+              "harmful_deferrals": 43
+            },
+            {
+              "query_budget": 1000,
+              "query_fraction": 0.008333333333333333,
+              "competence_accuracy": 0.5351315789473684,
+              "competence_f1": 0.6489118553115373,
+              "competence_auroc": 0.4671341704682189,
+              "brier_score": 0.24854722553892758,
+              "team_accuracy": 0.925921052631579,
+              "deferral_rate": 0.02539473684210526,
+              "beneficial_deferrals": 56,
+              "harmful_deferrals": 39
+            }
+          ],
+          "final": {
+            "query_budget": 1000,
+            "query_fraction": 0.008333333333333333,
+            "competence_accuracy": 0.5351315789473684,
+            "competence_f1": 0.6489118553115373,
+            "competence_auroc": 0.4671341704682189,
+            "brier_score": 0.24854722553892758,
+            "team_accuracy": 0.925921052631579,
+            "deferral_rate": 0.02539473684210526,
+            "beneficial_deferrals": 56,
+            "harmful_deferrals": 39
+          },
+          "is_best": true
+        },
+        "competence_uncertainty": {
+          "key": "competence_uncertainty",
+          "name": "Competence Uncertainty",
+          "learning_curve": [
+            {
+              "query_budget": 100,
+              "query_fraction": 0.0008333333333333334,
+              "competence_accuracy": 0.4805263157894737,
+              "competence_f1": 0.5207574654042243,
+              "competence_auroc": 0.4970922934364344,
+              "brier_score": 0.25889495676553503,
+              "team_accuracy": 0.9194736842105263,
+              "deferral_rate": 0.09289473684210527,
+              "beneficial_deferrals": 150,
+              "harmful_deferrals": 182
+            },
+            {
+              "query_budget": 200,
+              "query_fraction": 0.0016666666666666668,
+              "competence_accuracy": 0.47907894736842105,
+              "competence_f1": 0.5123783717206553,
+              "competence_auroc": 0.4971255504525237,
+              "brier_score": 0.2583187903711523,
+              "team_accuracy": 0.9192105263157895,
+              "deferral_rate": 0.09513157894736841,
+              "beneficial_deferrals": 154,
+              "harmful_deferrals": 188
+            },
+            {
+              "query_budget": 400,
+              "query_fraction": 0.0033333333333333335,
+              "competence_accuracy": 0.483421052631579,
+              "competence_f1": 0.5297077144226162,
+              "competence_auroc": 0.4939696117819391,
+              "brier_score": 0.2615129143122403,
+              "team_accuracy": 0.9169736842105263,
+              "deferral_rate": 0.10684210526315789,
+              "beneficial_deferrals": 168,
+              "harmful_deferrals": 219
+            },
+            {
+              "query_budget": 600,
+              "query_fraction": 0.005,
+              "competence_accuracy": 0.5063157894736842,
+              "competence_f1": 0.5767148014440433,
+              "competence_auroc": 0.4973295847821691,
+              "brier_score": 0.2585991203342535,
+              "team_accuracy": 0.9201315789473684,
+              "deferral_rate": 0.08789473684210526,
+              "beneficial_deferrals": 140,
+              "harmful_deferrals": 167
+            },
+            {
+              "query_budget": 800,
+              "query_fraction": 0.006666666666666667,
+              "competence_accuracy": 0.5097368421052632,
+              "competence_f1": 0.5814423725005616,
+              "competence_auroc": 0.4972459712820232,
+              "brier_score": 0.25865688139366905,
+              "team_accuracy": 0.9197368421052632,
+              "deferral_rate": 0.09118421052631578,
+              "beneficial_deferrals": 145,
+              "harmful_deferrals": 175
+            },
+            {
+              "query_budget": 1000,
+              "query_fraction": 0.008333333333333333,
+              "competence_accuracy": 0.513421052631579,
+              "competence_f1": 0.5817688305813165,
+              "competence_auroc": 0.501773272792522,
+              "brier_score": 0.2622079774473871,
+              "team_accuracy": 0.9211842105263158,
+              "deferral_rate": 0.0868421052631579,
+              "beneficial_deferrals": 143,
+              "harmful_deferrals": 162
+            }
+          ],
+          "final": {
+            "query_budget": 1000,
+            "query_fraction": 0.008333333333333333,
+            "competence_accuracy": 0.513421052631579,
+            "competence_f1": 0.5817688305813165,
+            "competence_auroc": 0.501773272792522,
+            "brier_score": 0.2622079774473871,
+            "team_accuracy": 0.9211842105263158,
+            "deferral_rate": 0.0868421052631579,
+            "beneficial_deferrals": 143,
+            "harmful_deferrals": 162
+          },
+          "is_best": false
+        },
+        "hybrid": {
+          "key": "hybrid",
+          "name": "Hybrid Uncertainty + Diversity",
+          "learning_curve": [
+            {
+              "query_budget": 100,
+              "query_fraction": 0.0008333333333333334,
+              "competence_accuracy": 0.5301315789473684,
+              "competence_f1": 0.5737137400023875,
+              "competence_auroc": 0.5306174668601805,
+              "brier_score": 0.25265460300752135,
+              "team_accuracy": 0.9232894736842105,
+              "deferral_rate": 0.05144736842105263,
+              "beneficial_deferrals": 91,
+              "harmful_deferrals": 94
+            },
+            {
+              "query_budget": 200,
+              "query_fraction": 0.0016666666666666668,
+              "competence_accuracy": 0.5305263157894737,
+              "competence_f1": 0.5741227023155885,
+              "competence_auroc": 0.5343068944402747,
+              "brier_score": 0.24962794583193032,
+              "team_accuracy": 0.9231578947368421,
+              "deferral_rate": 0.04736842105263158,
+              "beneficial_deferrals": 85,
+              "harmful_deferrals": 89
+            },
+            {
+              "query_budget": 400,
+              "query_fraction": 0.0033333333333333335,
+              "competence_accuracy": 0.5302631578947369,
+              "competence_f1": 0.5734767025089605,
+              "competence_auroc": 0.5369291268352312,
+              "brier_score": 0.24861556560597178,
+              "team_accuracy": 0.9231578947368421,
+              "deferral_rate": 0.04092105263157895,
+              "beneficial_deferrals": 72,
+              "harmful_deferrals": 76
+            },
+            {
+              "query_budget": 600,
+              "query_fraction": 0.005,
+              "competence_accuracy": 0.5301315789473684,
+              "competence_f1": 0.5733062492531963,
+              "competence_auroc": 0.5390798921197464,
+              "brier_score": 0.2473030465730897,
+              "team_accuracy": 0.9228947368421052,
+              "deferral_rate": 0.04263157894736842,
+              "beneficial_deferrals": 75,
+              "harmful_deferrals": 81
+            },
+            {
+              "query_budget": 800,
+              "query_fraction": 0.006666666666666667,
+              "competence_accuracy": 0.5301315789473684,
+              "competence_f1": 0.5737137400023875,
+              "competence_auroc": 0.5379385750882923,
+              "brier_score": 0.24642009851685268,
+              "team_accuracy": 0.9225,
+              "deferral_rate": 0.04697368421052631,
+              "beneficial_deferrals": 79,
+              "harmful_deferrals": 88
+            },
+            {
+              "query_budget": 1000,
+              "query_fraction": 0.008333333333333333,
+              "competence_accuracy": 0.5305263157894737,
+              "competence_f1": 0.5758440323347599,
+              "competence_auroc": 0.5381547819205585,
+              "brier_score": 0.2449305663291576,
+              "team_accuracy": 0.9232894736842105,
+              "deferral_rate": 0.045921052631578946,
+              "beneficial_deferrals": 79,
+              "harmful_deferrals": 82
+            }
+          ],
+          "final": {
+            "query_budget": 1000,
+            "query_fraction": 0.008333333333333333,
+            "competence_accuracy": 0.5305263157894737,
+            "competence_f1": 0.5758440323347599,
+            "competence_auroc": 0.5381547819205585,
+            "brier_score": 0.2449305663291576,
+            "team_accuracy": 0.9232894736842105,
+            "deferral_rate": 0.045921052631578946,
+            "beneficial_deferrals": 79,
+            "harmful_deferrals": 82
+          },
+          "is_best": false
+        }
+      }
+    }
+  }
+}
