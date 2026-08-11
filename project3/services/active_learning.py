@@ -529,3 +529,94 @@ def select_query_indices(
     return candidate_indices[
         top_local_indices
     ].tolist()
+
+
+# ---------------------------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------------------------
+
+def evaluate_competence_predictions(
+    true_correctness: np.ndarray,
+    predicted_probabilities: np.ndarray,
+) -> dict:
+    """
+    Evaluate how accurately expert competence has been learned.
+    """
+
+    predicted_labels = (
+        predicted_probabilities
+        >= 0.5
+    ).astype(int)
+
+    accuracy = accuracy_score(
+        true_correctness,
+        predicted_labels,
+    )
+
+    f1 = f1_score(
+        true_correctness,
+        predicted_labels,
+        zero_division=0,
+    )
+
+    if len(
+        np.unique(
+            true_correctness
+        )
+    ) > 1:
+        auroc = roc_auc_score(
+            true_correctness,
+            predicted_probabilities,
+        )
+    else:
+        auroc = None
+
+    brier = brier_score_loss(
+        true_correctness,
+        predicted_probabilities,
+    )
+
+    return {
+        "accuracy": float(
+            accuracy
+        ),
+        "f1": float(
+            f1
+        ),
+        "auroc": (
+            float(auroc)
+            if auroc is not None
+            else None
+        ),
+        "brier_score": float(
+            brier
+        ),
+    }
+
+
+def evaluate_team_from_competence(
+    true_labels: np.ndarray,
+    classifier_predictions: np.ndarray,
+    classifier_confidence: np.ndarray,
+    expert_predictions: np.ndarray,
+    estimated_expert_accuracy: np.ndarray,
+) -> dict:
+    """
+    Defer when estimated expert competence exceeds classifier confidence.
+    """
+
+    defer_mask = (
+        estimated_expert_accuracy
+        > classifier_confidence
+    )
+
+    return calculate_deferral_metrics(
+        true_labels=true_labels,
+        classifier_predictions=(
+            classifier_predictions
+        ),
+        expert_predictions=(
+            expert_predictions
+        ),
+        defer_mask=defer_mask,
+    )
