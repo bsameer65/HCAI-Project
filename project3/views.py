@@ -16,6 +16,11 @@ from .services.simulated_expert import (
     load_expert_results,
 )
 
+from .services.active_learning import (
+    load_active_learning_results,
+    run_active_learning_experiment,
+)
+
 def index(request):
     return render(request, "project3/index.html")
 
@@ -111,7 +116,49 @@ def learning_to_defer(request):
 
 
 def active_learning(request):
-    return render(request, "project3/active_learning.html")
+
+    if request.method == "POST":
+
+        try:
+            run_active_learning_experiment()
+
+            messages.success(
+                request,
+                (
+                    "Active-learning experiment "
+                    "completed successfully."
+                ),
+            )
+
+        except Exception as exc:
+
+            messages.error(
+                request,
+                (
+                    "Active-learning experiment "
+                    f"failed: {exc}"
+                ),
+            )
+
+        return redirect(
+            "project3:active_learning"
+        )
+
+    result = (
+        load_active_learning_results()
+    )
+
+    return render(
+        request,
+        "project3/active_learning.html",
+        {
+            "result": result,
+            "results_available": (
+                result is not None
+            ),
+        },
+    )
+
 
 
 def compare_results(request):
