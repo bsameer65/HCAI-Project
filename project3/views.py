@@ -1,6 +1,11 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render
 
+from .services.active_learning import load_active_learning_results
+from .services.baseline import load_baseline_results
+from .services.learning_to_defer import load_learning_to_defer_results
+from .services.simulated_expert import load_expert_results
+
 from .services.baseline import (
     load_baseline_results,
     train_and_evaluate_baseline,
@@ -162,4 +167,54 @@ def active_learning(request):
 
 
 def compare_results(request):
-    return render(request, "project3/compare.html")
+    baseline_result = load_baseline_results()
+    expert_result = load_expert_results()
+    defer_result = load_learning_to_defer_results()
+    active_learning_result = load_active_learning_results()
+
+    results_available = all(
+        [
+            baseline_result is not None,
+            expert_result is not None,
+            defer_result is not None,
+            active_learning_result is not None,
+        ]
+    )
+
+    expert_summary = []
+
+    if expert_result is not None:
+        for expert_key, expert in expert_result["experts"].items():
+
+            best_region = max(
+                expert["region_analysis"].values(),
+                key=lambda region: region["observed_accuracy"],
+            )
+
+            expert_summary.append(
+                {
+                    "key": expert_key,
+                    "name": expert["name"],
+                    "accuracy": expert["accuracy"],
+                    "macro_f1": expert["macro_f1"],
+                    "best_region_name": best_region["display_name"],
+                    "best_region_accuracy": best_region[
+                        "observed_accuracy"
+                    ],
+                }
+            )
+
+    context = {
+        "baseline": baseline_result,
+        "experts": expert_result,
+        "expert_summary": expert_summary,
+        "defer": defer_result,
+        "active_learning": active_learning_result,
+        "results_available": results_available,
+    }
+
+    return render(
+        request,
+        "project3/compare.html",
+        context,
+    )
