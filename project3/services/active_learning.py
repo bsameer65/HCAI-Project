@@ -325,3 +325,207 @@ def fit_competence_model(
     )
 
     return model
+
+
+# ---------------------------------------------------------------------------
+# Query utilities
+# ---------------------------------------------------------------------------
+
+def competence_uncertainty_score(
+    probabilities: np.ndarray,
+) -> np.ndarray:
+    """
+    Binary uncertainty around P(expert correct)=0.5.
+
+    Highest utility occurs at probability 0.5.
+    """
+
+    return 1.0 - (
+        2.0
+        * np.abs(
+            probabilities - 0.5
+        )
+    )
+
+
+def normalize_scores(
+    values: np.ndarray,
+) -> np.ndarray:
+    """
+    Scale numerical utilities to [0, 1].
+    """
+
+    values = np.asarray(
+        values,
+        dtype=float,
+    )
+
+    minimum = values.min()
+    maximum = values.max()
+
+    if np.isclose(
+        minimum,
+        maximum,
+    ):
+        return np.zeros_like(values)
+
+    return (
+        values - minimum
+    ) / (
+        maximum - minimum
+    )
+
+
+def calculate_diversity_score(
+    pool_texts: list[str],
+    queried_texts: list[str],
+) -> np.ndarray:
+    """
+    Estimate diversity using TF-IDF distance from already queried samples.
+
+    A candidate receives high diversity utility when it has low maximum
+    cosine similarity with previously queried articles.
+    """
+
+    if not pool_texts:
+        return np.asarray([])
+
+    if not queried_texts:
+        return np.ones(
+            len(pool_texts),
+            dtype=float,
+        )
+
+    vectorizer = TfidfVectorizer(
+        lowercase=True,
+        max_features=5000,
+        min_df=2,
+        ngram_range=(1, 1),
+    )
+
+    all_texts = (
+        queried_texts
+        + pool_texts
+    )
+
+    matrix = vectorizer.fit_transform(
+        all_texts
+    )
+
+    queried_matrix = matrix[
+        :len(queried_texts)
+    ]
+
+    pool_matrix = matrix[
+        len(queried_texts):
+    ]
+
+    similarities = (
+        pool_matrix
+        @ queried_matrix.T
+    ).toarray()
+
+    maximum_similarity = (
+        similarities.max(axis=1)
+    )
+
+    diversity = (
+        1.0 - maximum_similarity
+    )
+
+    return normalize_scores(
+        diversity
+    )
+
+
+def select_query_indices(
+    strategy_key: str,
+    candidate_indices: np.ndarray,
+    batch_size: int,
+    classifier_entropy: np.ndarray,
+    competence_probabilities: np.ndarray | None,
+    texts: list[str],
+    queried_indices: list[int],
+    random_generator: random.Random,
+) -> list[int]:
+    """
+    Select the next batch according to one query strategy.
+    """
+
+    if len(candidate_indices) <= batch_size:
+        return candidate_indices.tolist()
+
+    if strategy_key == "random":
+        return random_generator.sample(
+            candidate_indices.tolist(),
+            batch_size,
+        )
+
+    if strategy_key == "classifier_entropy":
+        utility = classifier_entropy[
+            candidate_indices
+        ]
+
+    elif strategy_key == "competence_uncertainty":
+        if competence_probabilities is None:
+            raise ValueError(
+                "Competence probabilities are required."
+            )
+
+        utility = competence_uncertainty_score(
+            competence_probabilities[
+                candidate_indices
+            ]
+        )
+
+    elif strategy_key == "hybrid":
+        if competence_probabilities is None:
+            raise ValueError(
+                "Competence probabilities are required."
+            )
+
+        uncertainty = (
+            competence_uncertainty_score(
+                competence_probabilities[
+                    candidate_indices
+                ]
+            )
+        )
+
+        pool_texts = [
+            texts[index]
+            for index in candidate_indices
+        ]
+
+        queried_texts = [
+            texts[index]
+            for index in queried_indices
+        ]
+
+        diversity = calculate_diversity_score(
+            pool_texts=pool_texts,
+            queried_texts=queried_texts,
+        )
+
+        # Equal-weight combination of information and representation utility.
+        utility = (
+            0.5
+            * normalize_scores(
+                uncertainty
+            )
+            + 0.5
+            * diversity
+        )
+
+    else:
+        raise ValueError(
+            f"Unknown active-learning strategy: {strategy_key}"
+        )
+
+    top_local_indices = np.argsort(
+        utility
+    )[-batch_size:]
+
+    return candidate_indices[
+        top_local_indices
+    ].tolist()
