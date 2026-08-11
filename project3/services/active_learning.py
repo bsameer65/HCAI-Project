@@ -866,3 +866,294 @@ def run_strategy_for_expert(
         "learning_curve": learning_curve,
         "final": final_point,
     }
+
+
+# ---------------------------------------------------------------------------
+# Full experiment
+# ---------------------------------------------------------------------------
+
+def run_active_learning_experiment() -> dict:
+    """
+    Compare all query strategies for both simulated experts.
+    """
+
+    dataset = load_ag_news()
+
+    # ---------------------------------------------------------------
+    # Train classifier using the complete labeled training set.
+    # This is explicitly allowed by the project specification.
+    # ---------------------------------------------------------------
+
+    classifier = build_baseline_pipeline()
+
+    classifier.fit(
+        dataset.train["text"],
+        dataset.train["label"],
+    )
+
+    train_predictions = classifier.predict(
+        dataset.train["text"]
+    )
+
+    train_probabilities = (
+        classifier.predict_proba(
+            dataset.train["text"]
+        )
+    )
+
+    test_predictions = classifier.predict(
+        dataset.test["text"]
+    )
+
+    test_probabilities = (
+        classifier.predict_proba(
+            dataset.test["text"]
+        )
+    )
+
+    train_entropy = calculate_entropy(
+        train_probabilities
+    )
+
+    test_confidence = calculate_confidence(
+        test_probabilities
+    )
+
+    # ---------------------------------------------------------------
+    # Build features that do not reveal expert labels.
+    # ---------------------------------------------------------------
+
+    train_features = (
+        build_competence_features(
+            texts=dataset.train["text"],
+            classifier_predictions=(
+                train_predictions
+            ),
+            classifier_probabilities=(
+                train_probabilities
+            ),
+        )
+    )
+
+    test_features = (
+        build_competence_features(
+            texts=dataset.test["text"],
+            classifier_predictions=(
+                test_predictions
+            ),
+            classifier_probabilities=(
+                test_probabilities
+            ),
+        )
+    )
+
+    train_texts = (
+        dataset.train["text"].tolist()
+    )
+
+    train_labels = (
+        dataset.train["label"].to_numpy()
+    )
+
+    test_labels = (
+        dataset.test["label"].to_numpy()
+    )
+
+    expert_results = {}
+
+    # ---------------------------------------------------------------
+    # Evaluate active learning separately for each expert.
+    # ---------------------------------------------------------------
+
+    for profile_key, profile in EXPERT_PROFILES.items():
+
+        # The simulator generates hidden oracle responses.
+        # The active learner receives only queried entries.
+        train_expert_outputs = query_expert(
+            texts=dataset.train["text"],
+            true_labels=dataset.train["label"],
+            profile=profile,
+            seed_offset=500,
+        )
+
+        test_expert_outputs = query_expert(
+            texts=dataset.test["text"],
+            true_labels=dataset.test["label"],
+            profile=profile,
+            seed_offset=600,
+        )
+
+        strategy_results = {}
+
+        for strategy_key in STRATEGIES:
+
+            strategy_results[
+                strategy_key
+            ] = run_strategy_for_expert(
+                strategy_key=strategy_key,
+                profile=profile,
+                train_texts=train_texts,
+                train_labels=train_labels,
+                train_features=train_features,
+                train_classifier_entropy=(
+                    train_entropy
+                ),
+                test_features=test_features,
+                test_labels=test_labels,
+                test_classifier_predictions=(
+                    test_predictions
+                ),
+                test_classifier_confidence=(
+                    test_confidence
+                ),
+                test_expert_outputs=(
+                    test_expert_outputs
+                ),
+                train_expert_outputs=(
+                    train_expert_outputs
+                ),
+            )
+
+        best_strategy_key = max(
+            strategy_results,
+            key=lambda key: (
+                strategy_results[key][
+                    "final"
+                ]["team_accuracy"]
+            ),
+        )
+
+        for strategy_key, strategy in (
+            strategy_results.items()
+        ):
+            strategy["is_best"] = (
+                strategy_key
+                == best_strategy_key
+            )
+
+        expert_results[
+            profile_key
+        ] = {
+            "name": profile.name,
+            "description": (
+                profile.description
+            ),
+            "best_strategy_key": (
+                best_strategy_key
+            ),
+            "best_strategy_name": (
+                strategy_results[
+                    best_strategy_key
+                ]["name"]
+            ),
+            "strategies": (
+                strategy_results
+            ),
+        }
+
+    result = {
+        "experiment": {
+            "name": (
+                "Active Learning for "
+                "Expert Competence Discovery"
+            ),
+            "initial_query_size": (
+                INITIAL_QUERY_SIZE
+            ),
+            "batch_size": BATCH_SIZE,
+            "query_budgets": (
+                QUERY_BUDGETS
+            ),
+            "random_state": (
+                RANDOM_STATE
+            ),
+        },
+
+        "dataset": {
+            "training_samples": int(
+                len(dataset.train)
+            ),
+            "test_samples": int(
+                len(dataset.test)
+            ),
+        },
+
+        "classifier": {
+            "test_accuracy": float(
+                accuracy_score(
+                    test_labels,
+                    test_predictions,
+                )
+            ),
+        },
+
+        "experts": expert_results,
+    }
+
+    save_active_learning_results(
+        result
+    )
+
+    return result
+
+# ---------------------------------------------------------------------------
+# Persistence
+# ---------------------------------------------------------------------------
+
+def save_active_learning_results(
+    result: dict,
+) -> None:
+    """
+    Save active-learning experiment results atomically.
+    """
+
+    ACTIVE_LEARNING_METRICS_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    temporary_path = (
+        ACTIVE_LEARNING_METRICS_PATH.with_suffix(
+            ".json.tmp"
+        )
+    )
+
+    try:
+        with temporary_path.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
+
+            json.dump(
+                result,
+                file,
+                indent=2,
+                ensure_ascii=False,
+            )
+
+        temporary_path.replace(
+            ACTIVE_LEARNING_METRICS_PATH
+        )
+
+    except Exception:
+
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+        raise
+
+
+def load_active_learning_results() -> dict | None:
+    """
+    Load previously generated active-learning results.
+    """
+
+    if not ACTIVE_LEARNING_METRICS_PATH.exists():
+        return None
+
+    with ACTIVE_LEARNING_METRICS_PATH.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+
+        return json.load(file)
