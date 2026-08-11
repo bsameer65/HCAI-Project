@@ -620,3 +620,249 @@ def evaluate_team_from_competence(
         ),
         defer_mask=defer_mask,
     )
+
+
+# ---------------------------------------------------------------------------
+# One active-learning strategy
+# ---------------------------------------------------------------------------
+
+def run_strategy_for_expert(
+    strategy_key: str,
+    profile: ExpertProfile,
+    train_texts: list[str],
+    train_labels: np.ndarray,
+    train_features: pd.DataFrame,
+    train_classifier_entropy: np.ndarray,
+    test_features: pd.DataFrame,
+    test_labels: np.ndarray,
+    test_classifier_predictions: np.ndarray,
+    test_classifier_confidence: np.ndarray,
+    test_expert_outputs: list[ExpertPrediction],
+    train_expert_outputs: list[ExpertPrediction],
+) -> dict:
+    """
+    Run one complete pool-based active-learning experiment.
+    """
+
+    random_generator = random.Random(
+        RANDOM_STATE
+        + profile.random_state
+        + sum(
+            ord(character)
+            for character in strategy_key
+        )
+    )
+
+    train_expert_correctness = (
+        build_expert_correctness_target(
+            train_labels,
+            train_expert_outputs,
+        )
+    )
+
+    test_expert_correctness = (
+        build_expert_correctness_target(
+            test_labels,
+            test_expert_outputs,
+        )
+    )
+
+    test_expert_predictions = np.asarray(
+        [
+            output.prediction
+            for output in test_expert_outputs
+        ],
+        dtype=int,
+    )
+
+    all_indices = np.arange(
+        len(train_labels)
+    )
+
+    # Same-size random seed for every strategy.
+    queried_indices = random_generator.sample(
+        all_indices.tolist(),
+        INITIAL_QUERY_SIZE,
+    )
+
+    learning_curve = []
+
+    for query_budget in QUERY_BUDGETS:
+
+        while (
+            len(queried_indices)
+            < query_budget
+        ):
+
+            model = fit_competence_model(
+                features=train_features,
+                targets=train_expert_correctness,
+                queried_indices=queried_indices,
+            )
+
+            pool_mask = np.ones(
+                len(train_labels),
+                dtype=bool,
+            )
+
+            pool_mask[
+                queried_indices
+            ] = False
+
+            candidate_indices = all_indices[
+                pool_mask
+            ]
+
+            remaining_budget = (
+                query_budget
+                - len(queried_indices)
+            )
+
+            current_batch_size = min(
+                BATCH_SIZE,
+                remaining_budget,
+            )
+
+            competence_probabilities = (
+                model.predict_proba(
+                    train_features
+                )[:, 1]
+            )
+
+            selected_indices = (
+                select_query_indices(
+                    strategy_key=strategy_key,
+                    candidate_indices=(
+                        candidate_indices
+                    ),
+                    batch_size=(
+                        current_batch_size
+                    ),
+                    classifier_entropy=(
+                        train_classifier_entropy
+                    ),
+                    competence_probabilities=(
+                        competence_probabilities
+                    ),
+                    texts=train_texts,
+                    queried_indices=(
+                        queried_indices
+                    ),
+                    random_generator=(
+                        random_generator
+                    ),
+                )
+            )
+
+            queried_indices.extend(
+                selected_indices
+            )
+
+        # Retrain after reaching this budget.
+        competence_model = (
+            fit_competence_model(
+                features=train_features,
+                targets=train_expert_correctness,
+                queried_indices=queried_indices,
+            )
+        )
+
+        test_competence_probability = (
+            competence_model.predict_proba(
+                test_features
+            )[:, 1]
+        )
+
+        competence_metrics = (
+            evaluate_competence_predictions(
+                true_correctness=(
+                    test_expert_correctness
+                ),
+                predicted_probabilities=(
+                    test_competence_probability
+                ),
+            )
+        )
+
+        team_metrics = (
+            evaluate_team_from_competence(
+                true_labels=test_labels,
+                classifier_predictions=(
+                    test_classifier_predictions
+                ),
+                classifier_confidence=(
+                    test_classifier_confidence
+                ),
+                expert_predictions=(
+                    test_expert_predictions
+                ),
+                estimated_expert_accuracy=(
+                    test_competence_probability
+                ),
+            )
+        )
+
+        learning_curve.append(
+            {
+                "query_budget": int(
+                    query_budget
+                ),
+                "query_fraction": float(
+                    query_budget
+                    / len(train_labels)
+                ),
+                "competence_accuracy": (
+                    competence_metrics[
+                        "accuracy"
+                    ]
+                ),
+                "competence_f1": (
+                    competence_metrics[
+                        "f1"
+                    ]
+                ),
+                "competence_auroc": (
+                    competence_metrics[
+                        "auroc"
+                    ]
+                ),
+                "brier_score": (
+                    competence_metrics[
+                        "brier_score"
+                    ]
+                ),
+                "team_accuracy": (
+                    team_metrics[
+                        "team_accuracy"
+                    ]
+                ),
+                "deferral_rate": (
+                    team_metrics[
+                        "deferral_rate"
+                    ]
+                ),
+                "beneficial_deferrals": (
+                    team_metrics[
+                        "beneficial_deferrals"
+                    ]
+                ),
+                "harmful_deferrals": (
+                    team_metrics[
+                        "harmful_deferrals"
+                    ]
+                ),
+            }
+        )
+
+    final_point = (
+        learning_curve[-1]
+    )
+
+    return {
+        "key": strategy_key,
+        "name": STRATEGIES[
+            strategy_key
+        ],
+        "learning_curve": learning_curve,
+        "final": final_point,
+    }
