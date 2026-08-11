@@ -247,3 +247,81 @@ def build_expert_correctness_target(
         expert_predictions
         == true_labels
     ).astype(int)
+
+
+# ---------------------------------------------------------------------------
+# Competence model
+# ---------------------------------------------------------------------------
+
+def build_competence_model() -> Pipeline:
+    """
+    Binary model estimating the probability that the expert is correct.
+    """
+
+    preprocessing = ColumnTransformer(
+        transformers=[
+            (
+                "numeric",
+                "passthrough",
+                NUMERIC_FEATURES,
+            ),
+            (
+                "categorical",
+                OneHotEncoder(
+                    handle_unknown="ignore",
+                ),
+                CATEGORICAL_FEATURES,
+            ),
+        ]
+    )
+
+    classifier = LogisticRegression(
+        max_iter=1000,
+        class_weight="balanced",
+        random_state=RANDOM_STATE,
+        solver="liblinear",
+    )
+
+    return Pipeline(
+        steps=[
+            (
+                "preprocessing",
+                preprocessing,
+            ),
+            (
+                "classifier",
+                classifier,
+            ),
+        ]
+    )
+
+
+def fit_competence_model(
+    features: pd.DataFrame,
+    targets: np.ndarray,
+    queried_indices: list[int],
+) -> Pipeline:
+    """
+    Train a competence model using only queried expert examples.
+    """
+
+    queried_targets = targets[
+        queried_indices
+    ]
+
+    if len(np.unique(queried_targets)) < 2:
+        raise ValueError(
+            "Queried expert labels contain only one correctness class. "
+            "Increase the initial query size."
+        )
+
+    model = build_competence_model()
+
+    model.fit(
+        features.iloc[
+            queried_indices
+        ],
+        queried_targets,
+    )
+
+    return model
