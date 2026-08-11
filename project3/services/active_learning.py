@@ -187,3 +187,63 @@ def build_competence_features(
     )
 
 
+# ---------------------------------------------------------------------------
+# Expert oracle
+# ---------------------------------------------------------------------------
+
+def query_expert(
+    texts: Iterable[str],
+    true_labels: Iterable[int],
+    profile: ExpertProfile,
+    seed_offset: int,
+) -> list[ExpertPrediction]:
+    """
+    Query the simulated expert.
+
+    In the experiment, this function represents the oracle. The active
+    learner may call it only for selected indices.
+    """
+
+    queried_profile = replace(
+        profile,
+        random_state=(
+            profile.random_state
+            + seed_offset
+        ),
+    )
+
+    return simulate_expert_predictions(
+        texts=texts,
+        true_labels=true_labels,
+        profile=queried_profile,
+    )
+
+
+def build_expert_correctness_target(
+    true_labels: Iterable[int],
+    expert_outputs: list[ExpertPrediction],
+) -> np.ndarray:
+    """
+    Target for competence discovery.
+
+    1 = expert prediction is correct
+    0 = expert prediction is incorrect
+    """
+
+    true_labels = np.asarray(
+        list(true_labels),
+        dtype=int,
+    )
+
+    expert_predictions = np.asarray(
+        [
+            output.prediction
+            for output in expert_outputs
+        ],
+        dtype=int,
+    )
+
+    return (
+        expert_predictions
+        == true_labels
+    ).astype(int)
