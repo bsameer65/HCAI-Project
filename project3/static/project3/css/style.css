@@ -491,7 +491,7 @@
   background: #9aa9bd;
 }
 
-* ---------- Baseline training overlay ---------- */
+/* ---------- Baseline training overlay ---------- */
 
 .p3-training-overlay {
   display: none;
@@ -703,3 +703,194 @@
   font-weight: 700;
 }
 
+
+/* ---------- Learning-to-defer methods ---------- */
+
+.p3-method-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(280px, 1fr)
+  );
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.p3-method-card {
+  background: #f8fafd;
+  border: 1px solid #dce5f1;
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.p3-method-card h3 {
+  margin-top: 0;
+  color: #1a4f8a;
+}
+
+.p3-defer-explanation {
+  margin-top: 22px;
+}
+
+/* ---------- Active learning ---------- */
+
+.p3-al-strategy {
+  margin-top: 26px;
+  padding-top: 6px;
+}
+
+.p3-al-strategy + .p3-al-strategy {
+  border-top: 2px solid #e8edf5;
+  padding-top: 24px;
+}
+
+.p3-al-strategy h3 {
+  color: #1a4f8a;
+  font-size: 1rem;
+}
+
+/* ---------- Results comparison ---------- */
+
+.p3-finding-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(260px, 1fr)
+  );
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.p3-finding-card {
+  padding: 18px;
+  background: #f8fafd;
+  border: 1px solid #dce5f1;
+  border-radius: 10px;
+}
+
+.p3-finding-card strong {
+  display: block;
+  margin-bottom: 7px;
+  color: #1a4f8a;
+}
+
+.p3-finding-card p {
+  margin: 0;
+  color: #4d5e74;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+
+/* ---------- Project pipeline ---------- */
+
+.p3-pipeline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.p3-pipeline-item {
+  width: min(520px, 100%);
+  padding: 16px 20px;
+  background: #eef3fb;
+  border: 1px solid #d0daf0;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.p3-pipeline-item strong {
+  display: block;
+  color: #1a4f8a;
+  margin-bottom: 3px;
+}
+
+.p3-pipeline-item span {
+  color: #5a6d8a;
+  font-size: 0.87rem;
+}
+
+.p3-pipeline-arrow {
+  color: #1a4f8a;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* ---------- Human expert demo ---------- */
+
+.p3-human-progress-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+  color: #1a4f8a;
+  font-size: 0.9rem;
+}
+
+.p3-human-progress-track {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dfe7f2;
+}
+
+.p3-human-progress-fill {
+  height: 100%;
+  background: #1a4f8a;
+  border-radius: inherit;
+  transition: width 0.25s ease;
+}
+
+.p3-human-article {
+  padding: 22px;
+  margin: 18px 0 24px;
+  background: #f8fafd;
+  border: 1px solid #dce5f1;
+  border-left: 4px solid #1a4f8a;
+  border-radius: 10px;
+  line-height: 1.7;
+  font-size: 0.96rem;
+}
+
+.p3-human-label-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(180px, 1fr)
+  );
+  gap: 14px;
+}
+
+.p3-human-label-button {
+  padding: 16px;
+  border: 1.5px solid #1a4f8a;
+  border-radius: 10px;
+  background: white;
+  color: #1a4f8a;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.15s;
+}
+
+.p3-human-label-button:hover {
+  background: #1a4f8a;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.p3-human-correct {
+  color: #1b5e20;
+  font-weight: 700;
+}
+
+.p3-human-wrong {
+  color: #b71c1c;
+  font-weight: 700;
+}

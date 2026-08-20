@@ -76,6 +76,13 @@
             >
                 Results
             </a>
+
+            <a
+                href="{% url 'project3:human_expert' %}"
+                class="{% if request.resolver_match.url_name == 'human_expert' %}active{% endif %}"
+            >
+                Human Expert Demo
+            </a>
         </nav>
 
         {% if messages %}

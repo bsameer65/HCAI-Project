@@ -1,0 +1,532 @@
+{% extends "project3/base.html" %}
+
+{% block title %}
+    Human Expert Demo
+{% endblock %}
+
+{% block content %}
+
+<section class="p3-card">
+    <h2>Human Expert Demo</h2>
+
+    <p>
+        This optional extension replaces the simulated expert with a real
+        participant. The system selects articles, asks the participant for
+        labels, and estimates an initial human competence profile from the
+        collected responses.
+    </p>
+
+    <div class="p3-info-box">
+        The mandatory experiments remain based on simulated experts for
+        reproducibility. This interface demonstrates how the same workflow
+        can operate with an actual human in the loop.
+    </div>
+</section>
+
+
+{% if not session_started %}
+
+<section class="p3-card">
+    <h2>Start Annotation Session</h2>
+
+    <p class="p3-muted">
+        Choose how the system should select articles for expert annotation.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <input
+            type="hidden"
+            name="action"
+            value="start"
+        >
+
+        <div class="p3-form-row">
+            <label
+                class="p3-label"
+                for="strategy"
+            >
+                Query Strategy
+
+                <span class="p3-label-help">
+                    Determines which articles are shown to the human expert.
+                </span>
+            </label>
+
+            <select
+                id="strategy"
+                name="strategy"
+                class="p3-select"
+                required
+            >
+                <option value="">
+                    Select strategy
+                </option>
+
+                {% for strategy_key, strategy_name in strategies.items %}
+                    <option value="{{ strategy_key }}">
+                        {{ strategy_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="p3-form-row">
+            <label
+                class="p3-label"
+                for="query_count"
+            >
+                Number of Expert Queries
+
+                <span class="p3-label-help">
+                    Use a small number for demonstration. More queries give
+                    a more informative competence estimate.
+                </span>
+            </label>
+
+            <select
+                id="query_count"
+                name="query_count"
+                class="p3-select"
+            >
+                <option value="8">8 queries</option>
+                <option value="12" selected>12 queries</option>
+                <option value="20">20 queries</option>
+                <option value="40">40 queries</option>
+            </select>
+        </div>
+
+        <button
+            type="submit"
+            class="p3-btn"
+        >
+            Start Human Expert Session
+        </button>
+    </form>
+</section>
+
+
+<section class="p3-card">
+    <h2>Available Query Strategies</h2>
+
+    <div class="p3-method-grid">
+
+        <article class="p3-method-card">
+            <h3>Random Sampling</h3>
+
+            <p>
+                Selects articles randomly and provides a passive-learning
+                reference baseline.
+            </p>
+        </article>
+
+        <article class="p3-method-card">
+            <h3>Classifier Entropy</h3>
+
+            <p>
+                Prioritizes articles where the classifier is most uncertain.
+            </p>
+        </article>
+
+        <article class="p3-method-card">
+            <h3>Balanced Entropy</h3>
+
+            <p>
+                Selects uncertain articles while maintaining broader coverage
+                across predicted news categories.
+            </p>
+
+            <div class="p3-info-box">
+                This helps avoid spending all human queries on one narrow
+                region of the input space.
+            </div>
+        </article>
+
+    </div>
+</section>
+
+
+{% elif not completed %}
+
+<section class="p3-card">
+    <div class="p3-human-progress-header">
+
+        <strong>
+            Annotation {{ position }} of {{ target_annotations }}
+        </strong>
+
+        <span>
+            {{ progress_percent|floatformat:0 }}% complete
+        </span>
+
+    </div>
+
+    <div class="p3-human-progress-track">
+        <div
+            class="p3-human-progress-fill"
+            style="width: {{ progress_percent }}%;"
+        ></div>
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Classify the News Article</h2>
+
+    <p class="p3-muted">
+        Query strategy:
+        <strong>{{ strategy_name }}</strong>
+    </p>
+
+    <article class="p3-human-article">
+        {{ article_text }}
+    </article>
+
+    <form
+        method="post"
+        class="p3-human-form"
+    >
+        {% csrf_token %}
+
+        <input
+            type="hidden"
+            name="article_index"
+            value="{{ article_index }}"
+        >
+
+        <div class="p3-human-label-grid">
+
+            {% for label_value, label_name in class_choices %}
+
+            <button
+                type="submit"
+                name="selected_label"
+                value="{{ label_value }}"
+                class="p3-human-label-button"
+            >
+                {{ label_name }}
+            </button>
+
+            {% endfor %}
+
+        </div>
+    </form>
+</section>
+
+
+<section class="p3-card">
+    <h2>Why Was This Article Selected?</h2>
+
+    <div class="p3-stat-row">
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ classifier_prediction }}
+            </span>
+
+            <span class="p3-stat-label">
+                Classifier prediction
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {% widthratio classifier_confidence 1 100 %}%
+            </span>
+
+            <span class="p3-stat-label">
+                Classifier confidence
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ classifier_entropy|floatformat:3 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Predictive entropy
+            </span>
+        </div>
+
+    </div>
+
+    <div class="p3-info-box" style="margin-top: 18px;">
+        This information is shown for transparency. The participant's label,
+        not the classifier prediction, is stored as the human expert response.
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Category Guide</h2>
+
+    <div class="p3-glossary">
+
+        <div class="p3-glossary-item">
+            <strong>World</strong>
+            Politics, governments, conflicts, international affairs, and
+            global events.
+        </div>
+
+        <div class="p3-glossary-item">
+            <strong>Sports</strong>
+            Teams, athletes, matches, leagues, tournaments, and sporting
+            events.
+        </div>
+
+        <div class="p3-glossary-item">
+            <strong>Business</strong>
+            Companies, markets, finance, earnings, investments, and trade.
+        </div>
+
+        <div class="p3-glossary-item">
+            <strong>Sci/Tech</strong>
+            Technology, computing, science, software, research, and digital
+            products.
+        </div>
+
+    </div>
+</section>
+
+
+{% else %}
+
+<section class="p3-card">
+    <h2>Human Competence Profile</h2>
+
+    <div class="p3-success-box">
+        Annotation session completed using
+        <strong>{{ strategy_name }}</strong>.
+    </div>
+
+    <div class="p3-warning-box">
+        This profile is an initial descriptive estimate based on a limited
+        number of annotations. It should not be interpreted as a statistically
+        reliable assessment of the participant's expertise.
+    </div>
+
+    <div class="p3-stat-row">
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ competence.total }}
+            </span>
+
+            <span class="p3-stat-label">
+                Expert queries
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ competence.correct }}
+            </span>
+
+            <span class="p3-stat-label">
+                Correct labels
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ competence.accuracy_percent|floatformat:1 }}%
+            </span>
+
+            <span class="p3-stat-label">
+                Overall accuracy
+            </span>
+        </div>
+
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Competence by Category</h2>
+
+    <div class="p3-region-grid">
+
+        {% for category in competence.categories %}
+
+        <article class="p3-region-card">
+
+            <div class="p3-region-card-header">
+                <strong>{{ category.name }}</strong>
+
+                <span>
+                    {{ category.samples }} queries
+                </span>
+            </div>
+
+            {% if category.accuracy_percent != None %}
+
+            <div class="p3-region-metric">
+
+                <div class="p3-region-label-row">
+                    <span>Observed human accuracy</span>
+
+                    <strong>
+                        {{ category.accuracy_percent|floatformat:1 }}%
+                    </strong>
+                </div>
+
+                <div class="p3-bar-track">
+                    <div
+                        class="p3-bar-fill p3-bar-observed"
+                        style="width: {{ category.accuracy_percent }}%;"
+                    ></div>
+                </div>
+
+            </div>
+
+            {% else %}
+
+            <p class="p3-muted">
+                No queried examples from this category.
+            </p>
+
+            {% endif %}
+
+        </article>
+
+        {% endfor %}
+
+    </div>
+
+
+    {% if competence.strongest_category and competence.weakest_category %}
+
+    <div class="p3-two-col">
+
+        <div class="p3-success-box">
+            <strong>Strongest observed category:</strong>
+            {{ competence.strongest_category.name }}
+            —
+            {{ competence.strongest_category.accuracy_percent|floatformat:1 }}%
+        </div>
+
+        <div class="p3-warning-box">
+            <strong>Weakest observed category:</strong>
+            {{ competence.weakest_category.name }}
+            —
+            {{ competence.weakest_category.accuracy_percent|floatformat:1 }}%
+        </div>
+
+    </div>
+
+    {% endif %}
+</section>
+
+
+<section class="p3-card">
+    <h2>Annotation Details</h2>
+
+    <div class="p3-table-scroll">
+
+        <table class="p3-table">
+
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Human Label</th>
+                    <th>Reference Label</th>
+                    <th>AI Prediction</th>
+                    <th>AI Confidence</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for response in responses %}
+
+                <tr>
+                    <td>
+                        {{ forloop.counter }}
+                    </td>
+
+                    <td>
+                        {{ response.get_selected_label_display }}
+                    </td>
+
+                    <td>
+                        {{ response.get_true_label_display }}
+                    </td>
+
+                    <td>
+                        {{ response.get_classifier_prediction_display }}
+                    </td>
+
+                    <td>
+                        {% if response.classifier_confidence != None %}
+                            {% widthratio response.classifier_confidence 1 100 %}%
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if response.is_correct %}
+                            <span class="p3-human-correct">
+                                Correct
+                            </span>
+                        {% else %}
+                            <span class="p3-human-wrong">
+                                Incorrect
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Why This Extension Matters</h2>
+
+    <div class="p3-info-box">
+        The mandatory experiments define expert competence synthetically so
+        that results are reproducible. This extension demonstrates the real
+        human-in-the-loop setting: competence is unknown beforehand and must
+        be inferred from selectively requested human annotations.
+    </div>
+
+    <p>
+        An effective query strategy should learn useful information about the
+        human while minimizing the number of interruptions and labels
+        requested from them.
+    </p>
+</section>
+
+
+<section class="p3-card">
+    <form method="post">
+        {% csrf_token %}
+
+        <input
+            type="hidden"
+            name="action"
+            value="reset"
+        >
+
+        <button
+            type="submit"
+            class="p3-btn"
+        >
+            Start New Annotation Session
+        </button>
+    </form>
+</section>
+
+{% endif %}
+
+{% endblock %}

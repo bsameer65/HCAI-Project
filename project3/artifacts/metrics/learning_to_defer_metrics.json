@@ -1,0 +1,723 @@
+{
+  "experiment": {
+    "name": "Learning to Defer",
+    "random_state": 42
+  },
+  "development_split": {
+    "classifier_train_samples": 84000,
+    "deferral_train_samples": 18000,
+    "deferral_validation_samples": 18000
+  },
+  "classifier": {
+    "development_validation_accuracy": 0.9209444444444445,
+    "final_test_accuracy": 0.9236842105263158
+  },
+  "experts": {
+    "sports_business": {
+      "name": "Sports and Business Specialist",
+      "description": "Highly reliable for articles with clear Sports terminology and strong for Business-oriented articles, but substantially less reliable outside these areas.",
+      "best_strategy_key": "confidence",
+      "best_strategy_name": "Confidence-Threshold Deferral",
+      "confidence_strategy": {
+        "name": "Confidence-Threshold Deferral",
+        "selected_threshold": 0.5,
+        "is_best": true,
+        "metrics": {
+          "sample_count": 7600,
+          "classifier_accuracy": 0.9236842105263158,
+          "expert_accuracy": 0.6207894736842106,
+          "team_accuracy": 0.9252631578947368,
+          "team_macro_f1": 0.9251736289021701,
+          "team_weighted_f1": 0.9251736289021701,
+          "oracle_accuracy": 0.9719736842105263,
+          "deferred_count": 221,
+          "deferral_rate": 0.02907894736842105,
+          "deferred_accuracy": 0.5746606334841629,
+          "non_deferred_accuracy": 0.9357636536116005,
+          "beneficial_opportunities": 367,
+          "beneficial_deferrals": 69,
+          "beneficial_deferral_precision": 0.31221719457013575,
+          "beneficial_deferral_recall": 0.1880108991825613,
+          "harmful_deferrals": 57,
+          "harmful_deferral_rate": 0.2579185520361991,
+          "unnecessary_deferrals": 58,
+          "unnecessary_deferral_rate": 0.26244343891402716,
+          "hopeless_deferrals": 37,
+          "missed_beneficial_deferrals": 298,
+          "missed_beneficial_rate": 0.8119891008174387,
+          "classification_report": {
+            "World": {
+              "precision": 0.9395248380129589,
+              "recall": 0.9157894736842105,
+              "f1_score": 0.9275053304904051,
+              "support": 1900.0
+            },
+            "Sports": {
+              "precision": 0.9628291171915333,
+              "recall": 0.9815789473684211,
+              "f1_score": 0.9721136304404483,
+              "support": 1900.0
+            },
+            "Business": {
+              "precision": 0.8923884514435696,
+              "recall": 0.8947368421052632,
+              "f1_score": 0.8935611038107752,
+              "support": 1900.0
+            },
+            "Sci/Tech": {
+              "precision": 0.9060860440713536,
+              "recall": 0.9089473684210526,
+              "f1_score": 0.9075144508670521,
+              "support": 1900.0
+            },
+            "accuracy": 0.9252631578947368,
+            "macro avg": {
+              "precision": 0.9252071126798538,
+              "recall": 0.9252631578947369,
+              "f1_score": 0.9251736289021701,
+              "support": 7600.0
+            },
+            "weighted avg": {
+              "precision": 0.9252071126798539,
+              "recall": 0.9252631578947368,
+              "f1_score": 0.9251736289021701,
+              "support": 7600.0
+            }
+          },
+          "confusion_matrix": [
+            [
+              1740,
+              47,
+              70,
+              43
+            ],
+            [
+              21,
+              1865,
+              12,
+              2
+            ],
+            [
+              53,
+              13,
+              1700,
+              134
+            ],
+            [
+              38,
+              12,
+              123,
+              1727
+            ]
+          ]
+        },
+        "threshold_search": [
+          {
+            "threshold": 0.4,
+            "team_accuracy": 0.9221111111111111,
+            "deferral_rate": 0.007611111111111111
+          },
+          {
+            "threshold": 0.45,
+            "team_accuracy": 0.9233888888888889,
+            "deferral_rate": 0.015444444444444445
+          },
+          {
+            "threshold": 0.5,
+            "team_accuracy": 0.9241111111111111,
+            "deferral_rate": 0.03088888888888889
+          },
+          {
+            "threshold": 0.55,
+            "team_accuracy": 0.9232777777777778,
+            "deferral_rate": 0.05211111111111111
+          },
+          {
+            "threshold": 0.6,
+            "team_accuracy": 0.9231666666666667,
+            "deferral_rate": 0.07266666666666667
+          },
+          {
+            "threshold": 0.65,
+            "team_accuracy": 0.9191666666666667,
+            "deferral_rate": 0.09594444444444444
+          },
+          {
+            "threshold": 0.7,
+            "team_accuracy": 0.9144444444444444,
+            "deferral_rate": 0.12322222222222222
+          },
+          {
+            "threshold": 0.75,
+            "team_accuracy": 0.9083333333333333,
+            "deferral_rate": 0.154
+          },
+          {
+            "threshold": 0.8,
+            "team_accuracy": 0.8983888888888889,
+            "deferral_rate": 0.191
+          },
+          {
+            "threshold": 0.85,
+            "team_accuracy": 0.8825,
+            "deferral_rate": 0.24216666666666667
+          },
+          {
+            "threshold": 0.9,
+            "team_accuracy": 0.8588333333333333,
+            "deferral_rate": 0.315
+          },
+          {
+            "threshold": 0.95,
+            "team_accuracy": 0.8098333333333333,
+            "deferral_rate": 0.4533333333333333
+          }
+        ]
+      },
+      "learned_strategy": {
+        "name": "Competence-Aware Learned Deferral",
+        "selected_threshold": 0.9,
+        "is_best": false,
+        "metrics": {
+          "sample_count": 7600,
+          "classifier_accuracy": 0.9236842105263158,
+          "expert_accuracy": 0.6207894736842106,
+          "team_accuracy": 0.9242105263157895,
+          "team_macro_f1": 0.9240081003553362,
+          "team_weighted_f1": 0.9240081003553362,
+          "oracle_accuracy": 0.9719736842105263,
+          "deferred_count": 218,
+          "deferral_rate": 0.028684210526315788,
+          "deferred_accuracy": 0.5871559633027523,
+          "non_deferred_accuracy": 0.9341641831481983,
+          "beneficial_opportunities": 367,
+          "beneficial_deferrals": 61,
+          "beneficial_deferral_precision": 0.2798165137614679,
+          "beneficial_deferral_recall": 0.16621253405994552,
+          "harmful_deferrals": 57,
+          "harmful_deferral_rate": 0.26146788990825687,
+          "unnecessary_deferrals": 67,
+          "unnecessary_deferral_rate": 0.3073394495412844,
+          "hopeless_deferrals": 33,
+          "missed_beneficial_deferrals": 306,
+          "missed_beneficial_rate": 0.8337874659400545,
+          "classification_report": {
+            "World": {
+              "precision": 0.93024494142705,
+              "recall": 0.9194736842105263,
+              "f1_score": 0.9248279512969825,
+              "support": 1900.0
+            },
+            "Sports": {
+              "precision": 0.9535240040858018,
+              "recall": 0.9826315789473684,
+              "f1_score": 0.9678589942975635,
+              "support": 1900.0
+            },
+            "Business": {
+              "precision": 0.8947922146238821,
+              "recall": 0.8952631578947369,
+              "f1_score": 0.8950276243093923,
+              "support": 1900.0
+            },
+            "Sci/Tech": {
+              "precision": 0.917337627482555,
+              "recall": 0.8994736842105263,
+              "f1_score": 0.9083178315174063,
+              "support": 1900.0
+            },
+            "accuracy": 0.9242105263157895,
+            "macro avg": {
+              "precision": 0.9239746969048223,
+              "recall": 0.9242105263157895,
+              "f1_score": 0.9240081003553362,
+              "support": 7600.0
+            },
+            "weighted avg": {
+              "precision": 0.9239746969048223,
+              "recall": 0.9242105263157895,
+              "f1_score": 0.9240081003553362,
+              "support": 7600.0
+            }
+          },
+          "confusion_matrix": [
+            [
+              1747,
+              49,
+              67,
+              37
+            ],
+            [
+              21,
+              1867,
+              12,
+              0
+            ],
+            [
+              64,
+              18,
+              1701,
+              117
+            ],
+            [
+              46,
+              24,
+              121,
+              1709
+            ]
+          ]
+        },
+        "threshold_search": [
+          {
+            "threshold": 0.05,
+            "team_accuracy": 0.6253888888888889,
+            "deferral_rate": 1.0
+          },
+          {
+            "threshold": 0.1,
+            "team_accuracy": 0.6448333333333334,
+            "deferral_rate": 0.9531666666666667
+          },
+          {
+            "threshold": 0.15,
+            "team_accuracy": 0.7261666666666666,
+            "deferral_rate": 0.7536111111111111
+          },
+          {
+            "threshold": 0.2,
+            "team_accuracy": 0.7878888888888889,
+            "deferral_rate": 0.601
+          },
+          {
+            "threshold": 0.25,
+            "team_accuracy": 0.8268888888888889,
+            "deferral_rate": 0.46166666666666667
+          },
+          {
+            "threshold": 0.3,
+            "team_accuracy": 0.8504444444444444,
+            "deferral_rate": 0.3721111111111111
+          },
+          {
+            "threshold": 0.35,
+            "team_accuracy": 0.8645,
+            "deferral_rate": 0.3158888888888889
+          },
+          {
+            "threshold": 0.4,
+            "team_accuracy": 0.8771111111111111,
+            "deferral_rate": 0.27644444444444444
+          },
+          {
+            "threshold": 0.45,
+            "team_accuracy": 0.8880555555555556,
+            "deferral_rate": 0.24416666666666667
+          },
+          {
+            "threshold": 0.5,
+            "team_accuracy": 0.8954444444444445,
+            "deferral_rate": 0.21722222222222223
+          },
+          {
+            "threshold": 0.55,
+            "team_accuracy": 0.9010555555555556,
+            "deferral_rate": 0.1965
+          },
+          {
+            "threshold": 0.6,
+            "team_accuracy": 0.9060555555555555,
+            "deferral_rate": 0.17344444444444446
+          },
+          {
+            "threshold": 0.65,
+            "team_accuracy": 0.9104444444444444,
+            "deferral_rate": 0.15444444444444444
+          },
+          {
+            "threshold": 0.7,
+            "team_accuracy": 0.9149444444444444,
+            "deferral_rate": 0.13616666666666666
+          },
+          {
+            "threshold": 0.75,
+            "team_accuracy": 0.9187222222222222,
+            "deferral_rate": 0.11683333333333333
+          },
+          {
+            "threshold": 0.8,
+            "team_accuracy": 0.9221666666666667,
+            "deferral_rate": 0.09433333333333334
+          },
+          {
+            "threshold": 0.85,
+            "team_accuracy": 0.9248888888888889,
+            "deferral_rate": 0.06866666666666667
+          },
+          {
+            "threshold": 0.9,
+            "team_accuracy": 0.9250555555555555,
+            "deferral_rate": 0.034333333333333334
+          },
+          {
+            "threshold": 0.95,
+            "team_accuracy": 0.9219444444444445,
+            "deferral_rate": 0.0024444444444444444
+          }
+        ]
+      }
+    },
+    "technology_world": {
+      "name": "Technology and World Affairs Specialist",
+      "description": "Highly reliable for articles containing clear technology terms and strong for international or political news, but weaker for Sports and Business articles.",
+      "best_strategy_key": "learned",
+      "best_strategy_name": "Competence-Aware Learned Deferral",
+      "confidence_strategy": {
+        "name": "Confidence-Threshold Deferral",
+        "selected_threshold": 0.45,
+        "is_best": false,
+        "metrics": {
+          "sample_count": 7600,
+          "classifier_accuracy": 0.9236842105263158,
+          "expert_accuracy": 0.6113157894736843,
+          "team_accuracy": 0.9253947368421053,
+          "team_macro_f1": 0.9252777894011179,
+          "team_weighted_f1": 0.9252777894011178,
+          "oracle_accuracy": 0.9694736842105263,
+          "deferred_count": 106,
+          "deferral_rate": 0.013947368421052632,
+          "deferred_accuracy": 0.5660377358490566,
+          "non_deferred_accuracy": 0.9304777155057379,
+          "beneficial_opportunities": 348,
+          "beneficial_deferrals": 34,
+          "beneficial_deferral_precision": 0.32075471698113206,
+          "beneficial_deferral_recall": 0.09770114942528736,
+          "harmful_deferrals": 21,
+          "harmful_deferral_rate": 0.19811320754716982,
+          "unnecessary_deferrals": 26,
+          "unnecessary_deferral_rate": 0.24528301886792453,
+          "hopeless_deferrals": 25,
+          "missed_beneficial_deferrals": 314,
+          "missed_beneficial_rate": 0.9022988505747126,
+          "classification_report": {
+            "World": {
+              "precision": 0.943058568329718,
+              "recall": 0.9152631578947369,
+              "f1_score": 0.9289529914529915,
+              "support": 1900.0
+            },
+            "Sports": {
+              "precision": 0.9603909465020576,
+              "recall": 0.9826315789473684,
+              "f1_score": 0.9713839750260146,
+              "support": 1900.0
+            },
+            "Business": {
+              "precision": 0.8961864406779662,
+              "recall": 0.8905263157894737,
+              "f1_score": 0.8933474128827877,
+              "support": 1900.0
+            },
+            "Sci/Tech": {
+              "precision": 0.9017671517671517,
+              "recall": 0.9131578947368421,
+              "f1_score": 0.9074267782426778,
+              "support": 1900.0
+            },
+            "accuracy": 0.9253947368421053,
+            "macro avg": {
+              "precision": 0.9253507768192234,
+              "recall": 0.9253947368421053,
+              "f1_score": 0.9252777894011179,
+              "support": 7600.0
+            },
+            "weighted avg": {
+              "precision": 0.9253507768192235,
+              "recall": 0.9253947368421053,
+              "f1_score": 0.9252777894011178,
+              "support": 7600.0
+            }
+          },
+          "confusion_matrix": [
+            [
+              1739,
+              49,
+              70,
+              42
+            ],
+            [
+              14,
+              1867,
+              11,
+              8
+            ],
+            [
+              56,
+              13,
+              1692,
+              139
+            ],
+            [
+              35,
+              15,
+              115,
+              1735
+            ]
+          ]
+        },
+        "threshold_search": [
+          {
+            "threshold": 0.4,
+            "team_accuracy": 0.9219444444444445,
+            "deferral_rate": 0.007611111111111111
+          },
+          {
+            "threshold": 0.45,
+            "team_accuracy": 0.9235,
+            "deferral_rate": 0.015444444444444445
+          },
+          {
+            "threshold": 0.5,
+            "team_accuracy": 0.9235,
+            "deferral_rate": 0.03088888888888889
+          },
+          {
+            "threshold": 0.55,
+            "team_accuracy": 0.9235,
+            "deferral_rate": 0.05211111111111111
+          },
+          {
+            "threshold": 0.6,
+            "team_accuracy": 0.9215,
+            "deferral_rate": 0.07266666666666667
+          },
+          {
+            "threshold": 0.65,
+            "team_accuracy": 0.9185555555555556,
+            "deferral_rate": 0.09594444444444444
+          },
+          {
+            "threshold": 0.7,
+            "team_accuracy": 0.9139444444444444,
+            "deferral_rate": 0.12322222222222222
+          },
+          {
+            "threshold": 0.75,
+            "team_accuracy": 0.9073333333333333,
+            "deferral_rate": 0.154
+          },
+          {
+            "threshold": 0.8,
+            "team_accuracy": 0.8977222222222222,
+            "deferral_rate": 0.191
+          },
+          {
+            "threshold": 0.85,
+            "team_accuracy": 0.8826666666666667,
+            "deferral_rate": 0.24216666666666667
+          },
+          {
+            "threshold": 0.9,
+            "team_accuracy": 0.8586666666666667,
+            "deferral_rate": 0.315
+          },
+          {
+            "threshold": 0.95,
+            "team_accuracy": 0.8086111111111111,
+            "deferral_rate": 0.4533333333333333
+          }
+        ]
+      },
+      "learned_strategy": {
+        "name": "Competence-Aware Learned Deferral",
+        "selected_threshold": 0.85,
+        "is_best": true,
+        "metrics": {
+          "sample_count": 7600,
+          "classifier_accuracy": 0.9236842105263158,
+          "expert_accuracy": 0.6113157894736843,
+          "team_accuracy": 0.9263157894736842,
+          "team_macro_f1": 0.9260584030724235,
+          "team_weighted_f1": 0.9260584030724236,
+          "oracle_accuracy": 0.9694736842105263,
+          "deferred_count": 463,
+          "deferral_rate": 0.060921052631578945,
+          "deferred_accuracy": 0.6306695464362851,
+          "non_deferred_accuracy": 0.9454953061510438,
+          "beneficial_opportunities": 348,
+          "beneficial_deferrals": 113,
+          "beneficial_deferral_precision": 0.24406047516198703,
+          "beneficial_deferral_recall": 0.32471264367816094,
+          "harmful_deferrals": 93,
+          "harmful_deferral_rate": 0.20086393088552915,
+          "unnecessary_deferrals": 179,
+          "unnecessary_deferral_rate": 0.38660907127429806,
+          "hopeless_deferrals": 78,
+          "missed_beneficial_deferrals": 235,
+          "missed_beneficial_rate": 0.6752873563218391,
+          "classification_report": {
+            "World": {
+              "precision": 0.933119315141787,
+              "recall": 0.9178947368421052,
+              "f1_score": 0.9254444149641815,
+              "support": 1900.0
+            },
+            "Sports": {
+              "precision": 0.9463019250253293,
+              "recall": 0.9831578947368421,
+              "f1_score": 0.9643779039752194,
+              "support": 1900.0
+            },
+            "Business": {
+              "precision": 0.9102150537634408,
+              "recall": 0.8910526315789473,
+              "f1_score": 0.9005319148936171,
+              "support": 1900.0
+            },
+            "Sci/Tech": {
+              "precision": 0.9146020031628888,
+              "recall": 0.9131578947368421,
+              "f1_score": 0.9138793784566763,
+              "support": 1900.0
+            },
+            "accuracy": 0.9263157894736842,
+            "macro avg": {
+              "precision": 0.9260595742733615,
+              "recall": 0.9263157894736842,
+              "f1_score": 0.9260584030724235,
+              "support": 7600.0
+            },
+            "weighted avg": {
+              "precision": 0.9260595742733614,
+              "recall": 0.9263157894736842,
+              "f1_score": 0.9260584030724236,
+              "support": 7600.0
+            }
+          },
+          "confusion_matrix": [
+            [
+              1744,
+              52,
+              61,
+              43
+            ],
+            [
+              16,
+              1868,
+              9,
+              7
+            ],
+            [
+              65,
+              30,
+              1693,
+              112
+            ],
+            [
+              44,
+              24,
+              97,
+              1735
+            ]
+          ]
+        },
+        "threshold_search": [
+          {
+            "threshold": 0.05,
+            "team_accuracy": 0.6052777777777778,
+            "deferral_rate": 1.0
+          },
+          {
+            "threshold": 0.1,
+            "team_accuracy": 0.606,
+            "deferral_rate": 0.9989444444444444
+          },
+          {
+            "threshold": 0.15,
+            "team_accuracy": 0.6942777777777778,
+            "deferral_rate": 0.7968888888888889
+          },
+          {
+            "threshold": 0.2,
+            "team_accuracy": 0.778,
+            "deferral_rate": 0.5788888888888889
+          },
+          {
+            "threshold": 0.25,
+            "team_accuracy": 0.8205,
+            "deferral_rate": 0.46305555555555555
+          },
+          {
+            "threshold": 0.3,
+            "team_accuracy": 0.8467777777777777,
+            "deferral_rate": 0.39744444444444443
+          },
+          {
+            "threshold": 0.35,
+            "team_accuracy": 0.862,
+            "deferral_rate": 0.3481111111111111
+          },
+          {
+            "threshold": 0.4,
+            "team_accuracy": 0.8771111111111111,
+            "deferral_rate": 0.29533333333333334
+          },
+          {
+            "threshold": 0.45,
+            "team_accuracy": 0.8862222222222222,
+            "deferral_rate": 0.2571111111111111
+          },
+          {
+            "threshold": 0.5,
+            "team_accuracy": 0.8938333333333334,
+            "deferral_rate": 0.22872222222222222
+          },
+          {
+            "threshold": 0.55,
+            "team_accuracy": 0.8995555555555556,
+            "deferral_rate": 0.20266666666666666
+          },
+          {
+            "threshold": 0.6,
+            "team_accuracy": 0.9058888888888889,
+            "deferral_rate": 0.17988888888888888
+          },
+          {
+            "threshold": 0.65,
+            "team_accuracy": 0.9104444444444444,
+            "deferral_rate": 0.15716666666666668
+          },
+          {
+            "threshold": 0.7,
+            "team_accuracy": 0.9153333333333333,
+            "deferral_rate": 0.13522222222222222
+          },
+          {
+            "threshold": 0.75,
+            "team_accuracy": 0.9190555555555555,
+            "deferral_rate": 0.11505555555555555
+          },
+          {
+            "threshold": 0.8,
+            "team_accuracy": 0.9217222222222222,
+            "deferral_rate": 0.09133333333333334
+          },
+          {
+            "threshold": 0.85,
+            "team_accuracy": 0.9246666666666666,
+            "deferral_rate": 0.0615
+          },
+          {
+            "threshold": 0.9,
+            "team_accuracy": 0.9241666666666667,
+            "deferral_rate": 0.025611111111111112
+          },
+          {
+            "threshold": 0.95,
+            "team_accuracy": 0.9218333333333333,
+            "deferral_rate": 0.0023888888888888887
+          }
+        ]
+      }
+    }
+  }
+}

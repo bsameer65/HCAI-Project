@@ -1,0 +1,460 @@
+{
+  "test_samples": 7600,
+  "expert_count": 2,
+  "best_expert_key": "sports_business",
+  "best_expert_name": "Sports and Business Specialist",
+  "experts": {
+    "sports_business": {
+      "key": "sports_business",
+      "name": "Sports and Business Specialist",
+      "description": "Highly reliable for articles with clear Sports terminology and strong for Business-oriented articles, but substantially less reliable outside these areas.",
+      "test_samples": 7600,
+      "accuracy": 0.6189473684210526,
+      "macro_f1": 0.6199534771622912,
+      "weighted_f1": 0.6199534771622912,
+      "classification_report": {
+        "World": {
+          "precision": 0.5917822838847385,
+          "recall": 0.5836842105263158,
+          "f1_score": 0.5877053524112348,
+          "support": 1900.0
+        },
+        "Sports": {
+          "precision": 0.7342342342342343,
+          "recall": 0.6863157894736842,
+          "f1_score": 0.7094668117519043,
+          "support": 1900.0
+        },
+        "Business": {
+          "precision": 0.565281173594132,
+          "recall": 0.608421052631579,
+          "f1_score": 0.5860583016476553,
+          "support": 1900.0
+        },
+        "Sci/Tech": {
+          "precision": 0.5958005249343832,
+          "recall": 0.5973684210526315,
+          "f1_score": 0.5965834428383706,
+          "support": 1900.0
+        },
+        "accuracy": 0.6189473684210526,
+        "macro avg": {
+          "precision": 0.621774554161872,
+          "recall": 0.6189473684210527,
+          "f1_score": 0.6199534771622912,
+          "support": 7600.0
+        },
+        "weighted avg": {
+          "precision": 0.621774554161872,
+          "recall": 0.6189473684210526,
+          "f1_score": 0.6199534771622912,
+          "support": 7600.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          1109,
+          163,
+          295,
+          333
+        ],
+        [
+          321,
+          1304,
+          135,
+          140
+        ],
+        [
+          287,
+          160,
+          1156,
+          297
+        ],
+        [
+          157,
+          149,
+          459,
+          1135
+        ]
+      ],
+      "confusion_matrix_rows": [
+        {
+          "true_class": "World",
+          "cells": [
+            {
+              "predicted_class": "World",
+              "count": 1109
+            },
+            {
+              "predicted_class": "Sports",
+              "count": 163
+            },
+            {
+              "predicted_class": "Business",
+              "count": 295
+            },
+            {
+              "predicted_class": "Sci/Tech",
+              "count": 333
+            }
+          ]
+        },
+        {
+          "true_class": "Sports",
+          "cells": [
+            {
+              "predicted_class": "World",
+              "count": 321
+            },
+            {
+              "predicted_class": "Sports",
+              "count": 1304
+            },
+            {
+              "predicted_class": "Business",
+              "count": 135
+            },
+            {
+              "predicted_class": "Sci/Tech",
+              "count": 140
+            }
+          ]
+        },
+        {
+          "true_class": "Business",
+          "cells": [
+            {
+              "predicted_class": "World",
+              "count": 287
+            },
+            {
+              "predicted_class": "Sports",
+              "count": 160
+            },
+            {
+              "predicted_class": "Business",
+              "count": 1156
+            },
+            {
+              "predicted_class": "Sci/Tech",
+              "count": 297
+            }
+          ]
+        },
+        {
+          "true_class": "Sci/Tech",
+          "cells": [
+            {
+              "predicted_class": "World",
+              "count": 157
+            },
+            {
+              "predicted_class": "Sports",
+              "count": 149
+            },
+            {
+              "predicted_class": "Business",
+              "count": 459
+            },
+            {
+              "predicted_class": "Sci/Tech",
+              "count": 1135
+            }
+          ]
+        }
+      ],
+      "class_names": [
+        "World",
+        "Sports",
+        "Business",
+        "Sci/Tech"
+      ],
+      "configuration": {
+        "key": "sports_business",
+        "name": "Sports and Business Specialist",
+        "description": "Highly reliable for articles with clear Sports terminology and strong for Business-oriented articles, but substantially less reliable outside these areas.",
+        "region_accuracies": {
+          "Sports lexical region": 0.96,
+          "Business lexical region": 0.88
+        },
+        "general_accuracy": 0.57,
+        "random_state": 42
+      },
+      "region_analysis": {
+        "Sports lexical region": {
+          "internal_name": "Sports lexical region",
+          "display_name": "Sports-focused articles",
+          "samples": 612,
+          "correct_predictions": 582,
+          "coverage": 0.08052631578947368,
+          "coverage_percent": 8.05,
+          "configured_accuracy": 0.96,
+          "configured_percent": 96.0,
+          "observed_accuracy": 0.9509803921568627,
+          "observed_percent": 95.1
+        },
+        "Business lexical region": {
+          "internal_name": "Business lexical region",
+          "display_name": "Business-focused articles",
+          "samples": 471,
+          "correct_predictions": 417,
+          "coverage": 0.06197368421052631,
+          "coverage_percent": 6.2,
+          "configured_accuracy": 0.88,
+          "configured_percent": 88.0,
+          "observed_accuracy": 0.8853503184713376,
+          "observed_percent": 88.54
+        },
+        "General region": {
+          "internal_name": "General region",
+          "display_name": "General articles",
+          "samples": 6517,
+          "correct_predictions": 3705,
+          "coverage": 0.8575,
+          "coverage_percent": 85.75,
+          "configured_accuracy": 0.57,
+          "configured_percent": 57.0,
+          "observed_accuracy": 0.5685131195335277,
+          "observed_percent": 56.85
+        }
+      },
+      "strengths": [
+        "Very high reliability when articles contain clear Sports terminology.",
+        "Strong performance for articles with repeated financial or commercial terminology.",
+        "Its expertise regions are transparent and easy to inspect."
+      ],
+      "weaknesses": [
+        "Lower reliability for World and Sci/Tech articles outside its specialist regions.",
+        "Indirectly written Sports or Business articles may not contain enough matching terminology.",
+        "The expert remains imperfect even in its specialist regions."
+      ],
+      "is_best": true
+    },
+    "technology_world": {
+      "key": "technology_world",
+      "name": "Technology and World Affairs Specialist",
+      "description": "Highly reliable for articles containing clear technology terms and strong for international or political news, but weaker for Sports and Business articles.",
+      "test_samples": 7600,
+      "accuracy": 0.6106578947368421,
+      "macro_f1": 0.610796116658689,
+      "weighted_f1": 0.610796116658689,
+      "classification_report": {
+        "World": {
+          "precision": 0.5934803451581975,
+          "recall": 0.651578947368421,
+          "f1_score": 0.6211741093828399,
+          "support": 1900.0
+        },
+        "Sports": {
+          "precision": 0.7020708082832331,
+          "recall": 0.5531578947368421,
+          "f1_score": 0.6187812775978805,
+          "support": 1900.0
+        },
+        "Business": {
+          "precision": 0.5691919191919191,
+          "recall": 0.5931578947368421,
+          "f1_score": 0.5809278350515464,
+          "support": 1900.0
+        },
+        "Sci/Tech": {
+          "precision": 0.6013745704467354,
+          "recall": 0.6447368421052632,
+          "f1_score": 0.6223012446024893,
+          "support": 1900.0
+        },
+        "accuracy": 0.6106578947368421,
+        "macro avg": {
+          "precision": 0.6165294107700213,
+          "recall": 0.6106578947368421,
+          "f1_score": 0.610796116658689,
+          "support": 7600.0
+        },
+        "weighted avg": {
+          "precision": 0.6165294107700212,
+          "recall": 0.6106578947368421,
+          "f1_score": 0.610796116658689,
+          "support": 7600.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          1238,
+          139,
+          241,
+          282
+        ],
+        [
+          435,
+          1051,
+          204,
+          210
+        ],
+        [
+          293,
+          160,
+          1127,
+          320
+        ],
+        [
+          120,
+          147,
+          408,
+          1225
+        ]
+      ],
+      "confusion_matrix_rows": [
+        {
+          "true_class": "World",
+          "cells": [
+            {
+              "predicted_class": "World",
+              "count": 1238
+            },
+            {
+              "predicted_class": "Sports",
+              "count": 139
+            },
+            {
+              "predicted_class": "Business",
+              "count": 241
+            },
+            {
+              "predicted_class": "Sci/Tech",
+              "count": 282
+            }
+          ]
+        },
+        {
+          "true_class": "Sports",
+          "cells": [
+            {
+              "predicted_class": "World",
+              "count": 435
+            },
+            {
+              "predicted_class": "Sports",
+              "count": 1051
+            },
+            {
+              "predicted_class": "Business",
+              "count": 204
+            },
+            {
+              "predicted_class": "Sci/Tech",
+              "count": 210
+            }
+          ]
+        },
+        {
+          "true_class": "Business",
+          "cells": [
+            {
+              "predicted_class": "World",
+              "count": 293
+            },
+            {
+              "predicted_class": "Sports",
+              "count": 160
+            },
+            {
+              "predicted_class": "Business",
+              "count": 1127
+            },
+            {
+              "predicted_class": "Sci/Tech",
+              "count": 320
+            }
+          ]
+        },
+        {
+          "true_class": "Sci/Tech",
+          "cells": [
+            {
+              "predicted_class": "World",
+              "count": 120
+            },
+            {
+              "predicted_class": "Sports",
+              "count": 147
+            },
+            {
+              "predicted_class": "Business",
+              "count": 408
+            },
+            {
+              "predicted_class": "Sci/Tech",
+              "count": 1225
+            }
+          ]
+        }
+      ],
+      "class_names": [
+        "World",
+        "Sports",
+        "Business",
+        "Sci/Tech"
+      ],
+      "configuration": {
+        "key": "technology_world",
+        "name": "Technology and World Affairs Specialist",
+        "description": "Highly reliable for articles containing clear technology terms and strong for international or political news, but weaker for Sports and Business articles.",
+        "region_accuracies": {
+          "Technology lexical region": 0.93,
+          "World affairs lexical region": 0.85
+        },
+        "general_accuracy": 0.56,
+        "random_state": 84
+      },
+      "region_analysis": {
+        "Technology lexical region": {
+          "internal_name": "Technology lexical region",
+          "display_name": "Technology-focused articles",
+          "samples": 500,
+          "correct_predictions": 470,
+          "coverage": 0.06578947368421052,
+          "coverage_percent": 6.58,
+          "configured_accuracy": 0.93,
+          "configured_percent": 93.0,
+          "observed_accuracy": 0.94,
+          "observed_percent": 94.0
+        },
+        "World affairs lexical region": {
+          "internal_name": "World affairs lexical region",
+          "display_name": "World-affairs-focused articles",
+          "samples": 611,
+          "correct_predictions": 518,
+          "coverage": 0.08039473684210527,
+          "coverage_percent": 8.04,
+          "configured_accuracy": 0.85,
+          "configured_percent": 85.0,
+          "observed_accuracy": 0.8477905073649754,
+          "observed_percent": 84.78
+        },
+        "General region": {
+          "internal_name": "General region",
+          "display_name": "General articles",
+          "samples": 6489,
+          "correct_predictions": 3653,
+          "coverage": 0.8538157894736842,
+          "coverage_percent": 85.38,
+          "configured_accuracy": 0.56,
+          "configured_percent": 56.0,
+          "observed_accuracy": 0.5629526891662814,
+          "observed_percent": 56.3
+        }
+      },
+      "strengths": [
+        "Very high reliability for articles containing explicit technology and computing terminology.",
+        "Strong performance for political and international-news articles.",
+        "Provides complementary expertise to the Sports and Business specialist."
+      ],
+      "weaknesses": [
+        "Lower reliability for Sports and Business articles outside its specialist regions.",
+        "General terms such as security may occur in several domains and introduce ambiguity.",
+        "The expert remains imperfect even in its specialist regions."
+      ],
+      "is_best": false
+    }
+  }
+}

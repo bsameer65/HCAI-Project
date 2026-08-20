@@ -19,4 +19,9 @@ urlpatterns = [
         name="active_learning",
     ),
     path("compare/", views.compare_results, name="compare_results"),
+    path(
+        "human-expert/",
+        views.human_expert,
+        name="human_expert",
+    ),
 ]
