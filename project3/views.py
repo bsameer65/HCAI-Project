@@ -1,5 +1,8 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render
+import random
+from .models import HumanExpertResponse
+from .services.data_loader import load_ag_news
 
 from .services.active_learning import load_active_learning_results
 from .services.baseline import load_baseline_results
@@ -218,3 +221,4 @@ def compare_results(request):
         "project3/compare.html",
         context,
     )
+
