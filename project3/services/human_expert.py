@@ -37,18 +37,25 @@ HUMAN_QUERY_STRATEGIES = {
 
 def prepare_human_expert_pool() -> dict:
     """
-    Train the baseline classifier and prepare query metadata for the
-    interactive human-expert interface.
+    Prepare query metadata for the Human Expert interface.
+
+    Reuses the previously trained baseline model instead of retraining the
+    classifier every time the page is opened.
     """
+
+    import joblib
+
+    from .baseline import MODEL_PATH
 
     dataset = load_ag_news()
 
-    classifier = build_baseline_pipeline()
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            "Baseline model is not available. "
+            "Run the Baseline Experiment first."
+        )
 
-    classifier.fit(
-        dataset.train["text"],
-        dataset.train["label"],
-    )
+    classifier = joblib.load(MODEL_PATH)
 
     probabilities = classifier.predict_proba(
         dataset.test["text"]
@@ -75,7 +82,6 @@ def prepare_human_expert_pool() -> dict:
     return {
         "data": dataframe,
     }
-
 
 def select_human_query_indices(
     dataframe: pd.DataFrame,

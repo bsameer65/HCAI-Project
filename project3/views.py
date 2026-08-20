@@ -30,6 +30,7 @@ from .services.active_learning import (
 )
 
 from .services.human_expert import (
+    CLASS_NAMES,
     HUMAN_QUERY_STRATEGIES,
     calculate_human_competence,
     prepare_human_expert_pool,
