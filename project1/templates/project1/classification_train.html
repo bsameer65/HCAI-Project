@@ -222,70 +222,73 @@
         <div class="card">
 
             <h2>
-                Complete Test Evaluation
+                Confusion Matrix
             </h2>
 
+            <p class="help-text">
+                The confusion matrix shows the relationship between
+                the actual classes and the classes predicted by the model.
+                Values on the diagonal represent correct predictions.
+            </p>
 
-            <div class="training-stat-grid">
+            {% if confusion_rows %}
+
+                <div style="overflow-x:auto;">
+
+                    <table class="data-table confusion-table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Actual \ Predicted
+                                </th>
+
+                                {% for label in class_labels %}
+
+                                    <th>
+                                        {{ label }}
+                                    </th>
+
+                                {% endfor %}
+
+                            </tr>
+
+                        </thead>
 
 
-                <div class="training-stat">
+                        <tbody>
 
-                    <span class="training-stat-number">
-                        {{ test_accuracy }}%
-                    </span>
+                            {% for row in confusion_rows %}
 
-                    <span class="training-stat-label">
-                        Accuracy
-                    </span>
+                                <tr>
+
+                                    <th>
+                                        {{ row.actual }}
+                                    </th>
+
+                                    {% for value in row.values %}
+
+                                        <td>
+                                            {{ value }}
+                                        </td>
+
+                                    {% endfor %}
+
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
 
                 </div>
 
-
-                <div class="training-stat">
-
-                    <span class="training-stat-number">
-                        {{ test_precision }}%
-                    </span>
-
-                    <span class="training-stat-label">
-                        Precision
-                    </span>
-
-                </div>
-
-
-                <div class="training-stat">
-
-                    <span class="training-stat-number">
-                        {{ test_recall }}%
-                    </span>
-
-                    <span class="training-stat-label">
-                        Recall
-                    </span>
-
-                </div>
-
-
-                <div class="training-stat">
-
-                    <span class="training-stat-number">
-                        {{ test_f1 }}%
-                    </span>
-
-                    <span class="training-stat-label">
-                        F1 Score
-                    </span>
-
-                </div>
-
-
-            </div>
-
+            {% endif %}
 
         </div>
-
 
         <!-- =================================================
              Hyperparameters
