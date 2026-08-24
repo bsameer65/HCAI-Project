@@ -517,23 +517,20 @@ def classification_train(request):
 
     if not form.is_valid():
 
-        # Return to analysis rather than displaying
-        # an empty training configuration page.
+        print("TRAINING FORM ERRORS:")
+        print(form.errors)
 
-        context = {
-            "error": (
-                "Please check the selected "
-                "training settings."
-            ),
+        context["error"] = (
+            "Some training settings are invalid. "
+            "Please return to the analysis page and check your configuration."
+        )
 
-            "form_errors":
-                form.errors,
-        }
+        context["form_errors"] = form.errors
 
-        # We could redirect, but render analysis again
-        # so the user gets an error.
-        return redirect(
-            "project1:classification_analyze"
+        return render(
+            request,
+            "project1/classification_train.html",
+            context,
         )
 
     cleaned_data = (

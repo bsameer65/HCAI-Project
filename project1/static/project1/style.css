@@ -713,3 +713,31 @@ select:focus {
         text-align: center;
     }
 }
+
+.metric-summary-card .training-stat-grid {
+    margin-bottom: 18px;
+}
+
+.metric-summary-card .info-box {
+    margin-top: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.metric-summary-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.graph-row {
+    align-items: stretch;
+}
+
+.graph-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.graph-card img {
+    margin-top: auto;
+}
