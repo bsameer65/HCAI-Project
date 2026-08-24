@@ -391,6 +391,9 @@ def classification_analyze(request):
 
         "metric_choices":
             CLASSIFICATION_METRICS,
+            
+        "training_form":
+            ClassificationTrainingForm(),
     })
 
     return render(
