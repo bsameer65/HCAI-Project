@@ -148,46 +148,45 @@
                     {{ metric_name }} Results
                 </h2>
 
+                <div class="metric-summary-content">
 
-                <div class="training-stat-grid">
+                    <div class="training-stat-grid">
 
+                        <div class="training-stat">
 
-                    <div class="training-stat">
+                            <span class="training-stat-number">
+                                {{ train_score }}%
+                            </span>
 
-                        <span class="training-stat-number">
-                            {{ train_score }}%
-                        </span>
+                            <span class="training-stat-label">
+                                Training {{ metric_name }}
+                            </span>
 
-                        <span class="training-stat-label">
-                            Training {{ metric_name }}
-                        </span>
+                        </div>
+
+                        <div class="training-stat">
+
+                            <span class="training-stat-number">
+                                {{ test_score }}%
+                            </span>
+
+                            <span class="training-stat-label">
+                                Testing {{ metric_name }}
+                            </span>
+
+                        </div>
 
                     </div>
 
+                    <div class="info-box metric-help">
 
-                    <div class="training-stat">
-
-                        <span class="training-stat-number">
-                            {{ test_score }}%
-                        </span>
-
-                        <span class="training-stat-label">
-                            Testing {{ metric_name }}
-                        </span>
+                        The training score measures performance on the data
+                        used to fit the model, while the testing score measures
+                        performance on unseen observations.
 
                     </div>
 
-
                 </div>
-
-
-                <div class="info-box">
-
-                    The testing score is calculated on observations
-                    that were not used while fitting the model.
-
-                </div>
-
 
             </div>
 
