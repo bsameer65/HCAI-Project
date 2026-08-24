@@ -168,19 +168,19 @@ def create_class_distribution(
     )
 
 
-def create_accuracy_comparison_chart(
+def create_score_comparison_chart(
     train_score,
     test_score,
+    metric_name,
     media_root,
     media_url,
 ):
     """
-    Compare training and testing scores visually.
+    Compare training and testing performance for
+    the user-selected evaluation metric.
     """
 
-    plt.figure(
-        figsize=(6, 4)
-    )
+    plt.figure(figsize=(6, 4))
 
     labels = [
         "Training",
@@ -192,22 +192,28 @@ def create_accuracy_comparison_chart(
         test_score * 100,
     ]
 
-    plt.bar(
+    colors = [
+        "#1a4f8a",
+        "#2e7d32",
+    ]
+
+    bars = plt.bar(
         labels,
         values,
+        color=colors,
+        width=0.65,
+        alpha=0.9,
     )
 
-    plt.ylabel(
-        "Accuracy (%)"
-    )
+    plt.ylabel(f"{metric_name} (%)")
 
     plt.ylim(
         0,
-        100,
+        min(110, max(values) + 12),
     )
 
     plt.title(
-        "Training vs Testing Accuracy"
+        f"Training vs Testing {metric_name}"
     )
 
     plt.grid(
@@ -215,8 +221,23 @@ def create_accuracy_comparison_chart(
         alpha=0.2,
     )
 
+    # Show percentage above each bar
+    for bar, value in zip(
+        bars,
+        values,
+    ):
+        plt.text(
+            bar.get_x()
+            + bar.get_width() / 2,
+            bar.get_height() + 1.5,
+            f"{value:.2f}%",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
+
     return _save_figure(
         media_root,
         media_url,
-        "classification_accuracy",
+        "classification_score",
     )
