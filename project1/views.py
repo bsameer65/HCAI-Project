@@ -8,6 +8,7 @@ from django.shortcuts import render, redirect
 from sklearn.model_selection import train_test_split
 
 
+
 # ==============================================================
 # Forms
 # ==============================================================
@@ -59,6 +60,14 @@ from .services.visualization import (
     create_classification_scatter,
     create_class_distribution,
     create_accuracy_comparison_chart,
+)
+
+from .services.evaluation import (
+    evaluate_classifier,
+    get_selected_metric,
+    calculate_confusion_matrix,
+    CLASSIFICATION_METRICS,
+    UnsupportedMetricError,
 )
 
 
@@ -693,6 +702,26 @@ def classification_train(request):
             test_predictions,
         )
     )
+    
+    confusion = calculate_confusion_matrix(
+        y_test,
+        test_predictions,
+    )
+
+    class_labels = sorted(
+        y.unique().tolist()
+    )
+
+    confusion_rows = []
+
+    for actual_label, row in zip(
+        class_labels,
+        confusion
+    ):
+        confusion_rows.append({
+            "actual": actual_label,
+            "values": row.tolist(),
+        })
 
     try:
 
@@ -823,6 +852,7 @@ def classification_train(request):
 
         "selected_metric":
             selected_metric,
+        
 
         "parameters":
             parameters,
@@ -953,6 +983,9 @@ def classification_train(request):
 
         "feature_columns":
             feature_columns,
+        
+        "confusion_rows": confusion_rows,
+        "class_labels": class_labels,
     })
 
     return render(
