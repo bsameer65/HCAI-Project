@@ -106,66 +106,70 @@
 
         </form>
 
-        <div id="trainPopup"
-             class="popup"
-             style="display:none;">
+        <div id="trainPopup" class="popup">
 
-            <h2>Train Classification Model</h2>
+            <div class="popup-content">
 
-            <p class="help-text">
-                Choose a machine learning model and test size
-                before training.
-            </p>
+                <h2>Train Classification Model</h2>
 
-            <form method="POST"
-                  action="{% url 'project1:classification_train' %}">
+                <p class="help-text">
+                    Choose a machine learning model and test size before training.
+                </p>
 
-                {% csrf_token %}
+                <form method="POST"
+                    action="{% url 'project1:classification_train' %}">
 
-                <div class="form-row">
+                    {% csrf_token %}
 
-                    <label>Model:</label>
+                    <div class="form-row">
 
-                    <select name="model">
-                        <option value="decision_tree">
-                            Decision Tree
-                        </option>
+                        <div>
+                            <label>Model:</label>
 
-                        <option value="random_forest">
-                            Random Forest
-                        </option>
+                            <select name="model">
+                                <option value="decision_tree">
+                                    Decision Tree
+                                </option>
 
-                        <option value="knn">
-                            KNN
-                        </option>
-                    </select>
+                                <option value="random_forest">
+                                    Random Forest
+                                </option>
 
-                    <label>Test Size:</label>
+                                <option value="knn">
+                                    KNN
+                                </option>
+                            </select>
+                        </div>
 
-                    <select name="test_size">
-                        <option value="0.2">20%</option>
-                        <option value="0.3">30%</option>
-                        <option value="0.4">40%</option>
-                    </select>
+                        <div>
+                            <label>Test Size:</label>
 
-                </div>
+                            <select name="test_size">
+                                <option value="0.2">20%</option>
+                                <option value="0.3">30%</option>
+                                <option value="0.4">40%</option>
+                            </select>
+                        </div>
 
-                <div class="action-row">
+                    </div>
 
-                    <button type="submit"
-                            class="button">
-                        Train Model
-                    </button>
+                    <div class="action-row">
 
-                    <button type="button"
-                            class="button secondary-button"
-                            onclick="closeTrainPopup()">
-                        Cancel
-                    </button>
+                        <button type="submit" class="button">
+                            Train Model
+                        </button>
 
-                </div>
+                        <button type="button"
+                                class="button secondary-button"
+                                onclick="closeTrainPopup()">
+                            Cancel
+                        </button>
 
-            </form>
+                    </div>
+
+                </form>
+
+            </div>
 
         </div>
 
@@ -186,21 +190,13 @@
 </div>
 
 <script>
-
 function openTrainPopup() {
-
-    document.getElementById(
-        "trainPopup"
-    ).style.display = "block";
+    document.getElementById("trainPopup").style.display = "flex";
 }
 
 function closeTrainPopup() {
-
-    document.getElementById(
-        "trainPopup"
-    ).style.display = "none";
+    document.getElementById("trainPopup").style.display = "none";
 }
-
 </script>
 
 </body>
