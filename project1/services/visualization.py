@@ -249,3 +249,85 @@ def create_score_comparison_chart(
         media_url,
         "classification_score",
     )
+
+def create_feature_importance_chart(
+    explanation_items,
+    method_name,
+    media_root,
+    media_url,
+):
+    """
+    Visualize model feature importance.
+    """
+
+    # Reverse so highest feature appears at the top
+    items = list(
+        reversed(
+            explanation_items
+        )
+    )
+
+    feature_names = [
+        item["feature"]
+        for item in items
+    ]
+
+    importance_values = [
+        item["percentage"]
+        for item in items
+    ]
+
+    plt.figure(
+        figsize=(7, 5)
+    )
+
+    bars = plt.barh(
+        feature_names,
+        importance_values,
+        color="#1a4f8a",
+        alpha=0.9,
+    )
+
+    plt.xlabel(
+        "Relative Importance (%)"
+    )
+
+    plt.title(
+        method_name
+    )
+
+    plt.grid(
+        axis="x",
+        alpha=0.2,
+    )
+
+    # Numbers beside bars
+    for bar, value in zip(
+        bars,
+        importance_values,
+    ):
+
+        plt.text(
+            bar.get_width() + 0.5,
+            bar.get_y()
+            + bar.get_height() / 2,
+            f"{value:.1f}%",
+            va="center",
+            fontweight="bold",
+        )
+
+    # Leave space for percentage labels
+    if importance_values:
+
+        plt.xlim(
+            0,
+            max(importance_values) * 1.2
+            if max(importance_values) > 0
+            else 1,
+        )
+
+    return _save_figure(
+        media_root,
+        media_url,
+        "classification_explanation",
+    )
