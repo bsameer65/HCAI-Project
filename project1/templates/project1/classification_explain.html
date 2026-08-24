@@ -1,0 +1,204 @@
+{% load static %}
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Model Explainability</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'project1/style.css' %}"
+    >
+</head>
+
+<body>
+
+<div class="page-container">
+
+    <a
+        href="{% url 'project1:classification_analyze' %}"
+        class="back-arrow"
+        title="Back to analysis"
+    >
+        ←
+    </a>
+
+    <div class="page-header">
+
+        <h1>Model Explainability</h1>
+
+        <p>
+            Explore which input features had the strongest
+            influence on the trained classification model.
+        </p>
+
+    </div>
+
+    {% if error %}
+
+        <div class="error">
+            {{ error }}
+        </div>
+
+    {% else %}
+
+        <div class="card">
+
+            <h2>Explanation Overview</h2>
+
+            <div class="training-stat-grid">
+
+                <div class="training-stat">
+
+                    <span class="training-stat-number">
+                        {{ model_name }}
+                    </span>
+
+                    <span class="training-stat-label">
+                        Trained Model
+                    </span>
+
+                </div>
+
+                <div class="training-stat">
+
+                    <span class="training-stat-number">
+                        {{ explanation_method }}
+                    </span>
+
+                    <span class="training-stat-label">
+                        Explanation Method
+                    </span>
+
+                </div>
+
+                <div class="training-stat">
+
+                    <span class="training-stat-number">
+                        {{ target_column }}
+                    </span>
+
+                    <span class="training-stat-label">
+                        Target
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="graph-row">
+
+            <div class="card graph-card">
+
+                <h2>Feature Influence</h2>
+
+                <p class="help-text">
+                    Larger values indicate features that have a
+                    stronger influence on the model.
+                </p>
+
+                {% if explanation_chart_url %}
+
+                    <img
+                        src="{{ explanation_chart_url }}"
+                        alt="Feature importance chart"
+                    >
+
+                {% endif %}
+
+            </div>
+
+
+            <div class="card graph-card">
+
+                <h2>Feature Ranking</h2>
+
+                {% for item in explanation_items %}
+
+                    <div class="feature-importance-row">
+
+                        <div class="feature-importance-header">
+
+                            <span>
+                                {{ item.feature }}
+                            </span>
+
+                            <strong>
+                                {{ item.percentage }}%
+                            </strong>
+
+                        </div>
+
+                        <div class="importance-track">
+
+                            <div
+                                class="importance-fill"
+                                style="width: {{ item.percentage }}%;"
+                            >
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>How should I interpret this?</h2>
+
+            {% if model_key == "decision_tree" %}
+
+                <div class="info-box">
+                    Decision Tree importance measures how strongly
+                    each feature contributes to reducing uncertainty
+                    when the tree makes its splits.
+                </div>
+
+            {% elif model_key == "random_forest" %}
+
+                <div class="info-box">
+                    Random Forest importance combines information
+                    from many decision trees. Higher-ranked features
+                    contributed more strongly across the forest.
+                </div>
+
+            {% elif model_key == "logistic_regression" %}
+
+                <div class="info-box">
+                    Logistic Regression is explained using coefficient
+                    magnitudes. Larger values indicate features with
+                    stronger influence on the classification decision.
+                </div>
+
+            {% elif model_key == "knn" %}
+
+                <div class="info-box">
+                    KNN has no native feature importance. We therefore
+                    use permutation importance: each feature is shuffled
+                    and we measure how much predictive performance drops.
+                </div>
+
+            {% endif %}
+
+            <div class="warning-box">
+                Feature importance describes model behaviour and does
+                not imply that a feature causes the predicted outcome.
+            </div>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>

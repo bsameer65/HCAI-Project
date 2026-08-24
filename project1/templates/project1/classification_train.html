@@ -2,12 +2,9 @@
 <!DOCTYPE html>
 
 <html>
-
 <head>
 
-    <title>
-        Classification Training Results
-    </title>
+    <title>Classification Training Results</title>
 
     <link
         rel="stylesheet"
@@ -16,17 +13,11 @@
 
 </head>
 
-
 <body>
-
 
 <div class="page-container">
 
-
-    <!-- =====================================================
-         Back
-         ===================================================== -->
-
+    <!-- Back -->
     <a
         href="{% url 'project1:classification_analyze' %}"
         class="back-arrow"
@@ -36,10 +27,7 @@
     </a>
 
 
-    <!-- =====================================================
-         Header
-         ===================================================== -->
-
+    <!-- Header -->
     <div class="page-header">
 
         <h1>
@@ -54,31 +42,20 @@
     </div>
 
 
-    <!-- =====================================================
-         Error
-         ===================================================== -->
-
     {% if error %}
 
         <div class="error">
-
             {{ error }}
-
         </div>
 
     {% endif %}
 
 
-    <!-- =====================================================
-         Results
-         ===================================================== -->
-
     {% if training_complete %}
 
-
-        <!-- =================================================
-             Configuration
-             ================================================= -->
+        <!-- ==================================================
+             MODEL CONFIGURATION
+             ================================================== -->
 
         <div class="card">
 
@@ -86,9 +63,7 @@
                 Model Configuration
             </h2>
 
-
             <div class="training-stat-grid">
-
 
                 <div class="training-stat">
 
@@ -128,19 +103,16 @@
 
                 </div>
 
-
             </div>
-
 
         </div>
 
 
-        <!-- =================================================
-             Primary metric
-             ================================================= -->
+        <!-- ==================================================
+             PRIMARY METRIC + CHART
+             ================================================== -->
 
         <div class="graph-row">
-
 
             <div class="card graph-card metric-summary-card">
 
@@ -164,6 +136,7 @@
 
                         </div>
 
+
                         <div class="training-stat">
 
                             <span class="training-stat-number">
@@ -178,11 +151,13 @@
 
                     </div>
 
+
                     <div class="info-box metric-help">
 
-                        The training score measures performance on the data
-                        used to fit the model, while the testing score measures
-                        performance on unseen observations.
+                        The training score measures performance on
+                        the data used to fit the model, while the
+                        testing score measures performance on unseen
+                        observations.
 
                     </div>
 
@@ -196,27 +171,24 @@
                 <div class="card graph-card">
 
                     <h2>
-                        Training vs Testing
+                        Training vs Testing Performance
                     </h2>
-
 
                     <img
                         src="{{ accuracy_chart_url }}"
                         alt="Training versus testing performance"
                     >
 
-
                 </div>
 
             {% endif %}
 
-
         </div>
 
 
-        <!-- =================================================
-             Complete metrics
-             ================================================= -->
+        <!-- ==================================================
+             CONFUSION MATRIX
+             ================================================== -->
 
         <div class="card">
 
@@ -225,10 +197,10 @@
             </h2>
 
             <p class="help-text">
-                The confusion matrix shows how the predicted classes
-                compare with the actual classes. Diagonal cells represent
-                correct predictions, while off-diagonal cells represent
-                classification errors.
+                The confusion matrix compares the actual classes
+                with the classes predicted by the model.
+                Diagonal cells represent correct predictions,
+                while off-diagonal cells represent errors.
             </p>
 
             {% if confusion_rows %}
@@ -256,6 +228,7 @@
                             </tr>
 
                         </thead>
+
 
                         <tbody>
 
@@ -297,101 +270,10 @@
 
         </div>
 
-        {% if explanation_items %}
 
-            <div class="card">
-
-                <h2>
-                    Model Explainability
-                </h2>
-
-                <p class="help-text">
-                    This section helps explain which input features
-                    had the greatest influence on the trained model.
-                </p>
-
-                <div class="info-box">
-
-                    <strong>Explanation method:</strong>
-                    {{ explanation_method }}
-
-                    <br><br>
-
-                    Feature importance describes the relative influence
-                    of each input feature on the model. A higher value
-                    means that the feature had a stronger influence on
-                    the model's predictions.
-
-                </div>
-
-
-                <div class="graph-row">
-
-                    <!-- Importance chart -->
-
-                    {% if explanation_chart_url %}
-
-                        <div class="graph-card">
-
-                            <img
-                                src="{{ explanation_chart_url }}"
-                                alt="Feature importance"
-                            >
-
-                        </div>
-
-                    {% endif %}
-
-
-                    <!-- Importance values -->
-
-                    <div class="graph-card">
-
-                        <h3>
-                            Feature Ranking
-                        </h3>
-
-                        {% for item in explanation_items %}
-
-                            <div class="feature-importance-row">
-
-                                <div class="feature-importance-header">
-
-                                    <span>
-                                        {{ item.feature }}
-                                    </span>
-
-                                    <strong>
-                                        {{ item.percentage }}%
-                                    </strong>
-
-                                </div>
-
-                                <div class="importance-track">
-
-                                    <div
-                                        class="importance-fill"
-                                        style="width: {{ item.percentage }}%;"
-                                    >
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        {% endfor %}
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        {% endif %}
-
-        <!-- =================================================
-             Hyperparameters
-             ================================================= -->
+        <!-- ==================================================
+             HYPERPARAMETERS
+             ================================================== -->
 
         <div class="card">
 
@@ -399,11 +281,9 @@
                 Selected Hyperparameters
             </h2>
 
-
             {% if parameters %}
 
                 <div class="info-box">
-
 
                     {% for key, value in parameters.items %}
 
@@ -414,38 +294,28 @@
                         :
                         {{ value }}
 
-
                         {% if not forloop.last %}
-
                             <br>
-
                         {% endif %}
-
 
                     {% endfor %}
 
-
                 </div>
-
 
             {% else %}
 
                 <p class="help-text">
-
-                    The selected algorithm does not have
-                    user-modified hyperparameters.
-
+                    The selected algorithm uses its default configuration.
                 </p>
 
             {% endif %}
 
-
         </div>
 
 
-        <!-- =================================================
-             Actions
-             ================================================= -->
+        <!-- ==================================================
+             NEXT ACTIONS
+             ================================================== -->
 
         <div class="card centered-text">
 
@@ -453,18 +323,13 @@
                 Continue Experimenting
             </h2>
 
-
             <p class="help-text">
-
-                Test this trained model on a new observation,
-                or return to the analysis page to train another
-                configuration.
-
+                You can test the trained model on new input,
+                inspect its explanation, compare it with other
+                algorithms, or train another configuration.
             </p>
 
-
             <div class="action-row">
-
 
                 <a
                     href="{% url 'project1:classification_test' %}"
@@ -475,25 +340,35 @@
 
 
                 <a
+                    href="{% url 'project1:classification_explain' %}"
+                    class="button"
+                >
+                    Explain Model
+                </a>
+
+
+                <a
+                    href="{% url 'project1:classification_compare' %}"
+                    class="button"
+                >
+                    Compare Models
+                </a>
+
+
+                <a
                     href="{% url 'project1:classification_analyze' %}"
                     class="button secondary-button"
                 >
                     Train Another Model
                 </a>
 
-
             </div>
-
 
         </div>
 
-
     {% endif %}
-
 
 </div>
 
-
 </body>
-
 </html>
