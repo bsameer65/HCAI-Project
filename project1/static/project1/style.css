@@ -780,3 +780,37 @@ select:focus {
 .graph-row {
     align-items: stretch;
 }
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.confusion-table {
+    text-align: center;
+}
+
+.confusion-table th,
+.confusion-table td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.confusion-table tbody th {
+    background: #eef3fb;
+    color: #1a4f8a;
+    font-weight: 700;
+}
+
+/* Correct prediction */
+.confusion-correct {
+    background: #e8f5e9 !important;
+    color: #1b5e20;
+    font-weight: 700;
+}
+
+/* Wrong prediction */
+.confusion-error {
+    background: #fff1f0 !important;
+    color: #b71c1c;
+    font-weight: 600;
+}
