@@ -714,13 +714,31 @@ def classification_train(request):
 
     confusion_rows = []
 
-    for actual_label, row in zip(
-        class_labels,
-        confusion
+    for row_index, (
+        actual_label,
+        row
+    ) in enumerate(
+        zip(
+            class_labels,
+            confusion
+        )
     ):
+
+        cells = []
+
+        for column_index, value in enumerate(
+            row.tolist()
+        ):
+
+            cells.append({
+                "value": value,
+                "is_correct":
+                    row_index == column_index,
+            })
+
         confusion_rows.append({
             "actual": actual_label,
-            "values": row.tolist(),
+            "cells": cells,
         })
 
     try:
@@ -750,6 +768,22 @@ def classification_train(request):
             "project1/classification_train.html",
             context,
         )
+        
+    # ----------------------------------------------------------
+    # Human-readable names
+    # ----------------------------------------------------------
+    
+    model_display_name = (
+        CLASSIFIER_CHOICES[
+            selected_model
+            ]
+        )
+    
+    metric_display_name = (
+        CLASSIFICATION_METRICS[
+            selected_metric
+            ]
+        )
 
     # ----------------------------------------------------------
     # Performance chart
@@ -765,21 +799,7 @@ def classification_train(request):
         )
     )
 
-    # ----------------------------------------------------------
-    # Human-readable names
-    # ----------------------------------------------------------
-
-    model_display_name = (
-        CLASSIFIER_CHOICES[
-            selected_model
-        ]
-    )
-
-    metric_display_name = (
-        CLASSIFICATION_METRICS[
-            selected_metric
-        ]
-    )
+    
 
     # ----------------------------------------------------------
     # Save trained model

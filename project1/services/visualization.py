@@ -176,8 +176,8 @@ def create_score_comparison_chart(
     media_url,
 ):
     """
-    Compare training and testing performance for
-    the user-selected evaluation metric.
+    Create a bar chart comparing training and testing
+    performance for the selected evaluation metric.
     """
 
     plt.figure(figsize=(6, 4))
@@ -205,15 +205,23 @@ def create_score_comparison_chart(
         alpha=0.9,
     )
 
-    plt.ylabel(f"{metric_name} (%)")
-
-    plt.ylim(
-        0,
-        min(110, max(values) + 12),
+    plt.ylabel(
+        f"{metric_name} (%)"
     )
 
     plt.title(
         f"Training vs Testing {metric_name}"
+    )
+
+    # Keep some space above bars for labels
+    upper_limit = min(
+        110,
+        max(values) + 12
+    )
+
+    plt.ylim(
+        0,
+        upper_limit
     )
 
     plt.grid(
@@ -221,7 +229,7 @@ def create_score_comparison_chart(
         alpha=0.2,
     )
 
-    # Show percentage above each bar
+    # Add values above bars
     for bar, value in zip(
         bars,
         values,
@@ -229,7 +237,7 @@ def create_score_comparison_chart(
         plt.text(
             bar.get_x()
             + bar.get_width() / 2,
-            bar.get_height() + 1.5,
+            bar.get_height() + 1.2,
             f"{value:.2f}%",
             ha="center",
             va="bottom",
