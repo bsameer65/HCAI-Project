@@ -331,3 +331,97 @@ def create_feature_importance_chart(
         media_url,
         "classification_explanation",
     )
+
+def create_model_comparison_chart(
+    comparison_results,
+    metric_name,
+    media_root,
+    media_url,
+):
+    """
+    Compare all classification models using the
+    same selected evaluation metric.
+    """
+
+    model_names = [
+        result["model_name"]
+        for result in comparison_results
+    ]
+
+    scores = [
+        result["primary_score"] * 100
+        for result in comparison_results
+    ]
+
+    plt.figure(
+        figsize=(8, 5)
+    )
+
+    color_map = plt.get_cmap(
+        "tab10"
+    )
+
+    colors = [
+        color_map(index)
+        for index in range(
+            len(model_names)
+        )
+    ]
+
+    bars = plt.bar(
+        model_names,
+        scores,
+        color=colors,
+        alpha=0.9,
+    )
+
+    plt.ylabel(
+        f"{metric_name} (%)"
+    )
+
+    plt.title(
+        f"Model Comparison — {metric_name}"
+    )
+
+    plt.ylim(
+        0,
+        min(
+            110,
+            max(scores) + 12,
+        ),
+    )
+
+    plt.xticks(
+        rotation=15,
+        ha="right",
+    )
+
+    plt.grid(
+        axis="y",
+        alpha=0.2,
+    )
+
+    for bar, value in zip(
+        bars,
+        scores,
+    ):
+
+        plt.text(
+            bar.get_x()
+            + bar.get_width() / 2,
+
+            bar.get_height() + 1,
+
+            f"{value:.2f}%",
+
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold",
+        )
+
+    return _save_figure(
+        media_root,
+        media_url,
+        "model_comparison",
+    )
