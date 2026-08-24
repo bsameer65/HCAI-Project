@@ -8,7 +8,6 @@ from django.shortcuts import render, redirect
 from sklearn.model_selection import train_test_split
 
 
-
 # ==============================================================
 # Forms
 # ==============================================================
@@ -47,6 +46,7 @@ from .services.algorithms import (
 from .services.evaluation import (
     evaluate_classifier,
     get_selected_metric,
+    calculate_confusion_matrix,
     CLASSIFICATION_METRICS,
     UnsupportedMetricError,
 )
@@ -60,14 +60,17 @@ from .services.visualization import (
     create_classification_scatter,
     create_class_distribution,
     create_score_comparison_chart,
+    create_feature_importance_chart,
 )
 
-from .services.evaluation import (
-    evaluate_classifier,
-    get_selected_metric,
-    calculate_confusion_matrix,
-    CLASSIFICATION_METRICS,
-    UnsupportedMetricError,
+
+# ==============================================================
+# Explainability
+# ==============================================================
+
+from .services.explainability import (
+    get_feature_importance,
+    ExplainabilityError,
 )
 
 
@@ -97,7 +100,7 @@ CLASSIFICATION_DATASET_FILENAME = (
 
 def _get_upload_directory():
     """
-    Return the directory used to store uploaded datasets.
+    Return the directory used for uploaded datasets.
     """
 
     upload_directory = os.path.join(
@@ -130,10 +133,10 @@ def _validate_numeric_features(
     feature_columns,
 ):
     """
-    Return non-numeric input feature names.
+    Return names of non-numeric input features.
 
-    The current classification algorithms expect
-    numerical description features.
+    The current ML implementation expects scalar/numerical
+    description features.
     """
 
     return [
@@ -146,15 +149,14 @@ def _validate_numeric_features(
 
 
 # ==============================================================
-# Project landing page
+# Project 1 landing page
 # ==============================================================
 
 def index(request):
     """
     Project 1 landing page.
 
-    User explicitly selects classification
-    or regression.
+    The human explicitly selects Classification or Regression.
     """
 
     return render(
@@ -164,12 +166,12 @@ def index(request):
 
 
 # ==============================================================
-# CLASSIFICATION — Upload
+# CLASSIFICATION — Dataset upload
 # ==============================================================
 
 def classification(request):
     """
-    Upload and validate a classification dataset.
+    Upload and validate a classification CSV dataset.
     """
 
     context = {}
@@ -181,14 +183,13 @@ def classification(request):
         )
 
         # ------------------------------------------------------
-        # No file selected
+        # File required
         # ------------------------------------------------------
 
         if uploaded_file is None:
 
             context["error"] = (
-                "Please choose a CSV file "
-                "before continuing."
+                "Please choose a CSV file before continuing."
             )
 
             return render(
@@ -198,7 +199,7 @@ def classification(request):
             )
 
         # ------------------------------------------------------
-        # Validate extension
+        # File extension
         # ------------------------------------------------------
 
         if not uploaded_file.name.lower().endswith(
@@ -222,7 +223,7 @@ def classification(request):
         try:
 
             # --------------------------------------------------
-            # Save / replace current dataset
+            # Save uploaded dataset
             # --------------------------------------------------
 
             with open(
@@ -231,6 +232,7 @@ def classification(request):
             ) as destination:
 
                 for chunk in uploaded_file.chunks():
+
                     destination.write(
                         chunk
                     )
@@ -249,7 +251,7 @@ def classification(request):
             )
 
             # --------------------------------------------------
-            # Check features are numeric
+            # Features must currently be numeric
             # --------------------------------------------------
 
             non_numeric_features = (
@@ -262,16 +264,16 @@ def classification(request):
             if non_numeric_features:
 
                 raise DatasetValidationError(
-                    "The following feature columns "
-                    "are not numeric: "
+                    "The following feature columns are not numeric: "
                     + ", ".join(
                         non_numeric_features
                     )
-                    + "."
+                    + ". Please upload a dataset with numeric features."
                 )
 
         except DatasetValidationError as error:
 
+            # Do not retain invalid uploaded datasets
             if os.path.exists(
                 file_path
             ):
@@ -290,8 +292,7 @@ def classification(request):
             )
 
         # ------------------------------------------------------
-        # IMPORTANT:
-        # After upload → Analysis page
+        # Successful upload → analysis
         # ------------------------------------------------------
 
         return redirect(
@@ -306,12 +307,15 @@ def classification(request):
 
 
 # ==============================================================
-# CLASSIFICATION — Analysis
+# CLASSIFICATION — Dataset analysis
 # ==============================================================
 
 def classification_analyze(request):
     """
-    Visualize the uploaded classification dataset.
+    Visualize the classification dataset.
+
+    User chooses two description features for the scatter plot.
+    Target class is represented by color.
     """
 
     context = {}
@@ -344,7 +348,7 @@ def classification_analyze(request):
         )
 
     # ----------------------------------------------------------
-    # Selected visualization columns
+    # Selected X-axis
     # ----------------------------------------------------------
 
     x_column = (
@@ -353,6 +357,10 @@ def classification_analyze(request):
         )
         or feature_columns[0]
     )
+
+    # ----------------------------------------------------------
+    # Default Y-axis
+    # ----------------------------------------------------------
 
     if len(feature_columns) > 1:
 
@@ -405,7 +413,7 @@ def classification_analyze(request):
     )
 
     # ----------------------------------------------------------
-    # Class distribution
+    # Class-distribution plot
     # ----------------------------------------------------------
 
     class_distribution_url = (
@@ -416,6 +424,10 @@ def classification_analyze(request):
             media_url=settings.MEDIA_URL,
         )
     )
+
+    # ----------------------------------------------------------
+    # Template context
+    # ----------------------------------------------------------
 
     context.update({
 
@@ -464,21 +476,23 @@ def classification_analyze(request):
 
 
 # ==============================================================
-# CLASSIFICATION — Training
+# CLASSIFICATION — Model training
 # ==============================================================
 
 def classification_train(request):
     """
-    Train a classification model.
+    Train a classification model using human-selected:
 
-    The training configuration is submitted
-    from the popup on the analysis page.
+        - ML algorithm
+        - hyperparameters
+        - train/test split
+        - evaluation metric
+
+    Configuration is submitted from the analysis popup.
     """
 
     # ----------------------------------------------------------
-    # IMPORTANT:
-    # Direct GET should NOT show a second configuration form.
-    # Return to analysis instead.
+    # Direct GET → back to analysis
     # ----------------------------------------------------------
 
     if request.method != "POST":
@@ -492,6 +506,10 @@ def classification_train(request):
     file_path = (
         _get_classification_dataset_path()
     )
+
+    # ----------------------------------------------------------
+    # Load dataset
+    # ----------------------------------------------------------
 
     try:
 
@@ -517,7 +535,7 @@ def classification_train(request):
         )
 
     # ----------------------------------------------------------
-    # Django form validation
+    # Validate user training configuration
     # ----------------------------------------------------------
 
     form = ClassificationTrainingForm(
@@ -526,15 +544,23 @@ def classification_train(request):
 
     if not form.is_valid():
 
-        print("TRAINING FORM ERRORS:")
-        print(form.errors)
+        print(
+            "TRAINING FORM ERRORS:"
+        )
+
+        print(
+            form.errors
+        )
 
         context["error"] = (
             "Some training settings are invalid. "
-            "Please return to the analysis page and check your configuration."
+            "Please return to the analysis page and "
+            "check your configuration."
         )
 
-        context["form_errors"] = form.errors
+        context["form_errors"] = (
+            form.errors
+        )
 
         return render(
             request,
@@ -560,6 +586,10 @@ def classification_train(request):
         ]
     )
 
+    # ----------------------------------------------------------
+    # Convert form controls → sklearn parameters
+    # ----------------------------------------------------------
+
     parameters = (
         get_classifier_parameters(
             cleaned_data
@@ -567,7 +597,7 @@ def classification_train(request):
     )
 
     # ----------------------------------------------------------
-    # Features and target
+    # Feature matrix and target
     # ----------------------------------------------------------
 
     X = df[
@@ -579,7 +609,9 @@ def classification_train(request):
     ]
 
     # ----------------------------------------------------------
-    # Split
+    # Train / test split
+    #
+    # stratify keeps class proportions approximately equal.
     # ----------------------------------------------------------
 
     try:
@@ -598,16 +630,15 @@ def classification_train(request):
 
             random_state=42,
 
-            # Preserve class proportions
             stratify=y,
         )
 
     except ValueError as error:
 
         context["error"] = (
-            "The dataset could not be split "
-            "using the selected test size. "
-            f"{error}"
+            "The dataset could not be split using the "
+            "selected test size. "
+            f"Details: {error}"
         )
 
         return render(
@@ -617,7 +648,7 @@ def classification_train(request):
         )
 
     # ----------------------------------------------------------
-    # Create classifier
+    # Create selected classifier
     # ----------------------------------------------------------
 
     try:
@@ -645,7 +676,7 @@ def classification_train(request):
         )
 
     # ----------------------------------------------------------
-    # Train model
+    # Train classifier
     # ----------------------------------------------------------
 
     try:
@@ -658,9 +689,9 @@ def classification_train(request):
     except ValueError as error:
 
         context["error"] = (
-            "The model could not be trained "
-            "with the selected settings. "
-            f"{error}"
+            "The selected model could not be trained "
+            "with the current hyperparameters. "
+            f"Details: {error}"
         )
 
         return render(
@@ -686,7 +717,7 @@ def classification_train(request):
     )
 
     # ----------------------------------------------------------
-    # Evaluation
+    # Evaluation metrics
     # ----------------------------------------------------------
 
     train_metrics = (
@@ -702,44 +733,10 @@ def classification_train(request):
             test_predictions,
         )
     )
-    
-    confusion = calculate_confusion_matrix(
-        y_test,
-        test_predictions,
-    )
 
-    class_labels = sorted(
-        y.unique().tolist()
-    )
-
-    confusion_rows = []
-
-    for row_index, (
-        actual_label,
-        row
-    ) in enumerate(
-        zip(
-            class_labels,
-            confusion
-        )
-    ):
-
-        cells = []
-
-        for column_index, value in enumerate(
-            row.tolist()
-        ):
-
-            cells.append({
-                "value": value,
-                "is_correct":
-                    row_index == column_index,
-            })
-
-        confusion_rows.append({
-            "actual": actual_label,
-            "cells": cells,
-        })
+    # ----------------------------------------------------------
+    # Selected primary evaluation metric
+    # ----------------------------------------------------------
 
     try:
 
@@ -768,41 +765,180 @@ def classification_train(request):
             "project1/classification_train.html",
             context,
         )
-        
+
     # ----------------------------------------------------------
-    # Human-readable names
+    # Human-readable labels
     # ----------------------------------------------------------
-    
+
     model_display_name = (
         CLASSIFIER_CHOICES[
             selected_model
-            ]
-        )
-    
+        ]
+    )
+
     metric_display_name = (
         CLASSIFICATION_METRICS[
             selected_metric
-            ]
-        )
+        ]
+    )
 
     # ----------------------------------------------------------
-    # Performance chart
+    # Training vs testing chart
     # ----------------------------------------------------------
 
     score_chart_url = (
         create_score_comparison_chart(
-            train_score=selected_train_score,
-            test_score=selected_test_score,
-            metric_name=metric_display_name,
-            media_root=settings.MEDIA_ROOT,
-            media_url=settings.MEDIA_URL,
+
+            train_score=
+                selected_train_score,
+
+            test_score=
+                selected_test_score,
+
+            metric_name=
+                metric_display_name,
+
+            media_root=
+                settings.MEDIA_ROOT,
+
+            media_url=
+                settings.MEDIA_URL,
         )
     )
 
-    
+    # ==========================================================
+    # CONFUSION MATRIX
+    # ==========================================================
+
+    confusion = (
+        calculate_confusion_matrix(
+            y_test,
+            test_predictions,
+        )
+    )
+
+    # Use the actual labels understood by the trained model.
+    if hasattr(
+        model,
+        "classes_",
+    ):
+
+        class_labels = (
+            model.classes_.tolist()
+        )
+
+    else:
+
+        class_labels = sorted(
+            y.unique().tolist()
+        )
+
+    confusion_rows = []
+
+    for row_index, (
+        actual_label,
+        row,
+    ) in enumerate(
+        zip(
+            class_labels,
+            confusion,
+        )
+    ):
+
+        cells = []
+
+        for column_index, value in enumerate(
+            row.tolist()
+        ):
+
+            cells.append({
+
+                "value":
+                    value,
+
+                "is_correct":
+                    (
+                        row_index
+                        == column_index
+                    ),
+            })
+
+        confusion_rows.append({
+
+            "actual":
+                actual_label,
+
+            "cells":
+                cells,
+        })
+
+    # ==========================================================
+    # EXPLAINABILITY
+    # ==========================================================
+
+    try:
+
+        explanation = (
+            get_feature_importance(
+
+                model=model,
+
+                model_name=
+                    selected_model,
+
+                feature_columns=
+                    feature_columns,
+
+                X_test=
+                    X_test,
+
+                y_test=
+                    y_test,
+            )
+        )
+
+        explanation_method = (
+            explanation[
+                "method"
+            ]
+        )
+
+        explanation_items = (
+            explanation[
+                "items"
+            ]
+        )
+
+        explanation_chart_url = (
+            create_feature_importance_chart(
+
+                explanation_items=
+                    explanation_items,
+
+                method_name=
+                    explanation_method,
+
+                media_root=
+                    settings.MEDIA_ROOT,
+
+                media_url=
+                    settings.MEDIA_URL,
+            )
+        )
+
+    except ExplainabilityError as error:
+
+        print(
+            "EXPLAINABILITY ERROR:",
+            error,
+        )
+
+        explanation_method = None
+        explanation_items = []
+        explanation_chart_url = None
 
     # ----------------------------------------------------------
-    # Save trained model
+    # Save model + metadata
     # ----------------------------------------------------------
 
     metadata = {
@@ -845,30 +981,43 @@ def classification_train(request):
             settings.MEDIA_ROOT,
     )
 
-    # ----------------------------------------------------------
-    # Results context
-    # ----------------------------------------------------------
+    # ==========================================================
+    # RESULT PAGE CONTEXT
+    # ==========================================================
 
     context.update({
 
         "training_complete":
             True,
 
+        # ------------------------------------------------------
+        # Model information
+        # ------------------------------------------------------
+
         "model_name":
             model_display_name,
-
-        "metric_name":
-            metric_display_name,
 
         "selected_model":
             selected_model,
 
+        "metric_name":
+            metric_display_name,
+
         "selected_metric":
             selected_metric,
-        
 
         "parameters":
             parameters,
+
+        "target_column":
+            target_column,
+
+        "feature_columns":
+            feature_columns,
+
+        # ------------------------------------------------------
+        # Split
+        # ------------------------------------------------------
 
         "train_size":
             round(
@@ -882,9 +1031,9 @@ def classification_train(request):
                 * 100
             ),
 
-        # -----------------------------------------
-        # User-selected primary score
-        # -----------------------------------------
+        # ------------------------------------------------------
+        # Primary score
+        # ------------------------------------------------------
 
         "train_score":
             round(
@@ -900,9 +1049,9 @@ def classification_train(request):
                 2,
             ),
 
-        # -----------------------------------------
-        # Accuracy
-        # -----------------------------------------
+        # ------------------------------------------------------
+        # All metrics
+        # ------------------------------------------------------
 
         "train_accuracy":
             round(
@@ -922,10 +1071,6 @@ def classification_train(request):
                 2,
             ),
 
-        # -----------------------------------------
-        # Precision
-        # -----------------------------------------
-
         "train_precision":
             round(
                 train_metrics[
@@ -943,10 +1088,6 @@ def classification_train(request):
                 * 100,
                 2,
             ),
-
-        # -----------------------------------------
-        # Recall
-        # -----------------------------------------
 
         "train_recall":
             round(
@@ -966,10 +1107,6 @@ def classification_train(request):
                 2,
             ),
 
-        # -----------------------------------------
-        # F1
-        # -----------------------------------------
-
         "train_f1":
             round(
                 train_metrics[
@@ -988,17 +1125,35 @@ def classification_train(request):
                 2,
             ),
 
+        # ------------------------------------------------------
+        # Visualization
+        # ------------------------------------------------------
+
         "accuracy_chart_url":
             score_chart_url,
 
-        "target_column":
-            target_column,
+        # ------------------------------------------------------
+        # Confusion matrix
+        # ------------------------------------------------------
 
-        "feature_columns":
-            feature_columns,
-        
-        "confusion_rows": confusion_rows,
-        "class_labels": class_labels,
+        "confusion_rows":
+            confusion_rows,
+
+        "class_labels":
+            class_labels,
+
+        # ------------------------------------------------------
+        # Explainability
+        # ------------------------------------------------------
+
+        "explanation_method":
+            explanation_method,
+
+        "explanation_items":
+            explanation_items,
+
+        "explanation_chart_url":
+            explanation_chart_url,
     })
 
     return render(
@@ -1014,11 +1169,18 @@ def classification_train(request):
 
 def classification_test(request):
     """
-    Use the most recently trained model
-    for prediction.
+    Use the most recently trained classification model
+    for prediction on manually entered values.
+
+    If available, also display class probabilities and
+    prediction confidence.
     """
 
     context = {}
+
+    # ----------------------------------------------------------
+    # Load trained model
+    # ----------------------------------------------------------
 
     try:
 
@@ -1032,8 +1194,7 @@ def classification_test(request):
     except ModelNotFoundError:
 
         context["error"] = (
-            "No trained classification "
-            "model is available. "
+            "No trained classification model is available. "
             "Please train a model first."
         )
 
@@ -1043,13 +1204,21 @@ def classification_test(request):
             context,
         )
 
-    feature_columns = metadata[
-        "feature_columns"
-    ]
+    feature_columns = (
+        metadata[
+            "feature_columns"
+        ]
+    )
 
-    target_column = metadata[
-        "target_column"
-    ]
+    target_column = (
+        metadata[
+            "target_column"
+        ]
+    )
+
+    # ----------------------------------------------------------
+    # Basic page information
+    # ----------------------------------------------------------
 
     context.update({
 
@@ -1069,10 +1238,15 @@ def classification_test(request):
                 "parameters",
                 {},
             ),
+
+        "metric_name":
+            metadata.get(
+                "metric_name",
+            ),
     })
 
     # ----------------------------------------------------------
-    # First page load
+    # GET → only show prediction form
     # ----------------------------------------------------------
 
     if request.method != "POST":
@@ -1084,7 +1258,7 @@ def classification_test(request):
         )
 
     # ----------------------------------------------------------
-    # Read feature values
+    # Read manually entered feature values
     # ----------------------------------------------------------
 
     input_data = {}
@@ -1105,8 +1279,7 @@ def classification_test(request):
             ):
 
                 raise ValueError(
-                    f"A value is required "
-                    f"for '{feature}'."
+                    f"A value is required for '{feature}'."
                 )
 
             input_data[
@@ -1132,32 +1305,38 @@ def classification_test(request):
         )
 
     # ----------------------------------------------------------
-    # Preserve training feature order
+    # Build prediction DataFrame
+    #
+    # Columns are explicitly ordered exactly as during training.
     # ----------------------------------------------------------
 
     prediction_frame = (
         pd.DataFrame(
-            [input_data],
+            [
+                input_data
+            ],
             columns=
                 feature_columns,
         )
     )
 
     # ----------------------------------------------------------
-    # Prediction
+    # Predict class
     # ----------------------------------------------------------
 
-    prediction = model.predict(
-        prediction_frame
-    )[0]
+    prediction = (
+        model.predict(
+            prediction_frame
+        )[0]
+    )
 
     context[
         "prediction"
     ] = prediction
 
-    # ----------------------------------------------------------
-    # Confidence / probabilities
-    # ----------------------------------------------------------
+    # ==========================================================
+    # PREDICTION CONFIDENCE
+    # ==========================================================
 
     if hasattr(
         model,
@@ -1199,13 +1378,15 @@ def classification_test(request):
             )
         ]
 
+        confidence = max(
+            probabilities
+        )
+
         context.update({
 
             "confidence":
                 round(
-                    max(
-                        probabilities
-                    )
+                    confidence
                     * 100,
                     2,
                 ),
