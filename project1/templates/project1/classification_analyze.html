@@ -2,9 +2,12 @@
 <!DOCTYPE html>
 
 <html>
+
 <head>
 
-    <title>Classification Training</title>
+    <title>
+        Analyze Classification Dataset
+    </title>
 
     <link
         rel="stylesheet"
@@ -16,372 +19,879 @@
 
 <body>
 
+
 <div class="page-container">
 
 
-    <!-- Back -->
+    <!-- =====================================================
+         Back navigation
+         ===================================================== -->
 
     <a
-        href="{% url 'project1:classification_analyze' %}"
+        href="{% url 'project1:classification' %}"
         class="back-arrow"
-        title="Back to analysis"
+        title="Back to dataset upload"
     >
         ←
     </a>
 
 
-    <!-- Header -->
+    <!-- =====================================================
+         Header
+         ===================================================== -->
 
     <div class="page-header">
 
-        <h1>Classification Model Training</h1>
+        <h1>
+            Analyze Classification Dataset
+        </h1>
 
         <p>
-            Review the trained model, its configuration
-            and its performance on both training and unseen test data.
+            Explore your uploaded dataset before training.
+            Select two features for the scatter plot and
+            inspect the distribution of the target classes.
         </p>
 
     </div>
 
 
+    <!-- =====================================================
+         Dataset information
+         ===================================================== -->
 
-    {% if error %}
+    <div class="card">
 
-        <div class="error">
-            {{ error }}
+        <h2>
+            Dataset Information
+        </h2>
+
+        <div class="info-box">
+
+            <strong>
+                Target column:
+            </strong>
+
+            {{ target_column }}
+
+            <br>
+
+            <strong>
+                Input features:
+            </strong>
+
+            {{ columns|length }}
+
         </div>
 
-    {% endif %}
 
+        {% if removed_identifier_columns %}
 
+            <div class="warning-box">
 
-    {% if training_complete %}
+                Identifier column(s) removed automatically:
 
-
-        <!-- ==================================================
-             MODEL CONFIGURATION
-             ================================================== -->
-
-        <div class="card">
-
-            <h2>Model Configuration</h2>
-
-
-            <div class="training-stat-grid">
-
-
-                <div class="training-stat">
-
-                    <span class="training-stat-number">
-                        {{ model_name }}
-                    </span>
-
-                    <span class="training-stat-label">
-                        Model
-                    </span>
-
-                </div>
-
-
-                <div class="training-stat">
-
-                    <span class="training-stat-number">
-                        {{ train_size }} / {{ test_size }}
-                    </span>
-
-                    <span class="training-stat-label">
-                        Train / Test %
-                    </span>
-
-                </div>
-
-
-                <div class="training-stat">
-
-                    <span class="training-stat-number">
-                        {{ metric_name }}
-                    </span>
-
-                    <span class="training-stat-label">
-                        Primary Metric
-                    </span>
-
-                </div>
-
+                <strong>
+                    {{ removed_identifier_columns|join:", " }}
+                </strong>
 
             </div>
 
-        </div>
+        {% endif %}
+
+    </div>
 
 
+    <!-- =====================================================
+         Graphs
+         ===================================================== -->
 
-        <!-- ==================================================
-             PRIMARY SCORE + CHART
-             ================================================== -->
+    <div class="graph-row">
 
-        <div class="graph-row">
 
+        {% if scatter_plot_url %}
 
             <div class="card graph-card">
 
-                <h2>{{ metric_name }} Results</h2>
-
-
-                <div class="training-stat-grid">
-
-
-                    <div class="training-stat">
-
-                        <span class="training-stat-number">
-                            {{ train_score }}%
-                        </span>
-
-                        <span class="training-stat-label">
-                            Training {{ metric_name }}
-                        </span>
-
-                    </div>
-
-
-                    <div class="training-stat">
-
-                        <span class="training-stat-number">
-                            {{ test_score }}%
-                        </span>
-
-                        <span class="training-stat-label">
-                            Testing {{ metric_name }}
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <div class="info-box">
-
-                    The testing score measures performance
-                    on observations that were not used
-                    during model training.
-
-                </div>
-
-            </div>
-
-
-
-            {% if accuracy_chart_url %}
-
-                <div class="card graph-card">
-
-                    <h2>
-                        Training vs Testing Performance
-                    </h2>
-
-                    <img
-                        src="{{ accuracy_chart_url }}"
-                        alt="Training and testing performance"
-                    >
-
-                </div>
-
-            {% endif %}
-
-
-        </div>
-
-
-
-        <!-- ==================================================
-             ALL METRICS
-             ================================================== -->
-
-        <div class="card">
-
-            <h2>Complete Evaluation</h2>
-
-
-            <div class="training-stat-grid">
-
-
-                <div class="training-stat">
-
-                    <span class="training-stat-number">
-                        {{ test_accuracy }}%
-                    </span>
-
-                    <span class="training-stat-label">
-                        Accuracy
-                    </span>
-
-                </div>
-
-
-                <div class="training-stat">
-
-                    <span class="training-stat-number">
-                        {{ test_precision }}%
-                    </span>
-
-                    <span class="training-stat-label">
-                        Precision
-                    </span>
-
-                </div>
-
-
-                <div class="training-stat">
-
-                    <span class="training-stat-number">
-                        {{ test_recall }}%
-                    </span>
-
-                    <span class="training-stat-label">
-                        Recall
-                    </span>
-
-                </div>
-
-
-                <div class="training-stat">
-
-                    <span class="training-stat-number">
-                        {{ test_f1 }}%
-                    </span>
-
-                    <span class="training-stat-label">
-                        F1 Score
-                    </span>
-
-                </div>
-
-
-            </div>
-
-        </div>
-
-
-
-        <!-- ==================================================
-             HYPERPARAMETERS
-             ================================================== -->
-
-        <div class="card">
-
-            <h2>Selected Hyperparameters</h2>
-
-
-            {% if parameters %}
-
-                <div class="info-box">
-
-                    {% for key, value in parameters.items %}
-
-                        <strong>{{ key }}:</strong>
-                        {{ value }}
-
-                        {% if not forloop.last %}
-                            <br>
-                        {% endif %}
-
-                    {% endfor %}
-
-                </div>
-
-            {% else %}
+                <h2>
+                    Feature Scatter Plot
+                </h2>
 
                 <p class="help-text">
-                    This model uses its default configuration.
+                    Each color represents a different
+                    class in
+                    <strong>
+                        {{ target_column }}
+                    </strong>.
                 </p>
 
-            {% endif %}
+                <img
+                    src="{{ scatter_plot_url }}"
+                    alt="Classification scatter plot"
+                >
 
-        </div>
+            </div>
+
+        {% endif %}
 
 
+        {% if bar_plot_url %}
 
-        <!-- ==================================================
-             NEXT ACTIONS
-             ================================================== -->
+            <div class="card graph-card">
 
-        <div class="card centered-text">
+                <h2>
+                    Class Distribution
+                </h2>
 
-            <h2>What would you like to do next?</h2>
+                <p class="help-text">
+                    Number of observations belonging
+                    to each target class.
+                </p>
 
-            <p class="help-text">
-                You can test this trained model on a new observation,
-                or return to the analysis page and train another model.
-            </p>
+                <img
+                    src="{{ bar_plot_url }}"
+                    alt="Class distribution"
+                >
+
+            </div>
+
+        {% endif %}
+
+
+    </div>
+
+
+    <!-- =====================================================
+         Visualization controls
+         ===================================================== -->
+
+    <div class="card">
+
+        <h2>
+            Visualization Controls
+        </h2>
+
+        <p class="help-text">
+            Select two input features and update
+            the scatter plot.
+        </p>
+
+
+        <form method="POST">
+
+            {% csrf_token %}
+
+
+            <div class="form-row">
+
+
+                <div>
+
+                    <label for="x_col">
+                        X-axis
+                    </label>
+
+                    <select
+                        id="x_col"
+                        name="x_col"
+                    >
+
+                        {% for col in columns %}
+
+                            <option
+                                value="{{ col }}"
+                                {% if col == selected_x %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ col }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div>
+
+                    <label for="y_col">
+                        Y-axis
+                    </label>
+
+                    <select
+                        id="y_col"
+                        name="y_col"
+                    >
+
+                        {% for col in columns %}
+
+                            <option
+                                value="{{ col }}"
+                                {% if col == selected_y %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ col }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+            </div>
 
 
             <div class="action-row">
 
 
-                <a
-                    href="{% url 'project1:classification_test' %}"
+                <button
+                    type="submit"
                     class="button"
                 >
-                    Test Model
-                </a>
+                    Update Visualization
+                </button>
 
 
-                <a
-                    href="{% url 'project1:classification_analyze' %}"
+                <button
+                    type="button"
                     class="button secondary-button"
+                    onclick="openTrainPopup()"
                 >
-                    Train Another Model
-                </a>
+                    Train Model
+                </button>
 
 
             </div>
 
-        </div>
+
+        </form>
+
+    </div>
 
 
-    {% else %}
+    <!-- =====================================================
+         Dataset preview
+         ===================================================== -->
 
-
-        <!-- ==================================================
-             NO TRAINING RESULT YET
-             ================================================== -->
+    {% if tables %}
 
         <div class="card">
 
-            <h2>Configure Model Training</h2>
+            <h2>
+                Dataset Preview
+            </h2>
 
             <p class="help-text">
-                Select a model and its settings before training.
+                First five observations after preprocessing.
             </p>
 
+            <div style="overflow-x:auto;">
 
-            <form method="POST">
+                {{ tables|safe }}
 
-                {% csrf_token %}
-
-                {{ form.as_p }}
-
-
-                <div class="action-row">
-
-                    <button
-                        type="submit"
-                        class="button"
-                    >
-                        Train Model
-                    </button>
-
-                </div>
-
-            </form>
+            </div>
 
         </div>
-
 
     {% endif %}
 
 
 </div>
 
+
+
+<!-- =========================================================
+     TRAINING POPUP
+     ========================================================= -->
+
+<div
+    id="trainPopup"
+    class="popup"
+>
+
+
+    <div class="popup-content">
+
+
+        <h2>
+            Configure Model Training
+        </h2>
+
+
+        <p class="help-text">
+
+            Choose the model, evaluation metric,
+            test split and model-specific hyperparameters.
+
+        </p>
+
+
+        <form
+            method="POST"
+            action="{% url 'project1:classification_train' %}"
+        >
+
+            {% csrf_token %}
+
+
+            <!-- =================================================
+                 Main settings
+                 ================================================= -->
+
+            <div class="form-row">
+
+
+                <div>
+
+                    <label for="model">
+                        Model
+                    </label>
+
+                    <select
+                        id="model"
+                        name="model"
+                        onchange="updateHyperparameters()"
+                    >
+
+                        <option value="decision_tree">
+                            Decision Tree
+                        </option>
+
+                        <option value="random_forest">
+                            Random Forest
+                        </option>
+
+                        <option value="knn">
+                            K-Nearest Neighbors
+                        </option>
+
+                        <option value="logistic_regression">
+                            Logistic Regression
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div>
+
+                    <label for="test_size">
+                        Test Size
+                    </label>
+
+                    <select
+                        id="test_size"
+                        name="test_size"
+                    >
+
+                        <option value="0.2">
+                            20% Test / 80% Train
+                        </option>
+
+                        <option value="0.3">
+                            30% Test / 70% Train
+                        </option>
+
+                        <option value="0.4">
+                            40% Test / 60% Train
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div>
+
+                    <label for="metric">
+                        Evaluation Metric
+                    </label>
+
+                    <select
+                        id="metric"
+                        name="metric"
+                    >
+
+                        <option value="accuracy">
+                            Accuracy
+                        </option>
+
+                        <option value="precision">
+                            Precision
+                        </option>
+
+                        <option value="recall">
+                            Recall
+                        </option>
+
+                        <option value="f1">
+                            F1 Score
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+            </div>
+
+
+            <hr class="divider">
+
+
+            <!-- =================================================
+                 Decision Tree
+                 ================================================= -->
+
+            <div
+                id="decision-tree-parameters"
+                class="hyperparameter-section"
+            >
+
+                <h3>
+                    Decision Tree Hyperparameters
+                </h3>
+
+
+                <div class="form-row">
+
+
+                    <div>
+
+                        <label for="tree_max_depth">
+                            Maximum Depth
+                        </label>
+
+                        <input
+                            type="number"
+                            id="tree_max_depth"
+                            name="tree_max_depth"
+                            min="1"
+                            max="50"
+                            value="5"
+                        >
+
+                    </div>
+
+
+                    <div>
+
+                        <label for="tree_min_samples_split">
+                            Minimum Samples Split
+                        </label>
+
+                        <input
+                            type="number"
+                            id="tree_min_samples_split"
+                            name="tree_min_samples_split"
+                            min="2"
+                            max="50"
+                            value="2"
+                        >
+
+                    </div>
+
+
+                </div>
+
+
+            </div>
+
+
+            <!-- =================================================
+                 Random Forest
+                 ================================================= -->
+
+            <div
+                id="random-forest-parameters"
+                class="hyperparameter-section"
+                style="display:none;"
+            >
+
+                <h3>
+                    Random Forest Hyperparameters
+                </h3>
+
+
+                <div class="form-row">
+
+
+                    <div>
+
+                        <label for="rf_n_estimators">
+                            Number of Trees
+                        </label>
+
+                        <input
+                            type="number"
+                            id="rf_n_estimators"
+                            name="rf_n_estimators"
+                            min="10"
+                            max="500"
+                            value="100"
+                        >
+
+                    </div>
+
+
+                    <div>
+
+                        <label for="rf_max_depth">
+                            Maximum Depth
+                        </label>
+
+                        <input
+                            type="number"
+                            id="rf_max_depth"
+                            name="rf_max_depth"
+                            min="1"
+                            max="50"
+                            value="10"
+                        >
+
+                    </div>
+
+
+                    <div>
+
+                        <label for="rf_min_samples_split">
+                            Minimum Samples Split
+                        </label>
+
+                        <input
+                            type="number"
+                            id="rf_min_samples_split"
+                            name="rf_min_samples_split"
+                            min="2"
+                            max="50"
+                            value="2"
+                        >
+
+                    </div>
+
+
+                </div>
+
+
+            </div>
+
+
+            <!-- =================================================
+                 KNN
+                 ================================================= -->
+
+            <div
+                id="knn-parameters"
+                class="hyperparameter-section"
+                style="display:none;"
+            >
+
+                <h3>
+                    KNN Hyperparameters
+                </h3>
+
+
+                <div class="form-row">
+
+
+                    <div>
+
+                        <label for="knn_neighbors">
+                            Number of Neighbors
+                        </label>
+
+                        <input
+                            type="number"
+                            id="knn_neighbors"
+                            name="knn_neighbors"
+                            min="1"
+                            max="50"
+                            value="5"
+                        >
+
+                    </div>
+
+
+                    <div>
+
+                        <label for="knn_weights">
+                            Neighbor Weighting
+                        </label>
+
+                        <select
+                            id="knn_weights"
+                            name="knn_weights"
+                        >
+
+                            <option value="uniform">
+                                Uniform
+                            </option>
+
+                            <option value="distance">
+                                Distance
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <div>
+
+                        <label for="knn_metric">
+                            Distance Metric
+                        </label>
+
+                        <select
+                            id="knn_metric"
+                            name="knn_metric"
+                        >
+
+                            <option value="euclidean">
+                                Euclidean
+                            </option>
+
+                            <option value="manhattan">
+                                Manhattan
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                </div>
+
+
+            </div>
+
+
+            <!-- =================================================
+                 Logistic Regression
+                 ================================================= -->
+
+            <div
+                id="logistic-parameters"
+                class="hyperparameter-section"
+                style="display:none;"
+            >
+
+                <h3>
+                    Logistic Regression Hyperparameters
+                </h3>
+
+
+                <div class="form-row">
+
+
+                    <div>
+
+                        <label for="logistic_c">
+                            Regularization Parameter (C)
+                        </label>
+
+                        <input
+                            type="number"
+                            id="logistic_c"
+                            name="logistic_c"
+                            min="0.001"
+                            max="1000"
+                            step="0.1"
+                            value="1.0"
+                        >
+
+                    </div>
+
+
+                    <div>
+
+                        <label for="logistic_max_iter">
+                            Maximum Iterations
+                        </label>
+
+                        <input
+                            type="number"
+                            id="logistic_max_iter"
+                            name="logistic_max_iter"
+                            min="100"
+                            max="5000"
+                            step="100"
+                            value="1000"
+                        >
+
+                    </div>
+
+
+                </div>
+
+
+            </div>
+
+
+            <!-- =================================================
+                 Buttons
+                 ================================================= -->
+
+            <div class="action-row">
+
+
+                <button
+                    type="submit"
+                    class="button"
+                >
+                    Train Model
+                </button>
+
+
+                <button
+                    type="button"
+                    class="button secondary-button"
+                    onclick="closeTrainPopup()"
+                >
+                    Cancel
+                </button>
+
+
+            </div>
+
+
+        </form>
+
+
+    </div>
+
+
+</div>
+
+
+
+<!-- =========================================================
+     Javascript
+     ========================================================= -->
+
+<script>
+
+
+function openTrainPopup() {
+
+    document.getElementById(
+        "trainPopup"
+    ).style.display = "flex";
+
+    updateHyperparameters();
+}
+
+
+function closeTrainPopup() {
+
+    document.getElementById(
+        "trainPopup"
+    ).style.display = "none";
+}
+
+
+function updateHyperparameters() {
+
+    const selectedModel =
+        document.getElementById(
+            "model"
+        ).value;
+
+
+    const sections =
+        document.querySelectorAll(
+            ".hyperparameter-section"
+        );
+
+
+    sections.forEach(
+        function(section) {
+
+            section.style.display =
+                "none";
+
+        }
+    );
+
+
+    if (
+        selectedModel ===
+        "decision_tree"
+    ) {
+
+        document.getElementById(
+            "decision-tree-parameters"
+        ).style.display = "block";
+
+    }
+
+
+    else if (
+        selectedModel ===
+        "random_forest"
+    ) {
+
+        document.getElementById(
+            "random-forest-parameters"
+        ).style.display = "block";
+
+    }
+
+
+    else if (
+        selectedModel ===
+        "knn"
+    ) {
+
+        document.getElementById(
+            "knn-parameters"
+        ).style.display = "block";
+
+    }
+
+
+    else if (
+        selectedModel ===
+        "logistic_regression"
+    ) {
+
+        document.getElementById(
+            "logistic-parameters"
+        ).style.display = "block";
+
+    }
+
+}
+
+
+/* Close popup by clicking outside */
+
+document.getElementById(
+    "trainPopup"
+).addEventListener(
+    "click",
+    function(event) {
+
+        if (
+            event.target === this
+        ) {
+
+            closeTrainPopup();
+
+        }
+
+    }
+);
+
+
+</script>
+
+
 </body>
+
 </html>

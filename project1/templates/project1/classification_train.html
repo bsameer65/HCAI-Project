@@ -2,9 +2,12 @@
 <!DOCTYPE html>
 
 <html>
+
 <head>
 
-    <title>Classification Training</title>
+    <title>
+        Classification Training Results
+    </title>
 
     <link
         rel="stylesheet"
@@ -16,10 +19,13 @@
 
 <body>
 
+
 <div class="page-container">
 
 
-    <!-- Back -->
+    <!-- =====================================================
+         Back
+         ===================================================== -->
 
     <a
         href="{% url 'project1:classification_analyze' %}"
@@ -30,41 +36,55 @@
     </a>
 
 
-    <!-- Header -->
+    <!-- =====================================================
+         Header
+         ===================================================== -->
 
     <div class="page-header">
 
-        <h1>Classification Model Training</h1>
+        <h1>
+            Classification Model Training
+        </h1>
 
         <p>
-            Review the trained model, its configuration
-            and its performance on both training and unseen test data.
+            Review the trained model, its configuration,
+            and its performance on training and unseen test data.
         </p>
 
     </div>
 
 
+    <!-- =====================================================
+         Error
+         ===================================================== -->
 
     {% if error %}
 
         <div class="error">
+
             {{ error }}
+
         </div>
 
     {% endif %}
 
 
+    <!-- =====================================================
+         Results
+         ===================================================== -->
 
     {% if training_complete %}
 
 
-        <!-- ==================================================
-             MODEL CONFIGURATION
-             ================================================== -->
+        <!-- =================================================
+             Configuration
+             ================================================= -->
 
         <div class="card">
 
-            <h2>Model Configuration</h2>
+            <h2>
+                Model Configuration
+            </h2>
 
 
             <div class="training-stat-grid">
@@ -86,11 +106,11 @@
                 <div class="training-stat">
 
                     <span class="training-stat-number">
-                        {{ train_size }} / {{ test_size }}
+                        {{ train_size }}% / {{ test_size }}%
                     </span>
 
                     <span class="training-stat-label">
-                        Train / Test %
+                        Train / Test Split
                     </span>
 
                 </div>
@@ -103,7 +123,7 @@
                     </span>
 
                     <span class="training-stat-label">
-                        Primary Metric
+                        Primary Evaluation Metric
                     </span>
 
                 </div>
@@ -111,20 +131,22 @@
 
             </div>
 
+
         </div>
 
 
-
-        <!-- ==================================================
-             PRIMARY SCORE + CHART
-             ================================================== -->
+        <!-- =================================================
+             Primary metric
+             ================================================= -->
 
         <div class="graph-row">
 
 
             <div class="card graph-card">
 
-                <h2>{{ metric_name }} Results</h2>
+                <h2>
+                    {{ metric_name }} Results
+                </h2>
 
 
                 <div class="training-stat-grid">
@@ -161,14 +183,13 @@
 
                 <div class="info-box">
 
-                    The testing score measures performance
-                    on observations that were not used
-                    during model training.
+                    The testing score is calculated on observations
+                    that were not used while fitting the model.
 
                 </div>
 
-            </div>
 
+            </div>
 
 
             {% if accuracy_chart_url %}
@@ -176,13 +197,15 @@
                 <div class="card graph-card">
 
                     <h2>
-                        Training vs Testing Performance
+                        Training vs Testing
                     </h2>
+
 
                     <img
                         src="{{ accuracy_chart_url }}"
-                        alt="Training and testing performance"
+                        alt="Training versus testing performance"
                     >
+
 
                 </div>
 
@@ -192,14 +215,15 @@
         </div>
 
 
-
-        <!-- ==================================================
-             ALL METRICS
-             ================================================== -->
+        <!-- =================================================
+             Complete metrics
+             ================================================= -->
 
         <div class="card">
 
-            <h2>Complete Evaluation</h2>
+            <h2>
+                Complete Test Evaluation
+            </h2>
 
 
             <div class="training-stat-grid">
@@ -259,59 +283,81 @@
 
             </div>
 
+
         </div>
 
 
-
-        <!-- ==================================================
-             HYPERPARAMETERS
-             ================================================== -->
+        <!-- =================================================
+             Hyperparameters
+             ================================================= -->
 
         <div class="card">
 
-            <h2>Selected Hyperparameters</h2>
+            <h2>
+                Selected Hyperparameters
+            </h2>
 
 
             {% if parameters %}
 
                 <div class="info-box">
 
+
                     {% for key, value in parameters.items %}
 
-                        <strong>{{ key }}:</strong>
+                        <strong>
+                            {{ key }}
+                        </strong>
+
+                        :
                         {{ value }}
 
+
                         {% if not forloop.last %}
+
                             <br>
+
                         {% endif %}
+
 
                     {% endfor %}
 
+
                 </div>
+
 
             {% else %}
 
                 <p class="help-text">
-                    This model uses its default configuration.
+
+                    The selected algorithm does not have
+                    user-modified hyperparameters.
+
                 </p>
 
             {% endif %}
 
+
         </div>
 
 
-
-        <!-- ==================================================
-             NEXT ACTIONS
-             ================================================== -->
+        <!-- =================================================
+             Actions
+             ================================================= -->
 
         <div class="card centered-text">
 
-            <h2>What would you like to do next?</h2>
+            <h2>
+                Continue Experimenting
+            </h2>
+
 
             <p class="help-text">
-                You can test this trained model on a new observation,
-                or return to the analysis page and train another model.
+
+                Test this trained model on a new observation,
+                or return to the analysis page to train another
+                configuration.
+
             </p>
 
 
@@ -336,44 +382,6 @@
 
             </div>
 
-        </div>
-
-
-    {% else %}
-
-
-        <!-- ==================================================
-             NO TRAINING RESULT YET
-             ================================================== -->
-
-        <div class="card">
-
-            <h2>Configure Model Training</h2>
-
-            <p class="help-text">
-                Select a model and its settings before training.
-            </p>
-
-
-            <form method="POST">
-
-                {% csrf_token %}
-
-                {{ form.as_p }}
-
-
-                <div class="action-row">
-
-                    <button
-                        type="submit"
-                        class="button"
-                    >
-                        Train Model
-                    </button>
-
-                </div>
-
-            </form>
 
         </div>
 
@@ -383,5 +391,7 @@
 
 </div>
 
+
 </body>
+
 </html>

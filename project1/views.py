@@ -74,11 +74,17 @@ from .services.persistence import (
 
 
 # ==============================================================
-# Constants / paths
+# Constants
 # ==============================================================
 
-CLASSIFICATION_DATASET_FILENAME = "current_classification_dataset.csv"
+CLASSIFICATION_DATASET_FILENAME = (
+    "current_classification_dataset.csv"
+)
 
+
+# ==============================================================
+# Helper functions
+# ==============================================================
 
 def _get_upload_directory():
     """
@@ -100,7 +106,8 @@ def _get_upload_directory():
 
 def _get_classification_dataset_path():
     """
-    Return the path of the currently uploaded classification dataset.
+    Return the path of the currently uploaded
+    classification dataset.
     """
 
     return os.path.join(
@@ -109,31 +116,36 @@ def _get_classification_dataset_path():
     )
 
 
-def _validate_numeric_features(df, feature_columns):
+def _validate_numeric_features(
+    df,
+    feature_columns,
+):
     """
-    Classification algorithms currently expect numeric description features.
+    Return non-numeric input feature names.
 
-    Returns:
-        list[str]: Names of non-numeric feature columns.
+    The current classification algorithms expect
+    numerical description features.
     """
 
     return [
         column
         for column in feature_columns
-        if not pd.api.types.is_numeric_dtype(df[column])
+        if not pd.api.types.is_numeric_dtype(
+            df[column]
+        )
     ]
 
 
 # ==============================================================
-# Project 1 landing page
+# Project landing page
 # ==============================================================
 
 def index(request):
     """
     Project 1 landing page.
 
-    The user explicitly chooses whether they want to solve
-    a classification or regression problem.
+    User explicitly selects classification
+    or regression.
     """
 
     return render(
@@ -143,15 +155,12 @@ def index(request):
 
 
 # ==============================================================
-# Classification: upload dataset
+# CLASSIFICATION — Upload
 # ==============================================================
 
 def classification(request):
     """
-    Upload a classification CSV dataset.
-
-    Once successfully uploaded, the user is redirected to the
-    analysis page.
+    Upload and validate a classification dataset.
     """
 
     context = {}
@@ -162,9 +171,15 @@ def classification(request):
             "csv_file"
         )
 
+        # ------------------------------------------------------
+        # No file selected
+        # ------------------------------------------------------
+
         if uploaded_file is None:
+
             context["error"] = (
-                "Please choose a CSV file before continuing."
+                "Please choose a CSV file "
+                "before continuing."
             )
 
             return render(
@@ -174,10 +189,12 @@ def classification(request):
             )
 
         # ------------------------------------------------------
-        # Validate file extension
+        # Validate extension
         # ------------------------------------------------------
 
-        if not uploaded_file.name.lower().endswith(".csv"):
+        if not uploaded_file.name.lower().endswith(
+            ".csv"
+        ):
 
             context["error"] = (
                 "Only CSV files are supported."
@@ -193,11 +210,11 @@ def classification(request):
             _get_classification_dataset_path()
         )
 
-        # ------------------------------------------------------
-        # Save / replace current uploaded dataset
-        # ------------------------------------------------------
-
         try:
+
+            # --------------------------------------------------
+            # Save / replace current dataset
+            # --------------------------------------------------
 
             with open(
                 file_path,
@@ -205,10 +222,12 @@ def classification(request):
             ) as destination:
 
                 for chunk in uploaded_file.chunks():
-                    destination.write(chunk)
+                    destination.write(
+                        chunk
+                    )
 
             # --------------------------------------------------
-            # Validate immediately after upload
+            # Validate dataset
             # --------------------------------------------------
 
             (
@@ -221,8 +240,7 @@ def classification(request):
             )
 
             # --------------------------------------------------
-            # Current classification algorithms expect
-            # numerical description features.
+            # Check features are numeric
             # --------------------------------------------------
 
             non_numeric_features = (
@@ -235,25 +253,37 @@ def classification(request):
             if non_numeric_features:
 
                 raise DatasetValidationError(
-                    "The following feature columns are not numeric: "
-                    + ", ".join(non_numeric_features)
-                    + ". Please upload a dataset with numeric features."
+                    "The following feature columns "
+                    "are not numeric: "
+                    + ", ".join(
+                        non_numeric_features
+                    )
+                    + "."
                 )
 
         except DatasetValidationError as error:
 
-            # Remove invalid uploaded dataset so it cannot be
-            # accidentally reused later.
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            if os.path.exists(
+                file_path
+            ):
+                os.remove(
+                    file_path
+                )
 
-            context["error"] = str(error)
+            context["error"] = str(
+                error
+            )
 
             return render(
                 request,
                 "project1/classification.html",
                 context,
             )
+
+        # ------------------------------------------------------
+        # IMPORTANT:
+        # After upload → Analysis page
+        # ------------------------------------------------------
 
         return redirect(
             "project1:classification_analyze"
@@ -267,15 +297,12 @@ def classification(request):
 
 
 # ==============================================================
-# Classification: visualization / analysis
+# CLASSIFICATION — Analysis
 # ==============================================================
 
 def classification_analyze(request):
     """
-    Analyze the uploaded classification dataset.
-
-    The user chooses two description features for the scatter plot.
-    Points are colored according to the target class.
+    Visualize the uploaded classification dataset.
     """
 
     context = {}
@@ -297,7 +324,9 @@ def classification_analyze(request):
 
     except DatasetValidationError as error:
 
-        context["error"] = str(error)
+        context["error"] = str(
+            error
+        )
 
         return render(
             request,
@@ -306,37 +335,53 @@ def classification_analyze(request):
         )
 
     # ----------------------------------------------------------
-    # Determine selected visualization features
+    # Selected visualization columns
     # ----------------------------------------------------------
 
     x_column = (
-        request.POST.get("x_col")
+        request.POST.get(
+            "x_col"
+        )
         or feature_columns[0]
     )
 
-    # If only one feature exists, use it for both axes.
     if len(feature_columns) > 1:
 
-        default_y = feature_columns[1]
+        default_y = (
+            feature_columns[1]
+        )
 
     else:
 
-        default_y = feature_columns[0]
+        default_y = (
+            feature_columns[0]
+        )
 
     y_column = (
-        request.POST.get("y_col")
+        request.POST.get(
+            "y_col"
+        )
         or default_y
     )
 
-    # Never trust POSTed column names directly.
+    # ----------------------------------------------------------
+    # Validate POSTed column names
+    # ----------------------------------------------------------
+
     if x_column not in feature_columns:
-        x_column = feature_columns[0]
+
+        x_column = (
+            feature_columns[0]
+        )
 
     if y_column not in feature_columns:
-        y_column = default_y
+
+        y_column = (
+            default_y
+        )
 
     # ----------------------------------------------------------
-    # Generate classification plots
+    # Scatter plot
     # ----------------------------------------------------------
 
     scatter_plot_url = (
@@ -350,6 +395,10 @@ def classification_analyze(request):
         )
     )
 
+    # ----------------------------------------------------------
+    # Class distribution
+    # ----------------------------------------------------------
+
     class_distribution_url = (
         create_class_distribution(
             df=df,
@@ -359,16 +408,19 @@ def classification_analyze(request):
         )
     )
 
-    # ----------------------------------------------------------
-    # Context
-    # ----------------------------------------------------------
-
     context.update({
-        "columns": feature_columns,
-        "target_column": target_column,
 
-        "selected_x": x_column,
-        "selected_y": y_column,
+        "columns":
+            feature_columns,
+
+        "target_column":
+            target_column,
+
+        "selected_x":
+            x_column,
+
+        "selected_y":
+            y_column,
 
         "scatter_plot_url":
             scatter_plot_url,
@@ -385,13 +437,12 @@ def classification_analyze(request):
         "removed_identifier_columns":
             removed_identifier_columns,
 
-        # Used later by training popup
         "classifier_choices":
             CLASSIFIER_CHOICES,
 
         "metric_choices":
             CLASSIFICATION_METRICS,
-            
+
         "training_form":
             ClassificationTrainingForm(),
     })
@@ -404,20 +455,28 @@ def classification_analyze(request):
 
 
 # ==============================================================
-# Classification: training
+# CLASSIFICATION — Training
 # ==============================================================
 
 def classification_train(request):
     """
-    Train a classification algorithm according to the choices
-    provided by the user.
+    Train a classification model.
 
-    User controls:
-        - algorithm
-        - hyperparameters
-        - train/test split
-        - evaluation metric
+    The training configuration is submitted
+    from the popup on the analysis page.
     """
+
+    # ----------------------------------------------------------
+    # IMPORTANT:
+    # Direct GET should NOT show a second configuration form.
+    # Return to analysis instead.
+    # ----------------------------------------------------------
+
+    if request.method != "POST":
+
+        return redirect(
+            "project1:classification_analyze"
+        )
 
     context = {}
 
@@ -438,7 +497,9 @@ def classification_train(request):
 
     except DatasetValidationError as error:
 
-        context["error"] = str(error)
+        context["error"] = str(
+            error
+        )
 
         return render(
             request,
@@ -447,72 +508,51 @@ def classification_train(request):
         )
 
     # ----------------------------------------------------------
-    # GET = show training page without training anything
-    # ----------------------------------------------------------
-
-    if request.method != "POST":
-
-        form = ClassificationTrainingForm()
-
-        context.update({
-            "form": form,
-            "target_column": target_column,
-            "feature_columns": feature_columns,
-        })
-
-        return render(
-            request,
-            "project1/classification_train.html",
-            context,
-        )
-
-    # ----------------------------------------------------------
-    # Validate training configuration
+    # Django form validation
     # ----------------------------------------------------------
 
     form = ClassificationTrainingForm(
         request.POST
     )
 
-    context["form"] = form
-
     if not form.is_valid():
 
-        context["error"] = (
-            "Please check the selected training settings."
+        # Return to analysis rather than displaying
+        # an empty training configuration page.
+
+        context = {
+            "error": (
+                "Please check the selected "
+                "training settings."
+            ),
+
+            "form_errors":
+                form.errors,
+        }
+
+        # We could redirect, but render analysis again
+        # so the user gets an error.
+        return redirect(
+            "project1:classification_analyze"
         )
 
-        context["target_column"] = (
-            target_column
-        )
-
-        context["feature_columns"] = (
-            feature_columns
-        )
-
-        return render(
-            request,
-            "project1/classification_train.html",
-            context,
-        )
-
-    cleaned_data = form.cleaned_data
-
-    selected_model = cleaned_data[
-        "model"
-    ]
-
-    selected_metric = cleaned_data[
-        "metric"
-    ]
-
-    test_size = float(
-        cleaned_data["test_size"]
+    cleaned_data = (
+        form.cleaned_data
     )
 
-    # ----------------------------------------------------------
-    # Build model-specific hyperparameter dictionary
-    # ----------------------------------------------------------
+    selected_model = (
+        cleaned_data["model"]
+    )
+
+    selected_metric = (
+        cleaned_data["metric"]
+    )
+
+    test_size = float(
+        cleaned_data[
+            "test_size"
+        ]
+    )
 
     parameters = (
         get_classifier_parameters(
@@ -521,7 +561,7 @@ def classification_train(request):
     )
 
     # ----------------------------------------------------------
-    # X / y
+    # Features and target
     # ----------------------------------------------------------
 
     X = df[
@@ -533,10 +573,7 @@ def classification_train(request):
     ]
 
     # ----------------------------------------------------------
-    # Train/test split
-    #
-    # stratify=y helps maintain class proportions between
-    # training and testing datasets.
+    # Split
     # ----------------------------------------------------------
 
     try:
@@ -547,26 +584,24 @@ def classification_train(request):
             y_train,
             y_test,
         ) = train_test_split(
+
             X,
             y,
+
             test_size=test_size,
+
             random_state=42,
+
+            # Preserve class proportions
             stratify=y,
         )
 
     except ValueError as error:
 
         context["error"] = (
-            "The dataset could not be split using the selected "
-            f"test size. Details: {error}"
-        )
-
-        context["target_column"] = (
-            target_column
-        )
-
-        context["feature_columns"] = (
-            feature_columns
+            "The dataset could not be split "
+            "using the selected test size. "
+            f"{error}"
         )
 
         return render(
@@ -576,19 +611,26 @@ def classification_train(request):
         )
 
     # ----------------------------------------------------------
-    # Create selected classifier
+    # Create classifier
     # ----------------------------------------------------------
 
     try:
 
-        model = create_classifier(
-            model_name=selected_model,
-            parameters=parameters,
+        model = (
+            create_classifier(
+                model_name=
+                    selected_model,
+
+                parameters=
+                    parameters,
+            )
         )
 
     except UnsupportedAlgorithmError as error:
 
-        context["error"] = str(error)
+        context["error"] = str(
+            error
+        )
 
         return render(
             request,
@@ -597,7 +639,7 @@ def classification_train(request):
         )
 
     # ----------------------------------------------------------
-    # Train
+    # Train model
     # ----------------------------------------------------------
 
     try:
@@ -610,8 +652,9 @@ def classification_train(request):
     except ValueError as error:
 
         context["error"] = (
-            "The selected model could not be trained "
-            f"with these settings. Details: {error}"
+            "The model could not be trained "
+            "with the selected settings. "
+            f"{error}"
         )
 
         return render(
@@ -624,16 +667,20 @@ def classification_train(request):
     # Predictions
     # ----------------------------------------------------------
 
-    train_predictions = model.predict(
-        X_train
+    train_predictions = (
+        model.predict(
+            X_train
+        )
     )
 
-    test_predictions = model.predict(
-        X_test
+    test_predictions = (
+        model.predict(
+            X_test
+        )
     )
 
     # ----------------------------------------------------------
-    # Evaluate BOTH training and testing performance
+    # Evaluation
     # ----------------------------------------------------------
 
     train_metrics = (
@@ -649,10 +696,6 @@ def classification_train(request):
             test_predictions,
         )
     )
-
-    # ----------------------------------------------------------
-    # User-selected primary evaluation score
-    # ----------------------------------------------------------
 
     try:
 
@@ -672,7 +715,9 @@ def classification_train(request):
 
     except UnsupportedMetricError as error:
 
-        context["error"] = str(error)
+        context["error"] = str(
+            error
+        )
 
         return render(
             request,
@@ -681,20 +726,28 @@ def classification_train(request):
         )
 
     # ----------------------------------------------------------
-    # Result graph
+    # Performance chart
     # ----------------------------------------------------------
 
     score_chart_url = (
         create_accuracy_comparison_chart(
-            train_score=selected_train_score,
-            test_score=selected_test_score,
-            media_root=settings.MEDIA_ROOT,
-            media_url=settings.MEDIA_URL,
+
+            train_score=
+                selected_train_score,
+
+            test_score=
+                selected_test_score,
+
+            media_root=
+                settings.MEDIA_ROOT,
+
+            media_url=
+                settings.MEDIA_URL,
         )
     )
 
     # ----------------------------------------------------------
-    # Human-readable labels
+    # Human-readable names
     # ----------------------------------------------------------
 
     model_display_name = (
@@ -710,10 +763,11 @@ def classification_train(request):
     )
 
     # ----------------------------------------------------------
-    # Persist trained model
+    # Save trained model
     # ----------------------------------------------------------
 
     metadata = {
+
         "problem_type":
             "classification",
 
@@ -743,20 +797,29 @@ def classification_train(request):
     }
 
     save_classification_model(
+
         model=model,
+
         metadata=metadata,
-        media_root=settings.MEDIA_ROOT,
+
+        media_root=
+            settings.MEDIA_ROOT,
     )
 
     # ----------------------------------------------------------
-    # Template context
+    # Results context
     # ----------------------------------------------------------
 
     context.update({
-        "training_complete": True,
+
+        "training_complete":
+            True,
 
         "model_name":
             model_display_name,
+
+        "metric_name":
+            metric_display_name,
 
         "selected_model":
             selected_model,
@@ -764,81 +827,124 @@ def classification_train(request):
         "selected_metric":
             selected_metric,
 
-        "metric_name":
-            metric_display_name,
-
         "parameters":
             parameters,
 
         "train_size":
             round(
-                (1 - test_size) * 100
+                (1 - test_size)
+                * 100
             ),
 
         "test_size":
             round(
-                test_size * 100
+                test_size
+                * 100
             ),
 
-        # Main selected score
+        # -----------------------------------------
+        # User-selected primary score
+        # -----------------------------------------
+
         "train_score":
             round(
-                selected_train_score * 100,
+                selected_train_score
+                * 100,
                 2,
             ),
 
         "test_score":
             round(
-                selected_test_score * 100,
+                selected_test_score
+                * 100,
                 2,
             ),
 
-        # All metrics
+        # -----------------------------------------
+        # Accuracy
+        # -----------------------------------------
+
         "train_accuracy":
             round(
-                train_metrics["accuracy"] * 100,
+                train_metrics[
+                    "accuracy"
+                ]
+                * 100,
                 2,
             ),
 
         "test_accuracy":
             round(
-                test_metrics["accuracy"] * 100,
+                test_metrics[
+                    "accuracy"
+                ]
+                * 100,
                 2,
             ),
 
+        # -----------------------------------------
+        # Precision
+        # -----------------------------------------
+
         "train_precision":
             round(
-                train_metrics["precision"] * 100,
+                train_metrics[
+                    "precision"
+                ]
+                * 100,
                 2,
             ),
 
         "test_precision":
             round(
-                test_metrics["precision"] * 100,
+                test_metrics[
+                    "precision"
+                ]
+                * 100,
                 2,
             ),
 
+        # -----------------------------------------
+        # Recall
+        # -----------------------------------------
+
         "train_recall":
             round(
-                train_metrics["recall"] * 100,
+                train_metrics[
+                    "recall"
+                ]
+                * 100,
                 2,
             ),
 
         "test_recall":
             round(
-                test_metrics["recall"] * 100,
+                test_metrics[
+                    "recall"
+                ]
+                * 100,
                 2,
             ),
 
+        # -----------------------------------------
+        # F1
+        # -----------------------------------------
+
         "train_f1":
             round(
-                train_metrics["f1"] * 100,
+                train_metrics[
+                    "f1"
+                ]
+                * 100,
                 2,
             ),
 
         "test_f1":
             round(
-                test_metrics["f1"] * 100,
+                test_metrics[
+                    "f1"
+                ]
+                * 100,
                 2,
             ),
 
@@ -860,29 +966,31 @@ def classification_train(request):
 
 
 # ==============================================================
-# Classification: test / predict
+# CLASSIFICATION — Test / prediction
 # ==============================================================
 
 def classification_test(request):
     """
-    Use the most recently trained classification model to make
-    predictions for manually entered feature values.
+    Use the most recently trained model
+    for prediction.
     """
 
     context = {}
 
     try:
 
-        model, metadata = (
-            load_classification_model(
-                settings.MEDIA_ROOT
-            )
+        (
+            model,
+            metadata,
+        ) = load_classification_model(
+            settings.MEDIA_ROOT
         )
 
     except ModelNotFoundError:
 
         context["error"] = (
-            "No trained classification model is available. "
+            "No trained classification "
+            "model is available. "
             "Please train a model first."
         )
 
@@ -901,6 +1009,7 @@ def classification_test(request):
     ]
 
     context.update({
+
         "feature_columns":
             feature_columns,
 
@@ -908,7 +1017,9 @@ def classification_test(request):
             target_column,
 
         "model_name":
-            metadata["model_name"],
+            metadata[
+                "model_name"
+            ],
 
         "model_parameters":
             metadata.get(
@@ -916,6 +1027,10 @@ def classification_test(request):
                 {},
             ),
     })
+
+    # ----------------------------------------------------------
+    # First page load
+    # ----------------------------------------------------------
 
     if request.method != "POST":
 
@@ -926,7 +1041,7 @@ def classification_test(request):
         )
 
     # ----------------------------------------------------------
-    # Read input values
+    # Read feature values
     # ----------------------------------------------------------
 
     input_data = {}
@@ -935,16 +1050,20 @@ def classification_test(request):
 
         for feature in feature_columns:
 
-            raw_value = request.POST.get(
-                feature
+            raw_value = (
+                request.POST.get(
+                    feature
+                )
             )
 
             if (
                 raw_value is None
                 or raw_value.strip() == ""
             ):
+
                 raise ValueError(
-                    f"A value is required for '{feature}'."
+                    f"A value is required "
+                    f"for '{feature}'."
                 )
 
             input_data[
@@ -955,11 +1074,13 @@ def classification_test(request):
 
     except ValueError as error:
 
-        context["error"] = str(error)
-
-        context["entered_values"] = (
-            request.POST
+        context["error"] = str(
+            error
         )
+
+        context[
+            "entered_values"
+        ] = request.POST
 
         return render(
             request,
@@ -967,12 +1088,16 @@ def classification_test(request):
             context,
         )
 
-    # Keep feature names/order identical to training.
-    prediction_frame = pd.DataFrame(
-        [
-            input_data
-        ],
-        columns=feature_columns,
+    # ----------------------------------------------------------
+    # Preserve training feature order
+    # ----------------------------------------------------------
+
+    prediction_frame = (
+        pd.DataFrame(
+            [input_data],
+            columns=
+                feature_columns,
+        )
     )
 
     # ----------------------------------------------------------
@@ -988,7 +1113,7 @@ def classification_test(request):
     ] = prediction
 
     # ----------------------------------------------------------
-    # Prediction confidence
+    # Confidence / probabilities
     # ----------------------------------------------------------
 
     if hasattr(
@@ -1007,31 +1132,38 @@ def classification_test(request):
         )
 
         class_probabilities = [
+
             {
-                "class": class_value,
-                "probability": round(
-                    probability * 100,
-                    2,
-                ),
+                "class":
+                    class_value,
+
+                "probability":
+                    round(
+                        probability
+                        * 100,
+                        2,
+                    ),
             }
+
             for (
                 class_value,
                 probability,
             )
+
             in zip(
                 classes,
                 probabilities,
             )
         ]
 
-        confidence = max(
-            probabilities
-        )
-
         context.update({
+
             "confidence":
                 round(
-                    confidence * 100,
+                    max(
+                        probabilities
+                    )
+                    * 100,
                     2,
                 ),
 
