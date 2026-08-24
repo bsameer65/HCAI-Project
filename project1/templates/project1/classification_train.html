@@ -1,151 +1,385 @@
 {% load static %}
 <!DOCTYPE html>
+
 <html>
 <head>
-    <title>Training Result</title>
 
-    <link rel="stylesheet" href="{% static 'project1/style.css' %}">
+    <title>Classification Training</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'project1/style.css' %}"
+    >
+
 </head>
+
 
 <body>
 
 <div class="page-container">
 
-    <a href="{% url 'project1:classification_analyze' %}"
-       class="back-arrow">
-       ←
+
+    <!-- Back -->
+
+    <a
+        href="{% url 'project1:classification_analyze' %}"
+        class="back-arrow"
+        title="Back to analysis"
+    >
+        ←
     </a>
 
-    <div class="card centered-text">
 
-        <h1>Training Result</h1>
+    <!-- Header -->
 
-        <p class="help-text">
-            The selected model was trained using the uploaded classification dataset.
+    <div class="page-header">
+
+        <h1>Classification Model Training</h1>
+
+        <p>
+            Review the trained model, its configuration
+            and its performance on both training and unseen test data.
         </p>
 
     </div>
 
-    <div class="graph-row">
 
-        <div class="card graph-card">
 
-            <h2>Training Summary</h2>
+    {% if error %}
 
-            <p>
-                <strong>Model:</strong>
-                {{ model_name }}
-            </p>
+        <div class="error">
+            {{ error }}
+        </div>
 
-            <p>
-                <strong>Train/Test Split:</strong>
-                {{ train_size }}% / {{ test_size }}%
-            </p>
+    {% endif %}
 
-            <p>
-                <strong>Training Accuracy:</strong>
-                {{ train_accuracy }}%
-            </p>
 
-            <p>
-                <strong>Testing Accuracy:</strong>
-                {{ test_accuracy }}%
-            </p>
+
+    {% if training_complete %}
+
+
+        <!-- ==================================================
+             MODEL CONFIGURATION
+             ================================================== -->
+
+        <div class="card">
+
+            <h2>Model Configuration</h2>
+
+
+            <div class="training-stat-grid">
+
+
+                <div class="training-stat">
+
+                    <span class="training-stat-number">
+                        {{ model_name }}
+                    </span>
+
+                    <span class="training-stat-label">
+                        Model
+                    </span>
+
+                </div>
+
+
+                <div class="training-stat">
+
+                    <span class="training-stat-number">
+                        {{ train_size }} / {{ test_size }}
+                    </span>
+
+                    <span class="training-stat-label">
+                        Train / Test %
+                    </span>
+
+                </div>
+
+
+                <div class="training-stat">
+
+                    <span class="training-stat-number">
+                        {{ metric_name }}
+                    </span>
+
+                    <span class="training-stat-label">
+                        Primary Metric
+                    </span>
+
+                </div>
+
+
+            </div>
 
         </div>
 
-        {% if accuracy_chart_url %}
+
+
+        <!-- ==================================================
+             PRIMARY SCORE + CHART
+             ================================================== -->
+
+        <div class="graph-row">
+
 
             <div class="card graph-card">
 
-                <h2>Accuracy Comparison</h2>
+                <h2>{{ metric_name }} Results</h2>
 
-                <img src="{{ accuracy_chart_url }}">
+
+                <div class="training-stat-grid">
+
+
+                    <div class="training-stat">
+
+                        <span class="training-stat-number">
+                            {{ train_score }}%
+                        </span>
+
+                        <span class="training-stat-label">
+                            Training {{ metric_name }}
+                        </span>
+
+                    </div>
+
+
+                    <div class="training-stat">
+
+                        <span class="training-stat-number">
+                            {{ test_score }}%
+                        </span>
+
+                        <span class="training-stat-label">
+                            Testing {{ metric_name }}
+                        </span>
+
+                    </div>
+
+
+                </div>
+
+
+                <div class="info-box">
+
+                    The testing score measures performance
+                    on observations that were not used
+                    during model training.
+
+                </div>
+
+            </div>
+
+
+
+            {% if accuracy_chart_url %}
+
+                <div class="card graph-card">
+
+                    <h2>
+                        Training vs Testing Performance
+                    </h2>
+
+                    <img
+                        src="{{ accuracy_chart_url }}"
+                        alt="Training and testing performance"
+                    >
+
+                </div>
+
+            {% endif %}
+
+
+        </div>
+
+
+
+        <!-- ==================================================
+             ALL METRICS
+             ================================================== -->
+
+        <div class="card">
+
+            <h2>Complete Evaluation</h2>
+
+
+            <div class="training-stat-grid">
+
+
+                <div class="training-stat">
+
+                    <span class="training-stat-number">
+                        {{ test_accuracy }}%
+                    </span>
+
+                    <span class="training-stat-label">
+                        Accuracy
+                    </span>
+
+                </div>
+
+
+                <div class="training-stat">
+
+                    <span class="training-stat-number">
+                        {{ test_precision }}%
+                    </span>
+
+                    <span class="training-stat-label">
+                        Precision
+                    </span>
+
+                </div>
+
+
+                <div class="training-stat">
+
+                    <span class="training-stat-number">
+                        {{ test_recall }}%
+                    </span>
+
+                    <span class="training-stat-label">
+                        Recall
+                    </span>
+
+                </div>
+
+
+                <div class="training-stat">
+
+                    <span class="training-stat-number">
+                        {{ test_f1 }}%
+                    </span>
+
+                    <span class="training-stat-label">
+                        F1 Score
+                    </span>
+
+                </div>
+
 
             </div>
 
-        {% endif %}
+        </div>
 
-    </div>
 
-    <div class="card">
 
-        <h2>Train Again</h2>
+        <!-- ==================================================
+             HYPERPARAMETERS
+             ================================================== -->
 
-        <p class="help-text">
-            Try another model or change the test size to compare results.
-        </p>
+        <div class="card">
 
-        <form method="POST"
-              action="{% url 'project1:classification_train' %}">
+            <h2>Selected Hyperparameters</h2>
 
-            {% csrf_token %}
 
-            <div class="form-row">
+            {% if parameters %}
 
-                <label>Model:</label>
+                <div class="info-box">
 
-                <select name="model">
+                    {% for key, value in parameters.items %}
 
-                    <option value="decision_tree"
-                        {% if selected_model == "decision_tree" %}selected{% endif %}>
-                        Decision Tree
-                    </option>
+                        <strong>{{ key }}:</strong>
+                        {{ value }}
 
-                    <option value="random_forest"
-                        {% if selected_model == "random_forest" %}selected{% endif %}>
-                        Random Forest
-                    </option>
+                        {% if not forloop.last %}
+                            <br>
+                        {% endif %}
 
-                    <option value="knn"
-                        {% if selected_model == "knn" %}selected{% endif %}>
-                        KNN
-                    </option>
+                    {% endfor %}
 
-                </select>
+                </div>
 
-                <label>Test Size:</label>
+            {% else %}
 
-                <select name="test_size">
+                <p class="help-text">
+                    This model uses its default configuration.
+                </p>
 
-                    <option value="0.2"
-                        {% if selected_test_size == "0.2" %}selected{% endif %}>
-                        20%
-                    </option>
+            {% endif %}
 
-                    <option value="0.3"
-                        {% if selected_test_size == "0.3" %}selected{% endif %}>
-                        30%
-                    </option>
+        </div>
 
-                    <option value="0.4"
-                        {% if selected_test_size == "0.4" %}selected{% endif %}>
-                        40%
-                    </option>
 
-                </select>
 
-            </div>
+        <!-- ==================================================
+             NEXT ACTIONS
+             ================================================== -->
+
+        <div class="card centered-text">
+
+            <h2>What would you like to do next?</h2>
+
+            <p class="help-text">
+                You can test this trained model on a new observation,
+                or return to the analysis page and train another model.
+            </p>
+
 
             <div class="action-row">
 
-                <button type="submit"
-                        class="button">
-                    Train Again
-                </button>
 
-                <a href="{% url 'project1:classification_test' %}">
-                    <button type="button"
-                            class="button secondary-button">
-                        Test Model
-                    </button>
+                <a
+                    href="{% url 'project1:classification_test' %}"
+                    class="button"
+                >
+                    Test Model
                 </a>
+
+
+                <a
+                    href="{% url 'project1:classification_analyze' %}"
+                    class="button secondary-button"
+                >
+                    Train Another Model
+                </a>
+
 
             </div>
 
-        </form>
+        </div>
 
-    </div>
+
+    {% else %}
+
+
+        <!-- ==================================================
+             NO TRAINING RESULT YET
+             ================================================== -->
+
+        <div class="card">
+
+            <h2>Configure Model Training</h2>
+
+            <p class="help-text">
+                Select a model and its settings before training.
+            </p>
+
+
+            <form method="POST">
+
+                {% csrf_token %}
+
+                {{ form.as_p }}
+
+
+                <div class="action-row">
+
+                    <button
+                        type="submit"
+                        class="button"
+                    >
+                        Train Model
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+
+    {% endif %}
+
 
 </div>
 
