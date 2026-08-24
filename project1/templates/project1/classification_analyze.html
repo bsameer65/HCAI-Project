@@ -775,120 +775,71 @@
      ========================================================= -->
 
 <script>
-
-
 function openTrainPopup() {
-
-    document.getElementById(
-        "trainPopup"
-    ).style.display = "flex";
-
+    document.getElementById("trainPopup").style.display = "flex";
     updateHyperparameters();
 }
 
-
 function closeTrainPopup() {
-
-    document.getElementById(
-        "trainPopup"
-    ).style.display = "none";
+    document.getElementById("trainPopup").style.display = "none";
 }
-
 
 function updateHyperparameters() {
 
-    const selectedModel =
-        document.getElementById(
-            "model"
-        ).value;
+    const selectedModel = document.getElementById("model").value;
 
+    const modelSections = {
+        "decision_tree": "decision-tree-parameters",
+        "random_forest": "random-forest-parameters",
+        "knn": "knn-parameters",
+        "logistic_regression": "logistic-parameters"
+    };
 
-    const sections =
-        document.querySelectorAll(
-            ".hyperparameter-section"
-        );
-
-
-    sections.forEach(
-        function(section) {
-
-            section.style.display =
-                "none";
-
-        }
+    const sections = document.querySelectorAll(
+        ".hyperparameter-section"
     );
 
+    sections.forEach(function(section) {
 
-    if (
-        selectedModel ===
-        "decision_tree"
-    ) {
+        // Hide section
+        section.style.display = "none";
 
-        document.getElementById(
-            "decision-tree-parameters"
-        ).style.display = "block";
+        // Disable its fields so they are NOT submitted
+        section
+            .querySelectorAll("input, select")
+            .forEach(function(field) {
+                field.disabled = true;
+            });
+    });
 
+    const activeSectionId = modelSections[selectedModel];
+
+    if (activeSectionId) {
+
+        const activeSection =
+            document.getElementById(activeSectionId);
+
+        activeSection.style.display = "block";
+
+        activeSection
+            .querySelectorAll("input, select")
+            .forEach(function(field) {
+                field.disabled = false;
+            });
     }
-
-
-    else if (
-        selectedModel ===
-        "random_forest"
-    ) {
-
-        document.getElementById(
-            "random-forest-parameters"
-        ).style.display = "block";
-
-    }
-
-
-    else if (
-        selectedModel ===
-        "knn"
-    ) {
-
-        document.getElementById(
-            "knn-parameters"
-        ).style.display = "block";
-
-    }
-
-
-    else if (
-        selectedModel ===
-        "logistic_regression"
-    ) {
-
-        document.getElementById(
-            "logistic-parameters"
-        ).style.display = "block";
-
-    }
-
 }
 
 
-/* Close popup by clicking outside */
+/* Close popup when clicking outside the dialog */
 
-document.getElementById(
-    "trainPopup"
-).addEventListener(
+document.getElementById("trainPopup").addEventListener(
     "click",
     function(event) {
-
-        if (
-            event.target === this
-        ) {
-
+        if (event.target === this) {
             closeTrainPopup();
-
         }
-
     }
 );
-
-
 </script>
 
 
