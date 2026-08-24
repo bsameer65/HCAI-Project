@@ -4,6 +4,32 @@ import uuid
 import matplotlib.pyplot as plt
 
 
+def _save_figure(media_root, media_url, prefix):
+    """
+    Save the currently active matplotlib figure using
+    a unique filename and return its media URL.
+    """
+
+    filename = f"{prefix}_{uuid.uuid4().hex}.png"
+
+    file_path = os.path.join(
+        media_root,
+        filename,
+    )
+
+    plt.tight_layout()
+
+    plt.savefig(
+        file_path,
+        dpi=120,
+        bbox_inches="tight",
+    )
+
+    plt.close()
+
+    return f"{media_url}{filename}"
+
+
 def create_classification_scatter(
     df,
     x_column,
@@ -12,11 +38,21 @@ def create_classification_scatter(
     media_root,
     media_url,
 ):
-    plt.figure(figsize=(7, 5))
+    """
+    Create a scatter plot of two selected features.
 
-    classes = df[target_column].unique()
+    Each target class is displayed separately so matplotlib
+    automatically assigns a different color to each class.
+    """
+
+    plt.figure(
+        figsize=(7, 5)
+    )
+
+    classes = df[target_column].dropna().unique()
 
     for class_value in classes:
+
         class_data = df[
             df[target_column] == class_value
         ]
@@ -43,27 +79,11 @@ def create_classification_scatter(
         alpha=0.2
     )
 
-    plt.tight_layout()
-
-    filename = (
-        f"classification_scatter_"
-        f"{uuid.uuid4().hex}.png"
-    )
-
-    path = os.path.join(
+    return _save_figure(
         media_root,
-        filename
+        media_url,
+        "classification_scatter",
     )
-
-    plt.savefig(
-        path,
-        dpi=120,
-        bbox_inches="tight",
-    )
-
-    plt.close()
-
-    return f"{media_url}{filename}"
 
 
 def create_class_distribution(
@@ -72,17 +92,23 @@ def create_class_distribution(
     media_root,
     media_url,
 ):
-    counts = (
+    """
+    Create a bar chart showing how many observations
+    belong to each target class.
+    """
+
+    class_counts = (
         df[target_column]
         .value_counts()
-        .sort_index()
     )
 
-    plt.figure(figsize=(7, 5))
+    plt.figure(
+        figsize=(7, 5)
+    )
 
     plt.bar(
-        counts.index.astype(str),
-        counts.values,
+        class_counts.index.astype(str),
+        class_counts.values,
     )
 
     plt.xlabel("Class")
@@ -92,24 +118,67 @@ def create_class_distribution(
         f"Class Distribution — {target_column}"
     )
 
-    plt.tight_layout()
-
-    filename = (
-        f"class_distribution_"
-        f"{uuid.uuid4().hex}.png"
+    plt.grid(
+        axis="y",
+        alpha=0.2,
     )
 
-    path = os.path.join(
+    return _save_figure(
         media_root,
-        filename
+        media_url,
+        "classification_distribution",
     )
 
-    plt.savefig(
-        path,
-        dpi=120,
-        bbox_inches="tight",
+
+def create_accuracy_comparison_chart(
+    train_score,
+    test_score,
+    media_root,
+    media_url,
+):
+    """
+    Compare training and testing scores visually.
+    """
+
+    plt.figure(
+        figsize=(6, 4)
     )
 
-    plt.close()
+    labels = [
+        "Training",
+        "Testing",
+    ]
 
-    return f"{media_url}{filename}"
+    values = [
+        train_score * 100,
+        test_score * 100,
+    ]
+
+    plt.bar(
+        labels,
+        values,
+    )
+
+    plt.ylabel(
+        "Accuracy (%)"
+    )
+
+    plt.ylim(
+        0,
+        100,
+    )
+
+    plt.title(
+        "Training vs Testing Accuracy"
+    )
+
+    plt.grid(
+        axis="y",
+        alpha=0.2,
+    )
+
+    return _save_figure(
+        media_root,
+        media_url,
+        "classification_accuracy",
+    )

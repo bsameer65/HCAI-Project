@@ -1,0 +1,110 @@
+import os
+
+import joblib
+
+
+CLASSIFICATION_MODEL_FILENAME = (
+    "classification_model.pkl"
+)
+
+CLASSIFICATION_METADATA_FILENAME = (
+    "classification_metadata.pkl"
+)
+
+
+class ModelNotFoundError(FileNotFoundError):
+    """Raised when no trained model is available."""
+    pass
+
+
+def _get_model_directory(media_root):
+    """
+    Return the directory used for persisted ML models.
+    """
+
+    model_directory = os.path.join(
+        media_root,
+        "models",
+    )
+
+    os.makedirs(
+        model_directory,
+        exist_ok=True,
+    )
+
+    return model_directory
+
+
+def save_classification_model(
+    model,
+    metadata,
+    media_root,
+):
+    """
+    Save a trained classification model and its metadata.
+    """
+
+    model_directory = _get_model_directory(
+        media_root
+    )
+
+    model_path = os.path.join(
+        model_directory,
+        CLASSIFICATION_MODEL_FILENAME,
+    )
+
+    metadata_path = os.path.join(
+        model_directory,
+        CLASSIFICATION_METADATA_FILENAME,
+    )
+
+    joblib.dump(
+        model,
+        model_path,
+    )
+
+    joblib.dump(
+        metadata,
+        metadata_path,
+    )
+
+
+def load_classification_model(
+    media_root,
+):
+    """
+    Load the most recently trained classification model
+    and associated metadata.
+    """
+
+    model_directory = _get_model_directory(
+        media_root
+    )
+
+    model_path = os.path.join(
+        model_directory,
+        CLASSIFICATION_MODEL_FILENAME,
+    )
+
+    metadata_path = os.path.join(
+        model_directory,
+        CLASSIFICATION_METADATA_FILENAME,
+    )
+
+    if (
+        not os.path.exists(model_path)
+        or not os.path.exists(metadata_path)
+    ):
+        raise ModelNotFoundError(
+            "No trained classification model was found."
+        )
+
+    model = joblib.load(
+        model_path
+    )
+
+    metadata = joblib.load(
+        metadata_path
+    )
+
+    return model, metadata
