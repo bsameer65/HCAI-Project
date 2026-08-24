@@ -741,3 +741,18 @@ select:focus {
 .graph-card img {
     margin-top: auto;
 }
+
+.confusion-table {
+    text-align: center;
+}
+
+.confusion-table th,
+.confusion-table td {
+    text-align: center;
+}
+
+.confusion-table tbody th {
+    background: #eef3fb;
+    color: #1a4f8a;
+    font-weight: 700;
+}
