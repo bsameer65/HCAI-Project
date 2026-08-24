@@ -59,7 +59,7 @@ from .services.evaluation import (
 from .services.visualization import (
     create_classification_scatter,
     create_class_distribution,
-    create_accuracy_comparison_chart,
+    create_score_comparison_chart,
 )
 
 from .services.evaluation import (
@@ -756,19 +756,12 @@ def classification_train(request):
     # ----------------------------------------------------------
 
     score_chart_url = (
-        create_accuracy_comparison_chart(
-
-            train_score=
-                selected_train_score,
-
-            test_score=
-                selected_test_score,
-
-            media_root=
-                settings.MEDIA_ROOT,
-
-            media_url=
-                settings.MEDIA_URL,
+        create_score_comparison_chart(
+            train_score=selected_train_score,
+            test_score=selected_test_score,
+            metric_name=metric_display_name,
+            media_root=settings.MEDIA_ROOT,
+            media_url=settings.MEDIA_URL,
         )
     )
 
