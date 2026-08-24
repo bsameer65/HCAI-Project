@@ -864,3 +864,25 @@ select:focus {
 
     transition: width 0.3s ease;
 }
+
+.comparison-chart {
+    display: block;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.comparison-best {
+    background: #e8f5e9 !important;
+    font-weight: 600;
+}
+
+.best-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #2e7d32;
+    color: white;
+    font-size: 0.75rem;
+}

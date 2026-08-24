@@ -1,0 +1,245 @@
+{% load static %}
+<!DOCTYPE html>
+
+<html>
+<head>
+
+    <title>Compare Classification Models</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'project1/style.css' %}"
+    >
+
+</head>
+
+<body>
+
+<div class="page-container">
+
+    <a
+        href="{% url 'project1:classification_analyze' %}"
+        class="back-arrow"
+    >
+        ←
+    </a>
+
+
+    <div class="page-header">
+
+        <h1>Compare Classification Models</h1>
+
+        <p>
+            Compare all available classification algorithms
+            using the same train/test split for a fair comparison.
+        </p>
+
+    </div>
+
+
+    {% if error %}
+
+        <div class="error">
+            {{ error }}
+        </div>
+
+    {% else %}
+
+
+        <div class="card">
+
+            <h2>Comparison Settings</h2>
+
+            <form method="GET">
+
+                <div class="form-row">
+
+                    <div>
+
+                        <label for="metric">
+                            Evaluation Metric
+                        </label>
+
+                        <select
+                            id="metric"
+                            name="metric"
+                        >
+
+                            <option
+                                value="accuracy"
+                                {% if selected_metric == "accuracy" %}selected{% endif %}
+                            >
+                                Accuracy
+                            </option>
+
+                            <option
+                                value="precision"
+                                {% if selected_metric == "precision" %}selected{% endif %}
+                            >
+                                Precision
+                            </option>
+
+                            <option
+                                value="recall"
+                                {% if selected_metric == "recall" %}selected{% endif %}
+                            >
+                                Recall
+                            </option>
+
+                            <option
+                                value="f1"
+                                {% if selected_metric == "f1" %}selected{% endif %}
+                            >
+                                F1 Score
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <div>
+
+                        <label for="test_size">
+                            Test Size
+                        </label>
+
+                        <select
+                            id="test_size"
+                            name="test_size"
+                        >
+
+                            <option value="0.2">
+                                20%
+                            </option>
+
+                            <option value="0.3">
+                                30%
+                            </option>
+
+                            <option value="0.4">
+                                40%
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <button
+                        type="submit"
+                        class="button"
+                    >
+                        Compare
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>{{ metric_name }} Comparison</h2>
+
+            <img
+                src="{{ comparison_chart_url }}"
+                class="comparison-chart"
+                alt="Model comparison"
+            >
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>Detailed Results</h2>
+
+            <div class="table-scroll">
+
+                <table class="data-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Model</th>
+                            <th>Accuracy</th>
+                            <th>Precision</th>
+                            <th>Recall</th>
+                            <th>F1</th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for result in results %}
+
+                            <tr
+                                {% if result.is_best %}
+                                    class="comparison-best"
+                                {% endif %}
+                            >
+
+                                <td>
+
+                                    {{ result.model_name }}
+
+                                    {% if result.is_best %}
+                                        <span class="best-badge">
+                                            Best
+                                        </span>
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+                                    {{ result.accuracy_percent }}%
+                                </td>
+
+                                <td>
+                                    {{ result.precision_percent }}%
+                                </td>
+
+                                <td>
+                                    {{ result.recall_percent }}%
+                                </td>
+
+                                <td>
+                                    {{ result.f1_percent }}%
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+
+        <div class="info-box">
+
+            The highlighted model achieved the highest
+            <strong>{{ metric_name }}</strong> for the selected
+            train/test split. The final model choice remains with
+            the user rather than being selected automatically.
+
+        </div>
+
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>
