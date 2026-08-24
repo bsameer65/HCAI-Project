@@ -1404,3 +1404,129 @@ def classification_test(request):
         "project1/classification_test.html",
         context,
     )
+    
+def classification_explain(request):
+    """
+    Explain the most recently trained classification model.
+    """
+
+    context = {}
+
+    try:
+        model, metadata = load_classification_model(
+            settings.MEDIA_ROOT
+        )
+
+    except ModelNotFoundError:
+        context["error"] = (
+            "No trained classification model is available. "
+            "Please train a model first."
+        )
+
+        return render(
+            request,
+            "project1/classification_explain.html",
+            context,
+        )
+
+    file_path = _get_classification_dataset_path()
+
+    try:
+        (
+            df,
+            feature_columns,
+            target_column,
+            removed_identifier_columns,
+        ) = load_dataset(file_path)
+
+    except DatasetValidationError as error:
+        context["error"] = str(error)
+
+        return render(
+            request,
+            "project1/classification_explain.html",
+            context,
+        )
+
+    X = df[feature_columns]
+    y = df[target_column]
+
+    test_size = metadata.get(
+        "test_size",
+        0.2,
+    )
+
+    try:
+        (
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+        ) = train_test_split(
+            X,
+            y,
+            test_size=test_size,
+            random_state=42,
+            stratify=y,
+        )
+
+        explanation = get_feature_importance(
+            model=model,
+            model_name=metadata["model_key"],
+            feature_columns=feature_columns,
+            X_test=X_test,
+            y_test=y_test,
+        )
+
+        explanation_items = explanation["items"]
+        explanation_method = explanation["method"]
+
+        explanation_chart_url = (
+            create_feature_importance_chart(
+                explanation_items=explanation_items,
+                method_name=explanation_method,
+                media_root=settings.MEDIA_ROOT,
+                media_url=settings.MEDIA_URL,
+            )
+        )
+
+    except (ValueError, ExplainabilityError) as error:
+        context["error"] = str(error)
+
+        return render(
+            request,
+            "project1/classification_explain.html",
+            context,
+        )
+
+    context.update({
+        "model_name":
+            metadata["model_name"],
+
+        "model_key":
+            metadata["model_key"],
+
+        "target_column":
+            target_column,
+
+        "metric_name":
+            metadata.get("metric_name"),
+
+        "parameters":
+            metadata.get("parameters", {}),
+
+        "explanation_method":
+            explanation_method,
+
+        "explanation_items":
+            explanation_items,
+
+        "explanation_chart_url":
+            explanation_chart_url,
+    })
+
+    return render(
+        request,
+        "project1/classification_explain.html",
+        context,
+    )

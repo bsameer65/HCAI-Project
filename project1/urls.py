@@ -9,24 +9,36 @@ urlpatterns = [
     path(
         "classification/",
         views.classification,
-        name="classification"
+        name="classification",
     ),
 
     path(
         "classification/analyze/",
         views.classification_analyze,
-        name="classification_analyze"
+        name="classification_analyze",
     ),
 
     path(
         "classification/train/",
         views.classification_train,
-        name="classification_train"
+        name="classification_train",
     ),
 
     path(
         "classification/test/",
         views.classification_test,
-        name="classification_test"
+        name="classification_test",
+    ),
+
+    path(
+        "classification/explain/",
+        views.classification_explain,
+        name="classification_explain",
+    ),
+
+    path(
+        "classification/compare/",
+        views.classification_compare,
+        name="classification_compare",
     ),
 ]
