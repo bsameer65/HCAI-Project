@@ -297,6 +297,98 @@
 
         </div>
 
+        {% if explanation_items %}
+
+            <div class="card">
+
+                <h2>
+                    Model Explainability
+                </h2>
+
+                <p class="help-text">
+                    This section helps explain which input features
+                    had the greatest influence on the trained model.
+                </p>
+
+                <div class="info-box">
+
+                    <strong>Explanation method:</strong>
+                    {{ explanation_method }}
+
+                    <br><br>
+
+                    Feature importance describes the relative influence
+                    of each input feature on the model. A higher value
+                    means that the feature had a stronger influence on
+                    the model's predictions.
+
+                </div>
+
+
+                <div class="graph-row">
+
+                    <!-- Importance chart -->
+
+                    {% if explanation_chart_url %}
+
+                        <div class="graph-card">
+
+                            <img
+                                src="{{ explanation_chart_url }}"
+                                alt="Feature importance"
+                            >
+
+                        </div>
+
+                    {% endif %}
+
+
+                    <!-- Importance values -->
+
+                    <div class="graph-card">
+
+                        <h3>
+                            Feature Ranking
+                        </h3>
+
+                        {% for item in explanation_items %}
+
+                            <div class="feature-importance-row">
+
+                                <div class="feature-importance-header">
+
+                                    <span>
+                                        {{ item.feature }}
+                                    </span>
+
+                                    <strong>
+                                        {{ item.percentage }}%
+                                    </strong>
+
+                                </div>
+
+                                <div class="importance-track">
+
+                                    <div
+                                        class="importance-fill"
+                                        style="width: {{ item.percentage }}%;"
+                                    >
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        {% endif %}
+
         <!-- =================================================
              Hyperparameters
              ================================================= -->
