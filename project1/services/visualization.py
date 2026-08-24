@@ -93,26 +93,46 @@ def create_class_distribution(
     media_url,
 ):
     """
-    Create a bar chart showing how many observations
-    belong to each target class.
+    Create a class-distribution bar chart.
+
+    Each class is represented using a different color
+    and its observation count is shown above the bar.
     """
 
     class_counts = (
         df[target_column]
         .value_counts()
+        .sort_index()
     )
 
     plt.figure(
         figsize=(7, 5)
     )
 
-    plt.bar(
+    # Generate one different color per class
+    color_map = plt.get_cmap("tab10")
+
+    colors = [
+        color_map(i)
+        for i in range(
+            len(class_counts)
+        )
+    ]
+
+    bars = plt.bar(
         class_counts.index.astype(str),
         class_counts.values,
+        color=colors,
+        alpha=0.85,
     )
 
-    plt.xlabel("Class")
-    plt.ylabel("Number of examples")
+    plt.xlabel(
+        target_column
+    )
+
+    plt.ylabel(
+        "Number of examples"
+    )
 
     plt.title(
         f"Class Distribution — {target_column}"
@@ -122,6 +142,24 @@ def create_class_distribution(
         axis="y",
         alpha=0.2,
     )
+
+    # Display number above each bar
+    for bar in bars:
+
+        height = bar.get_height()
+
+        plt.text(
+            bar.get_x()
+            + bar.get_width() / 2,
+
+            height,
+
+            f"{int(height)}",
+
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
 
     return _save_figure(
         media_root,
