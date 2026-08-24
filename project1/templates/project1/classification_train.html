@@ -225,14 +225,15 @@
             </h2>
 
             <p class="help-text">
-                The confusion matrix shows the relationship between
-                the actual classes and the classes predicted by the model.
-                Values on the diagonal represent correct predictions.
+                The confusion matrix shows how the predicted classes
+                compare with the actual classes. Diagonal cells represent
+                correct predictions, while off-diagonal cells represent
+                classification errors.
             </p>
 
             {% if confusion_rows %}
 
-                <div style="overflow-x:auto;">
+                <div class="table-scroll">
 
                     <table class="data-table confusion-table">
 
@@ -256,7 +257,6 @@
 
                         </thead>
 
-
                         <tbody>
 
                             {% for row in confusion_rows %}
@@ -267,10 +267,18 @@
                                         {{ row.actual }}
                                     </th>
 
-                                    {% for value in row.values %}
+                                    {% for cell in row.cells %}
 
-                                        <td>
-                                            {{ value }}
+                                        <td
+                                            class="
+                                            {% if cell.is_correct %}
+                                                confusion-correct
+                                            {% elif cell.value > 0 %}
+                                                confusion-error
+                                            {% endif %}
+                                            "
+                                        >
+                                            {{ cell.value }}
                                         </td>
 
                                     {% endfor %}
