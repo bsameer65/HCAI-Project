@@ -61,6 +61,7 @@ from .services.visualization import (
     create_class_distribution,
     create_score_comparison_chart,
     create_feature_importance_chart,
+    create_model_comparison_chart,
 )
 
 
@@ -84,6 +85,13 @@ from .services.persistence import (
     ModelNotFoundError,
 )
 
+# ==============================================================
+# Comparison
+# ==============================================================
+
+from .services.comparison import (
+    compare_classifiers,
+)
 
 # ==============================================================
 # Constants
@@ -92,6 +100,7 @@ from .services.persistence import (
 CLASSIFICATION_DATASET_FILENAME = (
     "current_classification_dataset.csv"
 )
+
 
 
 # ==============================================================
@@ -1528,5 +1537,201 @@ def classification_explain(request):
     return render(
         request,
         "project1/classification_explain.html",
+        context,
+    )
+
+def classification_compare(request):
+    """
+    Compare all supported classifiers using the same
+    train/test split and evaluation metric.
+    """
+
+    context = {}
+
+    file_path = (
+        _get_classification_dataset_path()
+    )
+
+    try:
+        (
+            df,
+            feature_columns,
+            target_column,
+            removed_identifier_columns,
+        ) = load_dataset(
+            file_path
+        )
+
+    except DatasetValidationError as error:
+
+        context["error"] = str(error)
+
+        return render(
+            request,
+            "project1/classification_compare.html",
+            context,
+        )
+
+    selected_metric = (
+        request.GET.get(
+            "metric",
+            "accuracy",
+        )
+    )
+
+    if selected_metric not in CLASSIFICATION_METRICS:
+        selected_metric = "accuracy"
+
+    test_size = float(
+        request.GET.get(
+            "test_size",
+            0.2,
+        )
+    )
+
+    if test_size not in {
+        0.2,
+        0.3,
+        0.4,
+    }:
+        test_size = 0.2
+
+    X = df[
+        feature_columns
+    ]
+
+    y = df[
+        target_column
+    ]
+
+    try:
+        (
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+        ) = train_test_split(
+            X,
+            y,
+            test_size=test_size,
+            random_state=42,
+            stratify=y,
+        )
+
+        results = compare_classifiers(
+            X_train=X_train,
+            X_test=X_test,
+            y_train=y_train,
+            y_test=y_test,
+            primary_metric=selected_metric,
+        )
+
+    except ValueError as error:
+
+        context["error"] = str(error)
+
+        return render(
+            request,
+            "project1/classification_compare.html",
+            context,
+        )
+
+    metric_name = (
+        CLASSIFICATION_METRICS[
+            selected_metric
+        ]
+    )
+
+    chart_url = (
+        create_model_comparison_chart(
+            comparison_results=results,
+            metric_name=metric_name,
+            media_root=settings.MEDIA_ROOT,
+            media_url=settings.MEDIA_URL,
+        )
+    )
+
+    formatted_results = []
+
+    for index, result in enumerate(
+        results
+    ):
+
+        formatted_results.append({
+            **result,
+
+            "is_best":
+                index == 0,
+
+            "primary_score_percent":
+                round(
+                    result["primary_score"]
+                    * 100,
+                    2,
+                ),
+
+            "accuracy_percent":
+                round(
+                    result["accuracy"]
+                    * 100,
+                    2,
+                ),
+
+            "precision_percent":
+                round(
+                    result["precision"]
+                    * 100,
+                    2,
+                ),
+
+            "recall_percent":
+                round(
+                    result["recall"]
+                    * 100,
+                    2,
+                ),
+
+            "f1_percent":
+                round(
+                    result["f1"]
+                    * 100,
+                    2,
+                ),
+        })
+
+    context.update({
+        "results":
+            formatted_results,
+
+        "metric_name":
+            metric_name,
+
+        "selected_metric":
+            selected_metric,
+
+        "test_size":
+            test_size,
+
+        "train_size":
+            round(
+                (1 - test_size)
+                * 100
+            ),
+
+        "test_size_percent":
+            round(
+                test_size * 100
+            ),
+
+        "comparison_chart_url":
+            chart_url,
+
+        "target_column":
+            target_column,
+    })
+
+    return render(
+        request,
+        "project1/classification_compare.html",
         context,
     )
