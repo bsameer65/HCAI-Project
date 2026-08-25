@@ -4,7 +4,11 @@ from . import views
 app_name = "project1"
 
 urlpatterns = [
-    path("", views.index, name="index"),
+    path(
+        "",
+        views.index,
+        name="index",
+    ),
 
     path(
         "classification/",
@@ -22,6 +26,12 @@ urlpatterns = [
         "classification/train/",
         views.classification_train,
         name="classification_train",
+    ),
+
+    path(
+        "classification/result/",
+        views.classification_result,
+        name="classification_result",
     ),
 
     path(

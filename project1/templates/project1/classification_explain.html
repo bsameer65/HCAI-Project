@@ -16,7 +16,7 @@
 <div class="page-container">
 
     <a
-        href="{% url 'project1:classification_analyze' %}"
+        href="{% url 'project1:classification_result' %}"
         class="back-arrow"
         title="Back to analysis"
     >
@@ -197,6 +197,44 @@
         </div>
 
     {% endif %}
+
+</div>
+
+<div class="card centered-text">
+
+    <h2>
+        Continue
+    </h2>
+
+    <p class="help-text">
+        Return to the training results, test the trained model,
+        or compare it with the other available algorithms.
+    </p>
+
+    <div class="action-row">
+
+        <a
+            href="{% url 'project1:classification_result' %}"
+            class="button secondary-button"
+        >
+            Training Results
+        </a>
+
+        <a
+            href="{% url 'project1:classification_test' %}"
+            class="button"
+        >
+            Test Model
+        </a>
+
+        <a
+            href="{% url 'project1:classification_compare' %}"
+            class="button"
+        >
+            Compare Models
+        </a>
+
+    </div>
 
 </div>
 

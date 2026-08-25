@@ -1,75 +1,436 @@
 {% load static %}
 <!DOCTYPE html>
+
 <html>
+
 <head>
+
     <title>Test Classification Model</title>
-    <link rel="stylesheet" href="{% static 'project1/style.css' %}">
+
+    <link
+        rel="stylesheet"
+        href="{% static 'project1/style.css' %}"
+    >
+
 </head>
+
 
 <body>
 
+
 <div class="page-container">
 
-    <a href="{% url 'project1:classification_train' %}" class="back-arrow">←</a>
 
-    <div class="card centered-text">
-        <h1>Test Classification Model</h1>
-        <p class="help-text">
-            Enter feature values below. The trained model will predict the class label.
+    <!-- =====================================================
+         Back navigation
+         ===================================================== -->
+
+    <a
+        href="{% url 'project1:classification_result' %}"
+        class="back-arrow"
+        title="Back to training results"
+    >
+        ←
+    </a>
+
+
+    <!-- =====================================================
+         Header
+         ===================================================== -->
+
+    <div class="page-header">
+
+        <h1>
+            Test Classification Model
+        </h1>
+
+        <p>
+            Enter values for the input features below.
+            The trained model will predict the corresponding class.
         </p>
+
     </div>
 
+
+    <!-- =====================================================
+         Error
+         ===================================================== -->
+
     {% if error %}
-        <div class="card">
-            <div class="error">{{ error }}</div>
+
+        <div class="error">
+
+            {{ error }}
+
         </div>
+
     {% endif %}
+
+
+    <!-- =====================================================
+         Prediction form
+         ===================================================== -->
 
     <div class="card prediction-card">
 
-        <h2 class="centered-text">
-    Prediction Form
-</h2>
+        <h2>
+            Prediction Form
+        </h2>
 
-<p class="centered-text">
-    <strong>Model:</strong> {{ model_name }}
-    &nbsp; | &nbsp;
-    <strong>Target:</strong> {{ target_column }}
-</p>
 
-        <form method="POST" class="prediction-form">
+        <div class="info-box">
+
+            <strong>
+                Model:
+            </strong>
+
+            {{ model_name }}
+
+            <br>
+
+            <strong>
+                Target:
+            </strong>
+
+            {{ target_column }}
+
+            {% if metric_name %}
+
+                <br>
+
+                <strong>
+                    Evaluation Metric:
+                </strong>
+
+                {{ metric_name }}
+
+            {% endif %}
+
+        </div>
+
+
+        <p class="help-text">
+
+            Enter one value for each feature.
+            The feature order is automatically kept consistent
+            with the data used during training.
+
+        </p>
+
+
+        <form
+            method="POST"
+            class="prediction-form"
+        >
+
             {% csrf_token %}
 
+
             {% for feature in feature_columns %}
+
                 <div class="prediction-field">
-                    <label>{{ feature }}</label>
+
+                    <label for="{{ feature }}">
+
+                        {{ feature }}
+
+                    </label>
+
 
                     <input
                         type="number"
                         step="any"
+                        id="{{ feature }}"
                         name="{{ feature }}"
                         placeholder="Enter {{ feature }}"
                         required
                     >
+
                 </div>
+
             {% endfor %}
 
-            <button type="submit" class="button">
-                Predict
-            </button>
+
+            <div class="action-row">
+
+                <button
+                    type="submit"
+                    class="button"
+                >
+                    Predict
+                </button>
+
+            </div>
+
+
         </form>
 
     </div>
 
+
+    <!-- =====================================================
+         Prediction result
+         ===================================================== -->
+
     {% if prediction %}
+
         <div class="card centered-text">
-            <h2>Prediction Result</h2>
-            <p class="help-text">The predicted class is:</p>
-            <h1 class="prediction-result">{{ prediction }}</h1>
+
+            <h2>
+                Prediction Result
+            </h2>
+
+            <p class="help-text">
+                The model predicted the following class:
+            </p>
+
+            <div class="prediction-result">
+
+                {{ prediction }}
+
+            </div>
+
         </div>
+
+
+        <!-- =================================================
+             Confidence
+             ================================================= -->
+
+        {% if confidence %}
+
+            <div class="card">
+
+                <h2>
+                    Prediction Confidence
+                </h2>
+
+
+                <p class="help-text">
+
+                    The confidence value represents the model's
+                    estimated probability for the predicted class.
+
+                </p>
+
+
+                <div class="training-stat-grid">
+
+
+                    <div class="training-stat">
+
+                        <span class="training-stat-number">
+
+                            {{ confidence }}%
+
+                        </span>
+
+                        <span class="training-stat-label">
+
+                            Prediction Confidence
+
+                        </span>
+
+                    </div>
+
+
+                </div>
+
+
+                <h3>
+                    Class Probabilities
+                </h3>
+
+
+                {% for item in class_probabilities %}
+
+                    <div class="feature-importance-row">
+
+
+                        <div class="feature-importance-header">
+
+                            <span>
+
+                                {{ item.class }}
+
+                            </span>
+
+
+                            <strong>
+
+                                {{ item.probability }}%
+
+                            </strong>
+
+                        </div>
+
+
+                        <div class="importance-track">
+
+                            <div
+                                class="importance-fill"
+                                style="width: {{ item.probability }}%;"
+                            >
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                {% endfor %}
+
+
+                <div class="warning-box">
+
+                    A high confidence value does not guarantee that
+                    the prediction is correct. Confidence represents
+                    the model's estimated certainty based on the
+                    training data and selected algorithm.
+
+                </div>
+
+
+            </div>
+
+        {% endif %}
+
+
+        <!-- =================================================
+             Entered values
+             ================================================= -->
+
+        {% if entered_values %}
+
+            <div class="card">
+
+                <h2>
+                    Input Summary
+                </h2>
+
+
+                <div class="table-scroll">
+
+                    <table class="data-table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Feature
+                                </th>
+
+                                <th>
+                                    Entered Value
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for feature, value in entered_values.items %}
+
+                                <tr>
+
+                                    <td>
+
+                                        {{ feature }}
+
+                                    </td>
+
+                                    <td>
+
+                                        {{ value }}
+
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+
+                    </table>
+
+                </div>
+
+
+            </div>
+
+        {% endif %}
+
+
+        <!-- =================================================
+             Actions
+             ================================================= -->
+
+        <div class="card centered-text">
+
+            <h2>
+                Continue
+            </h2>
+
+
+            <p class="help-text">
+
+                Try another observation, inspect the model explanation,
+                or compare this model with other algorithms.
+
+            </p>
+
+
+            <div class="action-row">
+
+
+                <a
+                    href="{% url 'project1:classification_test' %}"
+                    class="button"
+                >
+                    Test Another Observation
+                </a>
+
+
+                <a
+                    href="{% url 'project1:classification_explain' %}"
+                    class="button"
+                >
+                    Explain Model
+                </a>
+
+
+                <a
+                    href="{% url 'project1:classification_compare' %}"
+                    class="button"
+                >
+                    Compare Models
+                </a>
+
+
+                <a
+                    href="{% url 'project1:classification_analyze' %}"
+                    class="button secondary-button"
+                >
+                    Back to Analysis
+                </a>
+
+
+            </div>
+
+
+        </div>
+
+
     {% endif %}
+
 
 </div>
 
+
 </body>
+
 </html>
