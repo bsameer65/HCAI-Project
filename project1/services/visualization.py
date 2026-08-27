@@ -1,6 +1,9 @@
 import os
 import uuid
 
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
@@ -425,3 +428,142 @@ def create_model_comparison_chart(
         media_url,
         "model_comparison",
     )
+
+
+def create_regression_comparison_chart(
+    comparison_results,
+    metric_name,
+    media_root,
+    media_url,
+):
+    """Plot regression scores in their natural units."""
+    model_names = [result["model_name"] for result in comparison_results]
+    scores = [result["primary_score"] for result in comparison_results]
+    colors = ["#2e7d32" if index == 0 else "#1a4f8a"
+              for index in range(len(model_names))]
+    plt.figure(figsize=(8, 5))
+    bars = plt.bar(model_names, scores, color=colors, alpha=0.9)
+    plt.ylabel(metric_name)
+    plt.title(f"Regression Model Comparison — {metric_name}")
+    plt.xticks(rotation=15, ha="right")
+    plt.grid(axis="y", alpha=0.2)
+    for bar, value in zip(bars, scores):
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{value:.4g}",
+            ha="center",
+            va="bottom" if value >= 0 else "top",
+            fontsize=9,
+            fontweight="bold",
+        )
+    return _save_figure(media_root, media_url, "regression_model_comparison")
+
+
+def create_hyperparameter_experiment_chart(
+    experiment_results,
+    parameter_name,
+    metric_name,
+    media_root,
+    media_url,
+    percentage=False,
+):
+    """Show every candidate evaluated in a human-controlled parameter grid."""
+    labels = [str(item["parameter_value"]) for item in experiment_results]
+    multiplier = 100 if percentage else 1
+    scores = [item["score"] * multiplier for item in experiment_results]
+    colors = ["#2e7d32" if item["is_best"] else "#1a4f8a"
+              for item in experiment_results]
+    plt.figure(figsize=(8, 5))
+    bars = plt.bar(labels, scores, color=colors, alpha=0.9)
+    plt.xlabel(parameter_name)
+    plt.ylabel(f"{metric_name}{' (%)' if percentage else ''}")
+    plt.title(f"Hyperparameter Experiment — {parameter_name}")
+    plt.grid(axis="y", alpha=0.2)
+    for bar, value in zip(bars, scores):
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{value:.4g}",
+            ha="center",
+            va="bottom" if value >= 0 else "top",
+            fontsize=9,
+        )
+    return _save_figure(media_root, media_url, "hyperparameter_experiment")
+
+
+def create_regression_scatter(
+    df,
+    x_column,
+    y_column,
+    media_root,
+    media_url,
+    title=None,
+):
+    """Plot the relationship between two numerical regression columns."""
+    plt.figure(figsize=(7, 5))
+    plt.scatter(df[x_column], df[y_column], color="#1a4f8a", alpha=0.7)
+    plt.xlabel(x_column)
+    plt.ylabel(y_column)
+    plt.title(title or f"{x_column} vs {y_column}")
+    plt.grid(alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_scatter")
+
+
+def create_target_distribution(
+    df,
+    target_column,
+    media_root,
+    media_url,
+):
+    """Create a histogram for a numerical regression target."""
+    plt.figure(figsize=(7, 5))
+    plt.hist(df[target_column], bins="auto", color="#2e7d32", alpha=0.8,
+             edgecolor="white")
+    plt.xlabel(target_column)
+    plt.ylabel("Number of examples")
+    plt.title(f"Target Distribution — {target_column}")
+    plt.grid(axis="y", alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_target_distribution")
+
+
+def create_actual_vs_predicted_plot(
+    actual,
+    predicted,
+    target_column,
+    media_root,
+    media_url,
+):
+    """Plot test predictions against actual values and the ideal diagonal."""
+    lower = min(min(actual), min(predicted))
+    upper = max(max(actual), max(predicted))
+    plt.figure(figsize=(7, 5))
+    plt.scatter(actual, predicted, color="#1a4f8a", alpha=0.75)
+    plt.plot([lower, upper], [lower, upper], "--", color="#2e7d32",
+             label="Ideal prediction")
+    plt.xlabel(f"Actual {target_column}")
+    plt.ylabel(f"Predicted {target_column}")
+    plt.title("Actual vs Predicted")
+    plt.legend()
+    plt.grid(alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_actual_predicted")
+
+
+def create_residual_plot(
+    actual,
+    predicted,
+    media_root,
+    media_url,
+):
+    """Plot actual-minus-predicted residuals around a zero reference."""
+    residuals = [actual_value - predicted_value for actual_value, predicted_value
+                 in zip(actual, predicted)]
+    plt.figure(figsize=(7, 5))
+    plt.scatter(predicted, residuals, color="#1a4f8a", alpha=0.75)
+    plt.axhline(0, color="#b71c1c", linestyle="--", label="Zero error")
+    plt.xlabel("Predicted value")
+    plt.ylabel("Residual (actual - predicted)")
+    plt.title("Residual Plot")
+    plt.legend()
+    plt.grid(alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_residuals")

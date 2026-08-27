@@ -1,6 +1,94 @@
 from django import forms
 
 
+class RegressionDatasetSetupForm(forms.Form):
+    target_column = forms.ChoiceField(label="Target variable")
+
+    def __init__(self, *args, target_choices=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["target_column"].choices = [
+            (column, column) for column in (target_choices or [])
+        ]
+
+
+class RegressionTrainingForm(forms.Form):
+    MODEL_CHOICES = [
+        ("linear_regression", "Linear Regression"),
+        ("decision_tree_regressor", "Decision Tree Regressor"),
+        ("random_forest_regressor", "Random Forest Regressor"),
+        ("knn_regressor", "K-Nearest Neighbors Regressor"),
+    ]
+    TEST_SIZE_CHOICES = [
+        ("0.2", "20% test / 80% train"),
+        ("0.3", "30% test / 70% train"),
+        ("0.4", "40% test / 60% train"),
+    ]
+    METRIC_CHOICES = [
+        ("mae", "Mean Absolute Error (MAE)"),
+        ("mse", "Mean Squared Error (MSE)"),
+        ("rmse", "Root Mean Squared Error (RMSE)"),
+        ("r2", "R² Score"),
+    ]
+
+    model = forms.ChoiceField(choices=MODEL_CHOICES)
+    test_size = forms.ChoiceField(choices=TEST_SIZE_CHOICES)
+    metric = forms.ChoiceField(choices=METRIC_CHOICES)
+    tree_max_depth = forms.IntegerField(required=False, min_value=1, max_value=50)
+    tree_min_samples_split = forms.IntegerField(required=False, min_value=2, max_value=50)
+    rf_n_estimators = forms.IntegerField(required=False, min_value=10, max_value=500)
+    rf_max_depth = forms.IntegerField(required=False, min_value=1, max_value=50)
+    rf_min_samples_split = forms.IntegerField(required=False, min_value=2, max_value=50)
+    knn_neighbors = forms.IntegerField(required=False, min_value=1, max_value=50)
+    knn_weights = forms.ChoiceField(
+        required=False,
+        choices=[("uniform", "Uniform"), ("distance", "Distance")],
+    )
+    knn_metric = forms.ChoiceField(
+        required=False,
+        choices=[("euclidean", "Euclidean"), ("manhattan", "Manhattan")],
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        required_by_model = {
+            "decision_tree_regressor": (
+                "tree_max_depth", "tree_min_samples_split",
+            ),
+            "random_forest_regressor": (
+                "rf_n_estimators", "rf_max_depth", "rf_min_samples_split",
+            ),
+            "knn_regressor": (
+                "knn_neighbors", "knn_weights", "knn_metric",
+            ),
+        }
+        for field_name in required_by_model.get(cleaned.get("model"), ()):
+            if cleaned.get(field_name) in (None, ""):
+                self.add_error(field_name, "This setting is required for the selected model.")
+        return cleaned
+
+
+def get_regressor_parameters(cleaned_data):
+    model_name = cleaned_data["model"]
+    if model_name == "decision_tree_regressor":
+        return {
+            "max_depth": cleaned_data["tree_max_depth"],
+            "min_samples_split": cleaned_data["tree_min_samples_split"],
+        }
+    if model_name == "random_forest_regressor":
+        return {
+            "n_estimators": cleaned_data["rf_n_estimators"],
+            "max_depth": cleaned_data["rf_max_depth"],
+            "min_samples_split": cleaned_data["rf_min_samples_split"],
+        }
+    if model_name == "knn_regressor":
+        return {
+            "n_neighbors": cleaned_data["knn_neighbors"],
+            "weights": cleaned_data["knn_weights"],
+            "metric": cleaned_data["knn_metric"],
+        }
+    return {}
+
+
 class ClassificationTrainingForm(forms.Form):
 
     MODEL_CHOICES = [

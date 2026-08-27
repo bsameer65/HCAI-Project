@@ -10,6 +10,15 @@ urlpatterns = [
         name="index",
     ),
 
+    path("regression/", views.regression, name="regression"),
+    path("regression/setup/", views.regression_setup, name="regression_setup"),
+    path("regression/analyze/", views.regression_analyze, name="regression_analyze"),
+    path("regression/train/", views.regression_train, name="regression_train"),
+    path("regression/result/", views.regression_result, name="regression_result"),
+    path("regression/test/", views.regression_test, name="regression_test"),
+    path("regression/explain/", views.regression_explain, name="regression_explain"),
+    path("regression/compare/", views.regression_compare, name="regression_compare"),
+
     path(
         "classification/",
         views.classification,

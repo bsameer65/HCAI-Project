@@ -14,7 +14,10 @@ from sklearn.model_selection import train_test_split
 
 from .forms import (
     ClassificationTrainingForm,
+    RegressionDatasetSetupForm,
+    RegressionTrainingForm,
     get_classifier_parameters,
+    get_regressor_parameters,
 )
 
 
@@ -24,6 +27,9 @@ from .forms import (
 
 from .services.dataset import (
     load_dataset,
+    inspect_dataset,
+    get_regression_target_choices,
+    prepare_regression_dataset,
     DatasetValidationError,
 )
 
@@ -34,7 +40,9 @@ from .services.dataset import (
 
 from .services.algorithms import (
     create_classifier,
+    create_regressor,
     CLASSIFIER_CHOICES,
+    REGRESSOR_CHOICES,
     UnsupportedAlgorithmError,
 )
 
@@ -49,6 +57,9 @@ from .services.evaluation import (
     calculate_confusion_matrix,
     CLASSIFICATION_METRICS,
     UnsupportedMetricError,
+    evaluate_regressor,
+    get_selected_regression_metric,
+    REGRESSION_METRICS,
 )
 
 
@@ -62,6 +73,12 @@ from .services.visualization import (
     create_score_comparison_chart,
     create_feature_importance_chart,
     create_model_comparison_chart,
+    create_regression_scatter,
+    create_target_distribution,
+    create_actual_vs_predicted_plot,
+    create_residual_plot,
+    create_regression_comparison_chart,
+    create_hyperparameter_experiment_chart,
 )
 
 
@@ -71,6 +88,7 @@ from .services.visualization import (
 
 from .services.explainability import (
     get_feature_importance,
+    get_regression_feature_importance,
     ExplainabilityError,
 )
 
@@ -86,7 +104,11 @@ from .services.persistence import (
     load_classification_results,
     clear_classification_artifacts,
     ModelNotFoundError,
-    ResultsNotFoundError,
+    clear_regression_artifacts,
+    save_regression_model,
+    load_regression_model,
+    save_regression_results,
+    load_regression_results,
 )
 
 # ==============================================================
@@ -95,6 +117,11 @@ from .services.persistence import (
 
 from .services.comparison import (
     compare_classifiers,
+    compare_regressors,
+    run_classifier_parameter_experiment,
+    run_regressor_parameter_experiment,
+    CLASSIFIER_EXPERIMENT_CHOICES,
+    REGRESSOR_EXPERIMENT_CHOICES,
 )
 
 # ==============================================================
@@ -104,6 +131,8 @@ from .services.comparison import (
 CLASSIFICATION_DATASET_FILENAME = (
     "current_classification_dataset.csv"
 )
+
+REGRESSION_DATASET_FILENAME = "current_regression_dataset.csv"
 
 
 
@@ -138,6 +167,13 @@ def _get_classification_dataset_path():
     return os.path.join(
         _get_upload_directory(),
         CLASSIFICATION_DATASET_FILENAME,
+    )
+
+
+def _get_regression_dataset_path():
+    return os.path.join(
+        _get_upload_directory(),
+        REGRESSION_DATASET_FILENAME,
     )
 
 
@@ -176,6 +212,445 @@ def index(request):
         request,
         "project1/index.html",
     )
+
+
+def regression(request):
+    """Upload and immediately validate a regression CSV dataset."""
+    context = {}
+    if request.method == "POST":
+        uploaded_file = request.FILES.get("csv_file")
+        if uploaded_file is None:
+            context["error"] = "Please choose a CSV file before continuing."
+            return render(request, "project1/regression.html", context)
+        if not uploaded_file.name.lower().endswith(".csv"):
+            context["error"] = "Only CSV files are supported."
+            return render(request, "project1/regression.html", context)
+
+        file_path = _get_regression_dataset_path()
+        try:
+            with open(file_path, "wb+") as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+            get_regression_target_choices(file_path)
+        except DatasetValidationError as error:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            context["error"] = str(error)
+            return render(request, "project1/regression.html", context)
+
+        request.session.pop("regression_target", None)
+        clear_regression_artifacts(settings.MEDIA_ROOT)
+        return redirect("project1:regression_setup")
+
+    return render(request, "project1/regression.html", context)
+
+
+def regression_setup(request):
+    """Let the user confirm a numeric target after inspecting the upload."""
+    file_path = _get_regression_dataset_path()
+    try:
+        df, column_information, removed_identifiers = inspect_dataset(file_path)
+        target_choices = get_regression_target_choices(file_path)
+    except DatasetValidationError as error:
+        return render(request, "project1/regression.html", {"error": str(error)})
+
+    suggested_target = (
+        df.columns[-1]
+        if df.columns[-1] in target_choices
+        else target_choices[-1]
+    )
+    form = RegressionDatasetSetupForm(
+        request.POST or None,
+        target_choices=target_choices,
+        initial={"target_column": suggested_target},
+    )
+    if request.method == "POST" and form.is_valid():
+        target_column = form.cleaned_data["target_column"]
+        try:
+            prepare_regression_dataset(file_path, target_column)
+        except DatasetValidationError as error:
+            form.add_error("target_column", str(error))
+        else:
+            request.session["regression_target"] = target_column
+            return redirect("project1:regression_analyze")
+
+    return render(request, "project1/regression_setup.html", {
+        "form": form,
+        "suggested_target": suggested_target,
+        "column_information": column_information,
+        "removed_identifier_columns": removed_identifiers,
+        "tables": df.head().to_html(classes="data-table", index=False),
+    })
+
+
+def regression_analyze(request):
+    """Explore numerical relationships without discarding categorical features."""
+    target_column = request.session.get("regression_target")
+    if not target_column:
+        return redirect("project1:regression_setup")
+
+    try:
+        dataset = prepare_regression_dataset(
+            _get_regression_dataset_path(), target_column
+        )
+    except DatasetValidationError as error:
+        return render(request, "project1/regression.html", {"error": str(error)})
+
+    df = dataset["dataframe"]
+    numeric_features = dataset["numeric_features"]
+    plot_type = request.POST.get("plot_type", "feature_target")
+    if plot_type not in {"feature_target", "feature_feature", "target_distribution"}:
+        plot_type = "feature_target"
+
+    selected_x = request.POST.get("x_col")
+    if selected_x not in numeric_features:
+        selected_x = numeric_features[0] if numeric_features else None
+    second_default = numeric_features[1] if len(numeric_features) > 1 else selected_x
+    selected_y = request.POST.get("y_col")
+    if selected_y not in numeric_features:
+        selected_y = second_default
+
+    plot_url = None
+    plot_heading = "Target Distribution"
+    if plot_type == "target_distribution":
+        plot_url = create_target_distribution(
+            df, target_column, settings.MEDIA_ROOT, settings.MEDIA_URL
+        )
+    elif selected_x is not None:
+        y_column = target_column if plot_type == "feature_target" else selected_y
+        plot_heading = (
+            "Feature vs Target" if plot_type == "feature_target"
+            else "Feature vs Feature"
+        )
+        plot_url = create_regression_scatter(
+            df, selected_x, y_column, settings.MEDIA_ROOT, settings.MEDIA_URL,
+            title=f"{selected_x} vs {y_column}",
+        )
+
+    target_distribution_url = create_target_distribution(
+        df, target_column, settings.MEDIA_ROOT, settings.MEDIA_URL
+    )
+    return render(request, "project1/regression_analyze.html", {
+        **dataset,
+        "numeric_columns": numeric_features,
+        "selected_x": selected_x,
+        "selected_y": selected_y,
+        "plot_type": plot_type,
+        "plot_heading": plot_heading,
+        "plot_url": plot_url,
+        "target_distribution_url": target_distribution_url,
+        "training_form": RegressionTrainingForm(),
+        "regressor_choices": REGRESSOR_CHOICES,
+        "metric_choices": REGRESSION_METRICS,
+        "tables": df.head().to_html(classes="data-table", index=False),
+    })
+
+
+def regression_train(request):
+    """Train the selected regression pipeline and persist reusable results."""
+    if request.method != "POST":
+        return redirect("project1:regression_analyze")
+
+    target_column = request.session.get("regression_target")
+    if not target_column:
+        return redirect("project1:regression_setup")
+    try:
+        dataset = prepare_regression_dataset(
+            _get_regression_dataset_path(), target_column
+        )
+    except DatasetValidationError as error:
+        return render(request, "project1/regression.html", {"error": str(error)})
+
+    form = RegressionTrainingForm(request.POST)
+    if not form.is_valid():
+        return render(request, "project1/regression_train.html", {
+            "error": (
+                "Some training settings are invalid. Please return to the "
+                "analysis page and check the selected configuration."
+            ),
+            "form_errors": form.errors,
+        })
+
+    cleaned = form.cleaned_data
+    model_key = cleaned["model"]
+    metric = cleaned["metric"]
+    test_size = float(cleaned["test_size"])
+    parameters = get_regressor_parameters(cleaned)
+    X = dataset["dataframe"][dataset["feature_columns"]]
+    y = dataset["dataframe"][target_column]
+
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=42
+        )
+        model = create_regressor(
+            model_key,
+            dataset["numeric_features"],
+            dataset["categorical_features"],
+            parameters,
+        )
+        model.fit(X_train, y_train)
+        train_predictions = model.predict(X_train)
+        test_predictions = model.predict(X_test)
+    except (ValueError, UnsupportedAlgorithmError) as error:
+        return render(request, "project1/regression_train.html", {
+            "error": f"The model could not be trained with this configuration. Details: {error}"
+        })
+
+    train_metrics = evaluate_regressor(y_train, train_predictions)
+    test_metrics = evaluate_regressor(y_test, test_predictions)
+    try:
+        train_score = get_selected_regression_metric(train_metrics, metric)
+        test_score = get_selected_regression_metric(test_metrics, metric)
+    except UnsupportedMetricError as error:
+        return render(request, "project1/regression_train.html", {"error": str(error)})
+
+    categorical_options = {
+        feature: sorted(
+            dataset["dataframe"][feature].dropna().astype(str).unique().tolist()
+        )
+        for feature in dataset["categorical_features"]
+    }
+    metadata = {
+        "problem_type": "regression",
+        "model_key": model_key,
+        "model_name": REGRESSOR_CHOICES[model_key],
+        "feature_columns": dataset["feature_columns"],
+        "numeric_features": dataset["numeric_features"],
+        "categorical_features": dataset["categorical_features"],
+        "target_column": target_column,
+        "test_size": test_size,
+        "metric": metric,
+        "metric_name": REGRESSION_METRICS[metric],
+        "parameters": parameters,
+        "categorical_options": categorical_options,
+    }
+    results = {
+        "training_complete": True,
+        "model_name": metadata["model_name"],
+        "metric_name": metadata["metric_name"],
+        "selected_metric": metric,
+        "parameters": parameters,
+        "target_column": target_column,
+        "feature_columns": dataset["feature_columns"],
+        "train_size": round((1 - test_size) * 100),
+        "test_size": round(test_size * 100),
+        "train_score": round(float(train_score), 4),
+        "test_score": round(float(test_score), 4),
+        "train_metrics": {key: round(float(value), 4) for key, value in train_metrics.items()},
+        "test_metrics": {key: round(float(value), 4) for key, value in test_metrics.items()},
+        "actual_test": y_test.tolist(),
+        "predicted_test": test_predictions.tolist(),
+    }
+    results["actual_vs_predicted_url"] = create_actual_vs_predicted_plot(
+        results["actual_test"],
+        results["predicted_test"],
+        target_column,
+        settings.MEDIA_ROOT,
+        settings.MEDIA_URL,
+    )
+    results["residual_plot_url"] = create_residual_plot(
+        results["actual_test"],
+        results["predicted_test"],
+        settings.MEDIA_ROOT,
+        settings.MEDIA_URL,
+    )
+    save_regression_model(model, metadata, settings.MEDIA_ROOT)
+    save_regression_results(results, settings.MEDIA_ROOT)
+    return redirect("project1:regression_result")
+
+
+def regression_result(request):
+    """Display the latest regression result without retraining."""
+    try:
+        _, metadata = load_regression_model(settings.MEDIA_ROOT)
+        results = load_regression_results(settings.MEDIA_ROOT)
+    except ModelNotFoundError:
+        return render(request, "project1/regression_train.html", {
+            "error": "No trained regression model is available. Please train a model first."
+        })
+    return render(request, "project1/regression_train.html", {
+        **results,
+        "metadata": metadata,
+    })
+
+
+def regression_test(request):
+    """Predict from raw numeric and categorical values using the saved pipeline."""
+    try:
+        model, metadata = load_regression_model(settings.MEDIA_ROOT)
+        results = load_regression_results(settings.MEDIA_ROOT)
+    except ModelNotFoundError:
+        return render(request, "project1/regression_test.html", {
+            "error": "No trained regression model is available. Please train a model first."
+        })
+
+    feature_fields = []
+    for feature in metadata["feature_columns"]:
+        is_numeric = feature in metadata["numeric_features"]
+        feature_fields.append({
+            "name": feature,
+            "type": "numeric" if is_numeric else "categorical",
+            "options": metadata.get("categorical_options", {}).get(feature, []),
+        })
+    context = {
+        "model_name": metadata["model_name"],
+        "target_column": metadata["target_column"],
+        "feature_fields": feature_fields,
+        "test_mae": results["test_metrics"]["mae"],
+        "test_rmse": results["test_metrics"]["rmse"],
+    }
+    if request.method == "POST":
+        input_data = {}
+        try:
+            for field in feature_fields:
+                raw_value = request.POST.get(field["name"], "").strip()
+                if not raw_value:
+                    raise ValueError(f"A value is required for '{field['name']}'.")
+                input_data[field["name"]] = (
+                    float(raw_value) if field["type"] == "numeric" else raw_value
+                )
+            prediction_frame = pd.DataFrame(
+                [input_data], columns=metadata["feature_columns"]
+            )
+            context["prediction"] = float(model.predict(prediction_frame)[0])
+            context["has_prediction"] = True
+            context["entered_values"] = input_data
+        except ValueError as error:
+            context["error"] = f"The prediction could not be made. {error}"
+            context["entered_values"] = request.POST
+
+    return render(request, "project1/regression_test.html", context)
+
+
+def regression_explain(request):
+    """Explain the latest fitted regression pipeline without retraining it."""
+    try:
+        model, metadata = load_regression_model(settings.MEDIA_ROOT)
+        dataset = prepare_regression_dataset(
+            _get_regression_dataset_path(), metadata["target_column"]
+        )
+        X = dataset["dataframe"][metadata["feature_columns"]]
+        y = dataset["dataframe"][metadata["target_column"]]
+        _, X_test, _, y_test = train_test_split(
+            X, y, test_size=metadata["test_size"], random_state=42
+        )
+        explanation = get_regression_feature_importance(
+            model, metadata["model_key"], X_test, y_test
+        )
+        chart_url = create_feature_importance_chart(
+            explanation["items"],
+            explanation["method"],
+            settings.MEDIA_ROOT,
+            settings.MEDIA_URL,
+        )
+    except (ModelNotFoundError, DatasetValidationError) as error:
+        return render(request, "project1/regression_explain.html", {"error": str(error)})
+    except (ValueError, ExplainabilityError) as error:
+        return render(request, "project1/regression_explain.html", {
+            "error": f"The model explanation could not be calculated. {error}"
+        })
+
+    return render(request, "project1/regression_explain.html", {
+        "model_name": metadata["model_name"],
+        "target_column": metadata["target_column"],
+        "parameters": metadata["parameters"],
+        "explanation_method": explanation["method"],
+        "explanation_items": explanation["items"],
+        "explanation_chart_url": chart_url,
+    })
+
+
+def regression_compare(request):
+    """Compare all regressors fairly without replacing the user's saved model."""
+    target_column = request.session.get("regression_target")
+    if not target_column:
+        return redirect("project1:regression_setup")
+    try:
+        dataset = prepare_regression_dataset(
+            _get_regression_dataset_path(), target_column
+        )
+    except DatasetValidationError as error:
+        return render(request, "project1/regression_compare.html", {"error": str(error)})
+
+    selected_metric = request.GET.get("metric", "mae")
+    if selected_metric not in REGRESSION_METRICS:
+        selected_metric = "mae"
+    try:
+        test_size = float(request.GET.get("test_size", 0.2))
+    except ValueError:
+        test_size = 0.2
+    if test_size not in {0.2, 0.3, 0.4}:
+        test_size = 0.2
+    experiment_model = request.GET.get(
+        "experiment_model", "decision_tree_regressor"
+    )
+    if experiment_model not in REGRESSOR_EXPERIMENT_CHOICES:
+        experiment_model = "decision_tree_regressor"
+
+    X = dataset["dataframe"][dataset["feature_columns"]]
+    y = dataset["dataframe"][target_column]
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=42
+        )
+        results = compare_regressors(
+            X_train, X_test, y_train, y_test, selected_metric,
+            dataset["numeric_features"], dataset["categorical_features"],
+        )
+        experiment = run_regressor_parameter_experiment(
+            experiment_model,
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            selected_metric,
+            dataset["numeric_features"],
+            dataset["categorical_features"],
+        )
+    except ValueError as error:
+        return render(request, "project1/regression_compare.html", {
+            "error": f"The comparison could not be completed. {error}"
+        })
+
+    chart_url = create_regression_comparison_chart(
+        results,
+        REGRESSION_METRICS[selected_metric],
+        settings.MEDIA_ROOT,
+        settings.MEDIA_URL,
+    )
+    experiment_chart_url = create_hyperparameter_experiment_chart(
+        experiment["results"],
+        experiment["parameter_name"],
+        REGRESSION_METRICS[selected_metric],
+        settings.MEDIA_ROOT,
+        settings.MEDIA_URL,
+    )
+    for index, result in enumerate(results):
+        result["is_best"] = index == 0
+        for metric in ("primary_score", "mae", "mse", "rmse", "r2"):
+            result[metric] = round(float(result[metric]), 4)
+    for item in experiment["results"]:
+        item["display_score"] = round(float(item["score"]), 4)
+
+    return render(request, "project1/regression_compare.html", {
+        "results": results,
+        "selected_metric": selected_metric,
+        "metric_name": REGRESSION_METRICS[selected_metric],
+        "metric_choices": REGRESSION_METRICS,
+        "test_size": test_size,
+        "train_size_percent": round((1 - test_size) * 100),
+        "test_size_percent": round(test_size * 100),
+        "comparison_chart_url": chart_url,
+        "target_column": target_column,
+        "lower_is_better": selected_metric != "r2",
+        "experiment_choices": REGRESSOR_EXPERIMENT_CHOICES,
+        "experiment_model": experiment_model,
+        "experiment_model_name": REGRESSOR_EXPERIMENT_CHOICES[experiment_model],
+        "experiment_parameter": experiment["parameter_name"],
+        "experiment_results": experiment["results"],
+        "experiment_chart_url": experiment_chart_url,
+    })
 
 
 # ==============================================================
@@ -1534,6 +2009,13 @@ def classification_compare(request):
     }:
         test_size = 0.2
 
+    experiment_model = request.GET.get(
+        "experiment_model",
+        "decision_tree",
+    )
+    if experiment_model not in CLASSIFIER_EXPERIMENT_CHOICES:
+        experiment_model = "decision_tree"
+
     X = df[
         feature_columns
     ]
@@ -1564,6 +2046,15 @@ def classification_compare(request):
             primary_metric=selected_metric,
         )
 
+        experiment = run_classifier_parameter_experiment(
+            experiment_model,
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            selected_metric,
+        )
+
     except ValueError as error:
 
         context["error"] = str(error)
@@ -1588,6 +2079,17 @@ def classification_compare(request):
             media_url=settings.MEDIA_URL,
         )
     )
+
+    experiment_chart_url = create_hyperparameter_experiment_chart(
+        experiment["results"],
+        experiment["parameter_name"],
+        metric_name,
+        settings.MEDIA_ROOT,
+        settings.MEDIA_URL,
+        percentage=True,
+    )
+    for item in experiment["results"]:
+        item["score_percent"] = round(float(item["score"]) * 100, 2)
 
     formatted_results = []
 
@@ -1666,6 +2168,24 @@ def classification_compare(request):
 
         "target_column":
             target_column,
+
+        "experiment_choices":
+            CLASSIFIER_EXPERIMENT_CHOICES,
+
+        "experiment_model":
+            experiment_model,
+
+        "experiment_model_name":
+            CLASSIFIER_EXPERIMENT_CHOICES[experiment_model],
+
+        "experiment_parameter":
+            experiment["parameter_name"],
+
+        "experiment_results":
+            experiment["results"],
+
+        "experiment_chart_url":
+            experiment_chart_url,
     })
 
     return render(

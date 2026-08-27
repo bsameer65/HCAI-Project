@@ -1,3 +1,4 @@
+import csv
 import os
 
 import pandas as pd
@@ -22,29 +23,12 @@ IDENTIFIER_COLUMNS = {
 
 
 # ==============================================================
-# Internal helpers
+# Shared helpers
 # ==============================================================
-
-def _clean_column_names(df):
-    """
-    Remove leading/trailing whitespace from column names.
-    """
-
-    df = df.copy()
-
-    df.columns = [
-        str(column).strip()
-        for column in df.columns
-    ]
-
-    return df
-
 
 def _remove_identifier_columns(df):
     """
-    Remove commonly named identifier columns.
-
-    Identifier columns should not be used as ML features.
+    Remove optional identifier columns.
     """
 
     columns_to_drop = [
@@ -59,22 +43,88 @@ def _remove_identifier_columns(df):
             columns=columns_to_drop
         )
 
-    return df, columns_to_drop
+    return (
+        df,
+        columns_to_drop,
+    )
 
 
 def _read_csv(file_path):
     """
-    Read and perform basic validation of a CSV dataset.
+    Read and perform basic validation of a CSV file.
+
+    Returns:
+        pandas.DataFrame
     """
 
-    if not os.path.exists(file_path):
-
+    if not os.path.exists(
+        file_path
+    ):
         raise DatasetValidationError(
             "No dataset has been uploaded."
         )
 
-    try:
+    # ----------------------------------------------------------
+    # Read header separately so duplicate column names can
+    # be detected before pandas renames them automatically.
+    # ----------------------------------------------------------
 
+    try:
+        with open(
+            file_path,
+            "r",
+            encoding="utf-8-sig",
+            newline="",
+        ) as source:
+
+            header = next(
+                csv.reader(source),
+                None,
+            )
+
+    except (
+        UnicodeDecodeError,
+        csv.Error,
+    ) as exc:
+
+        raise DatasetValidationError(
+            "The uploaded file could not be read "
+            "as a valid CSV file."
+        ) from exc
+
+    except OSError as exc:
+
+        raise DatasetValidationError(
+            "The uploaded dataset could not be opened."
+        ) from exc
+
+    if not header:
+        raise DatasetValidationError(
+            "The uploaded dataset is empty."
+        )
+
+    cleaned_header = [
+        str(column).strip()
+        for column in header
+    ]
+
+    duplicates = sorted({
+        column
+        for column in cleaned_header
+        if cleaned_header.count(column) > 1
+    })
+
+    if duplicates:
+        raise DatasetValidationError(
+            "The dataset contains duplicate column names: "
+            + ", ".join(duplicates)
+        )
+
+    # ----------------------------------------------------------
+    # Read complete data
+    # ----------------------------------------------------------
+
+    try:
         df = pd.read_csv(
             file_path
         )
@@ -96,58 +146,25 @@ def _read_csv(file_path):
         ) from exc
 
     if df.empty:
-
         raise DatasetValidationError(
             "The uploaded dataset is empty."
         )
 
-    df = _clean_column_names(
-        df
-    )
+    # Use cleaned header names
+    df.columns = cleaned_header
 
-    if df.columns.duplicated().any():
-
-        duplicates = (
-            df.columns[
-                df.columns.duplicated()
-            ]
-            .unique()
-            .tolist()
-        )
-
-        raise DatasetValidationError(
-            "The dataset contains duplicate column names: "
-            + ", ".join(duplicates)
-        )
-
-    df, removed_identifiers = (
-        _remove_identifier_columns(
-            df
-        )
-    )
-
-    if len(df.columns) < 2:
-
-        raise DatasetValidationError(
-            "The dataset must contain at least one "
-            "feature column and one target column."
-        )
-
-    return (
-        df,
-        removed_identifiers,
-    )
+    return df
 
 
 # ==============================================================
-# Generic dataset inspection
+# Generic inspection
 # ==============================================================
 
 def inspect_dataset(file_path):
     """
-    Load a dataset without deciding the target column.
+    Inspect a dataset without selecting a target column.
 
-    Used when the human should choose the target.
+    Used primarily by the regression setup workflow.
 
     Returns:
         df
@@ -155,12 +172,22 @@ def inspect_dataset(file_path):
         removed_identifier_columns
     """
 
+    df = _read_csv(
+        file_path
+    )
+
     (
         df,
         removed_identifier_columns,
-    ) = _read_csv(
-        file_path
+    ) = _remove_identifier_columns(
+        df
     )
+
+    if len(df.columns) < 2:
+        raise DatasetValidationError(
+            "The dataset must contain at least one "
+            "feature column and one target column."
+        )
 
     column_information = []
 
@@ -169,11 +196,8 @@ def inspect_dataset(file_path):
         if pd.api.types.is_numeric_dtype(
             df[column]
         ):
-
             column_type = "numeric"
-
         else:
-
             column_type = "categorical"
 
         column_information.append({
@@ -212,23 +236,36 @@ def inspect_dataset(file_path):
 
 def load_dataset(file_path):
     """
-    Load a classification-style dataset following
-    the assignment convention:
+    Load the classification dataset using the assignment
+    convention:
 
         feature_1, feature_2, ..., feature_n, target
 
-    The last column is interpreted as the target.
+    The last column is treated as the target.
 
-    This function is retained so the current
-    classification implementation continues working.
+    Returns:
+        df
+        feature_columns
+        target_column
+        removed_identifier_columns
     """
+
+    df = _read_csv(
+        file_path
+    )
 
     (
         df,
         removed_identifier_columns,
-    ) = _read_csv(
-        file_path
+    ) = _remove_identifier_columns(
+        df
     )
+
+    if len(df.columns) < 2:
+        raise DatasetValidationError(
+            "The dataset must contain at least one "
+            "feature column and one target column."
+        )
 
     feature_columns = (
         df.columns[:-1]
@@ -239,7 +276,9 @@ def load_dataset(file_path):
         df.columns[-1]
     )
 
-    if df[target_column].isna().any():
+    if df[
+        target_column
+    ].isna().any():
 
         raise DatasetValidationError(
             f"The target column '{target_column}' "
@@ -251,7 +290,6 @@ def load_dataset(file_path):
         .nunique()
         < 2
     ):
-
         raise DatasetValidationError(
             f"The target column '{target_column}' "
             "must contain at least two different values."
@@ -270,43 +308,34 @@ def load_dataset(file_path):
 # ==============================================================
 
 def get_regression_target_choices(
-    file_path
+    file_path,
 ):
     """
-    Return columns that are valid regression targets.
-
-    Regression targets must be numeric.
+    Return numerical columns that can be used
+    as regression targets.
     """
 
     (
-        df,
+        _,
         column_information,
-        removed_identifier_columns,
+        _,
     ) = inspect_dataset(
         file_path
     )
 
-    numeric_columns = [
-        column["name"]
-        for column
-        in column_information
-
-        if column["type"]
-        == "numeric"
+    choices = [
+        item["name"]
+        for item in column_information
+        if item["type"] == "numeric"
     ]
 
-    if not numeric_columns:
-
+    if not choices:
         raise DatasetValidationError(
-            "Regression requires at least one "
-            "numeric column that can be used as the target."
+            "Regression requires at least one numerical "
+            "column that can be used as the target."
         )
 
-    return (
-        numeric_columns,
-        column_information,
-        removed_identifier_columns,
-    )
+    return choices
 
 
 def prepare_regression_dataset(
@@ -314,12 +343,11 @@ def prepare_regression_dataset(
     target_column,
 ):
     """
-    Prepare a dataset for regression using a user-selected
-    numeric target.
+    Validate the selected regression target and identify
+    numerical/categorical input features.
 
-    Both numeric and categorical input features are retained.
-    Categorical features will later be encoded by the sklearn
-    preprocessing pipeline.
+    Categorical input features are retained so they can
+    later be encoded in the sklearn preprocessing pipeline.
     """
 
     (
@@ -331,25 +359,25 @@ def prepare_regression_dataset(
     )
 
     if target_column not in df.columns:
-
         raise DatasetValidationError(
-            "The selected target column does not exist "
-            "in the uploaded dataset."
+            f"The selected target column "
+            f"'{target_column}' does not exist."
         )
 
     if not pd.api.types.is_numeric_dtype(
         df[target_column]
     ):
-
         raise DatasetValidationError(
-            "Regression requires a numeric target. "
-            f"'{target_column}' is not numeric."
+            f"The regression target '{target_column}' "
+            "must be numerical."
         )
 
-    if df[target_column].isna().any():
+    if df[
+        target_column
+    ].isna().any():
 
         raise DatasetValidationError(
-            f"The selected target '{target_column}' "
+            f"The target column '{target_column}' "
             "contains missing values."
         )
 
@@ -358,24 +386,25 @@ def prepare_regression_dataset(
         .nunique()
         < 2
     ):
-
         raise DatasetValidationError(
-            "The regression target must contain "
-            "at least two different values."
+            f"The target column '{target_column}' "
+            "must contain at least two different values."
         )
 
     feature_columns = [
         column
         for column in df.columns
-
-        if column
-        != target_column
+        if column != target_column
     ]
+
+    if not feature_columns:
+        raise DatasetValidationError(
+            "At least one input feature must remain."
+        )
 
     numeric_features = [
         column
         for column in feature_columns
-
         if pd.api.types.is_numeric_dtype(
             df[column]
         )
@@ -384,16 +413,8 @@ def prepare_regression_dataset(
     categorical_features = [
         column
         for column in feature_columns
-
-        if column
-        not in numeric_features
+        if column not in numeric_features
     ]
-
-    if not feature_columns:
-
-        raise DatasetValidationError(
-            "At least one input feature is required."
-        )
 
     return {
         "dataframe":
