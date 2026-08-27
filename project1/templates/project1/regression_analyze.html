@@ -1,0 +1,20 @@
+{% load static %}
+<!DOCTYPE html>
+<html><head><title>Analyze Regression Dataset</title><link rel="stylesheet" href="{% static 'project1/style.css' %}"></head>
+<body><div class="page-container">
+<a href="{% url 'project1:regression_setup' %}" class="back-arrow" title="Back to target setup">&larr;</a>
+<div class="page-header"><h1>Analyze Regression Dataset</h1><p>Explore numerical relationships before choosing how to train the model.</p></div>
+<div class="card"><h2>Dataset Information</h2><div class="info-box">
+<strong>Target:</strong> {{ target_column }}<br><strong>Numerical features:</strong> {{ numeric_features|length }}<br><strong>Categorical features:</strong> {{ categorical_features|length }}
+</div>{% if removed_identifier_columns %}<div class="warning-box">Identifier column(s) automatically excluded: <strong>{{ removed_identifier_columns|join:", " }}</strong></div>{% endif %}
+{% if categorical_features %}<p class="help-text">Categorical features retained for training: {{ categorical_features|join:", " }}. Scatter plots use numerical columns only.</p>{% endif %}</div>
+<div class="card"><h2>Visualization Controls</h2><form method="post">{% csrf_token %}<div class="form-row">
+<div><label for="plot_type">View</label><select id="plot_type" name="plot_type" onchange="updatePlotFields()"><option value="feature_target" {% if plot_type == 'feature_target' %}selected{% endif %}>Feature vs Target</option><option value="feature_feature" {% if plot_type == 'feature_feature' %}selected{% endif %}>Feature vs Feature</option><option value="target_distribution" {% if plot_type == 'target_distribution' %}selected{% endif %}>Target Distribution</option></select></div>
+<div id="x-field"><label for="x_col">First feature</label><select id="x_col" name="x_col">{% for column in numeric_columns %}<option value="{{ column }}" {% if column == selected_x %}selected{% endif %}>{{ column }}</option>{% endfor %}</select></div>
+<div id="y-field"><label for="y_col">Second feature</label><select id="y_col" name="y_col">{% for column in numeric_columns %}<option value="{{ column }}" {% if column == selected_y %}selected{% endif %}>{{ column }}</option>{% endfor %}</select></div>
+</div><div class="action-row"><button class="button" type="submit">Update Visualization</button></div></form>
+{% if not numeric_columns %}<div class="warning-box">There are no numerical input features to scatter, but categorical features remain available for model training.</div>{% endif %}</div>
+<div class="graph-row">{% if plot_url %}<div class="card graph-card"><h2>{{ plot_heading }}</h2><img src="{{ plot_url }}" alt="{{ plot_heading }} plot"></div>{% endif %}
+{% if plot_type != 'target_distribution' %}<div class="card graph-card"><h2>Target Distribution</h2><img src="{{ target_distribution_url }}" alt="Target distribution histogram"></div>{% endif %}</div>
+<div class="card"><h2>Dataset Preview</h2><div class="table-scroll">{{ tables|safe }}</div></div>
+</div><script>function updatePlotFields(){const type=document.getElementById('plot_type').value;document.getElementById('x-field').style.display=type==='target_distribution'?'none':'block';document.getElementById('y-field').style.display=type==='feature_feature'?'block':'none';}updatePlotFields();</script></body></html>

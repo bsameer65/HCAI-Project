@@ -66,6 +66,8 @@ from .services.visualization import (
     create_score_comparison_chart,
     create_feature_importance_chart,
     create_model_comparison_chart,
+    create_regression_scatter,
+    create_target_distribution,
 )
 
 
@@ -253,6 +255,66 @@ def regression_setup(request):
         "suggested_target": suggested_target,
         "column_information": column_information,
         "removed_identifier_columns": removed_identifiers,
+        "tables": df.head().to_html(classes="data-table", index=False),
+    })
+
+
+def regression_analyze(request):
+    """Explore numerical relationships without discarding categorical features."""
+    target_column = request.session.get("regression_target")
+    if not target_column:
+        return redirect("project1:regression_setup")
+
+    try:
+        dataset = prepare_regression_dataset(
+            _get_regression_dataset_path(), target_column
+        )
+    except DatasetValidationError as error:
+        return render(request, "project1/regression.html", {"error": str(error)})
+
+    df = dataset["dataframe"]
+    numeric_features = dataset["numeric_features"]
+    plot_type = request.POST.get("plot_type", "feature_target")
+    if plot_type not in {"feature_target", "feature_feature", "target_distribution"}:
+        plot_type = "feature_target"
+
+    selected_x = request.POST.get("x_col")
+    if selected_x not in numeric_features:
+        selected_x = numeric_features[0] if numeric_features else None
+    second_default = numeric_features[1] if len(numeric_features) > 1 else selected_x
+    selected_y = request.POST.get("y_col")
+    if selected_y not in numeric_features:
+        selected_y = second_default
+
+    plot_url = None
+    plot_heading = "Target Distribution"
+    if plot_type == "target_distribution":
+        plot_url = create_target_distribution(
+            df, target_column, settings.MEDIA_ROOT, settings.MEDIA_URL
+        )
+    elif selected_x is not None:
+        y_column = target_column if plot_type == "feature_target" else selected_y
+        plot_heading = (
+            "Feature vs Target" if plot_type == "feature_target"
+            else "Feature vs Feature"
+        )
+        plot_url = create_regression_scatter(
+            df, selected_x, y_column, settings.MEDIA_ROOT, settings.MEDIA_URL,
+            title=f"{selected_x} vs {y_column}",
+        )
+
+    target_distribution_url = create_target_distribution(
+        df, target_column, settings.MEDIA_ROOT, settings.MEDIA_URL
+    )
+    return render(request, "project1/regression_analyze.html", {
+        **dataset,
+        "numeric_columns": numeric_features,
+        "selected_x": selected_x,
+        "selected_y": selected_y,
+        "plot_type": plot_type,
+        "plot_heading": plot_heading,
+        "plot_url": plot_url,
+        "target_distribution_url": target_distribution_url,
         "tables": df.head().to_html(classes="data-table", index=False),
     })
 

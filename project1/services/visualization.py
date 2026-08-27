@@ -425,3 +425,38 @@ def create_model_comparison_chart(
         media_url,
         "model_comparison",
     )
+
+
+def create_regression_scatter(
+    df,
+    x_column,
+    y_column,
+    media_root,
+    media_url,
+    title=None,
+):
+    """Plot the relationship between two numerical regression columns."""
+    plt.figure(figsize=(7, 5))
+    plt.scatter(df[x_column], df[y_column], color="#1a4f8a", alpha=0.7)
+    plt.xlabel(x_column)
+    plt.ylabel(y_column)
+    plt.title(title or f"{x_column} vs {y_column}")
+    plt.grid(alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_scatter")
+
+
+def create_target_distribution(
+    df,
+    target_column,
+    media_root,
+    media_url,
+):
+    """Create a histogram for a numerical regression target."""
+    plt.figure(figsize=(7, 5))
+    plt.hist(df[target_column], bins="auto", color="#2e7d32", alpha=0.8,
+             edgecolor="white")
+    plt.xlabel(target_column)
+    plt.ylabel("Number of examples")
+    plt.title(f"Target Distribution — {target_column}")
+    plt.grid(axis="y", alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_target_distribution")

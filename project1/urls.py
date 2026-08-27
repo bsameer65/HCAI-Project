@@ -8,6 +8,7 @@ urlpatterns = [
 
     path("regression/", views.regression, name="regression"),
     path("regression/setup/", views.regression_setup, name="regression_setup"),
+    path("regression/analyze/", views.regression_analyze, name="regression_analyze"),
 
     path(
         "classification/",
