@@ -460,3 +460,45 @@ def create_target_distribution(
     plt.title(f"Target Distribution — {target_column}")
     plt.grid(axis="y", alpha=0.2)
     return _save_figure(media_root, media_url, "regression_target_distribution")
+
+
+def create_actual_vs_predicted_plot(
+    actual,
+    predicted,
+    target_column,
+    media_root,
+    media_url,
+):
+    """Plot test predictions against actual values and the ideal diagonal."""
+    lower = min(min(actual), min(predicted))
+    upper = max(max(actual), max(predicted))
+    plt.figure(figsize=(7, 5))
+    plt.scatter(actual, predicted, color="#1a4f8a", alpha=0.75)
+    plt.plot([lower, upper], [lower, upper], "--", color="#2e7d32",
+             label="Ideal prediction")
+    plt.xlabel(f"Actual {target_column}")
+    plt.ylabel(f"Predicted {target_column}")
+    plt.title("Actual vs Predicted")
+    plt.legend()
+    plt.grid(alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_actual_predicted")
+
+
+def create_residual_plot(
+    actual,
+    predicted,
+    media_root,
+    media_url,
+):
+    """Plot actual-minus-predicted residuals around a zero reference."""
+    residuals = [actual_value - predicted_value for actual_value, predicted_value
+                 in zip(actual, predicted)]
+    plt.figure(figsize=(7, 5))
+    plt.scatter(predicted, residuals, color="#1a4f8a", alpha=0.75)
+    plt.axhline(0, color="#b71c1c", linestyle="--", label="Zero error")
+    plt.xlabel("Predicted value")
+    plt.ylabel("Residual (actual - predicted)")
+    plt.title("Residual Plot")
+    plt.legend()
+    plt.grid(alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_residuals")

@@ -11,6 +11,7 @@ urlpatterns = [
     path("regression/analyze/", views.regression_analyze, name="regression_analyze"),
     path("regression/train/", views.regression_train, name="regression_train"),
     path("regression/result/", views.regression_result, name="regression_result"),
+    path("regression/test/", views.regression_test, name="regression_test"),
 
     path(
         "classification/",

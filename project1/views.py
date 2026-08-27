@@ -75,6 +75,8 @@ from .services.visualization import (
     create_model_comparison_chart,
     create_regression_scatter,
     create_target_distribution,
+    create_actual_vs_predicted_plot,
+    create_residual_plot,
 )
 
 
@@ -429,6 +431,19 @@ def regression_train(request):
         "actual_test": y_test.tolist(),
         "predicted_test": test_predictions.tolist(),
     }
+    results["actual_vs_predicted_url"] = create_actual_vs_predicted_plot(
+        results["actual_test"],
+        results["predicted_test"],
+        target_column,
+        settings.MEDIA_ROOT,
+        settings.MEDIA_URL,
+    )
+    results["residual_plot_url"] = create_residual_plot(
+        results["actual_test"],
+        results["predicted_test"],
+        settings.MEDIA_ROOT,
+        settings.MEDIA_URL,
+    )
     save_regression_model(model, metadata, settings.MEDIA_ROOT)
     save_regression_results(results, settings.MEDIA_ROOT)
     return redirect("project1:regression_result")
@@ -447,6 +462,54 @@ def regression_result(request):
         **results,
         "metadata": metadata,
     })
+
+
+def regression_test(request):
+    """Predict from raw numeric and categorical values using the saved pipeline."""
+    try:
+        model, metadata = load_regression_model(settings.MEDIA_ROOT)
+        results = load_regression_results(settings.MEDIA_ROOT)
+    except ModelNotFoundError:
+        return render(request, "project1/regression_test.html", {
+            "error": "No trained regression model is available. Please train a model first."
+        })
+
+    feature_fields = []
+    for feature in metadata["feature_columns"]:
+        is_numeric = feature in metadata["numeric_features"]
+        feature_fields.append({
+            "name": feature,
+            "type": "numeric" if is_numeric else "categorical",
+            "options": metadata.get("categorical_options", {}).get(feature, []),
+        })
+    context = {
+        "model_name": metadata["model_name"],
+        "target_column": metadata["target_column"],
+        "feature_fields": feature_fields,
+        "test_mae": results["test_metrics"]["mae"],
+        "test_rmse": results["test_metrics"]["rmse"],
+    }
+    if request.method == "POST":
+        input_data = {}
+        try:
+            for field in feature_fields:
+                raw_value = request.POST.get(field["name"], "").strip()
+                if not raw_value:
+                    raise ValueError(f"A value is required for '{field['name']}'.")
+                input_data[field["name"]] = (
+                    float(raw_value) if field["type"] == "numeric" else raw_value
+                )
+            prediction_frame = pd.DataFrame(
+                [input_data], columns=metadata["feature_columns"]
+            )
+            context["prediction"] = float(model.predict(prediction_frame)[0])
+            context["has_prediction"] = True
+            context["entered_values"] = input_data
+        except ValueError as error:
+            context["error"] = f"The prediction could not be made. {error}"
+            context["entered_values"] = request.POST
+
+    return render(request, "project1/regression_test.html", context)
 
 
 # ==============================================================

@@ -1,0 +1,13 @@
+{% load static %}
+<!DOCTYPE html>
+<html><head><title>Test Regression Model</title><link rel="stylesheet" href="{% static 'project1/style.css' %}"></head>
+<body><div class="page-container">
+<a href="{% url 'project1:regression_result' %}" class="back-arrow" title="Back to results">&larr;</a>
+<div class="page-header"><h1>Test Regression Model</h1><p>Enter a new example. The saved pipeline applies exactly the preprocessing learned during training.</p></div>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+{% if feature_fields %}<div class="card prediction-card"><h2>{{ model_name }}</h2><p class="help-text">Predicting <strong>{{ target_column }}</strong></p><form class="prediction-form" method="post">{% csrf_token %}
+{% for field in feature_fields %}<div class="prediction-field"><label for="feature-{{ forloop.counter }}">{{ field.name }}</label>{% if field.type == 'numeric' %}<input id="feature-{{ forloop.counter }}" type="number" step="any" name="{{ field.name }}" required>{% else %}<select id="feature-{{ forloop.counter }}" name="{{ field.name }}" required>{% for option in field.options %}<option value="{{ option }}">{{ option }}</option>{% endfor %}</select>{% endif %}</div>{% endfor %}
+<button class="button" type="submit">Predict Value</button></form></div>
+{% if has_prediction %}<div class="card centered-text"><h2>Predicted Value</h2><span class="prediction-result">{{ prediction|floatformat:4 }}</span><p class="help-text">Typical test error (MAE): {{ test_mae }}. Test RMSE: {{ test_rmse }}. These are evaluation errors, not strict confidence intervals.</p></div>{% endif %}
+{% endif %}<div class="action-row"><a class="button secondary-button" href="{% url 'project1:regression_result' %}">Back to Results</a></div>
+</div></body></html>
