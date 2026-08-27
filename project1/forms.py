@@ -1,6 +1,16 @@
 from django import forms
 
 
+class RegressionDatasetSetupForm(forms.Form):
+    target_column = forms.ChoiceField(label="Target variable")
+
+    def __init__(self, *args, target_choices=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["target_column"].choices = [
+            (column, column) for column in (target_choices or [])
+        ]
+
+
 class ClassificationTrainingForm(forms.Form):
 
     MODEL_CHOICES = [

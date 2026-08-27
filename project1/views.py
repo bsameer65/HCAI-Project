@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 
 from .forms import (
     ClassificationTrainingForm,
+    RegressionDatasetSetupForm,
     get_classifier_parameters,
 )
 
@@ -24,6 +25,9 @@ from .forms import (
 
 from .services.dataset import (
     load_dataset,
+    inspect_dataset,
+    get_regression_target_choices,
+    prepare_regression_dataset,
     DatasetValidationError,
 )
 
@@ -83,6 +87,7 @@ from .services.persistence import (
     save_classification_model,
     load_classification_model,
     ModelNotFoundError,
+    clear_regression_artifacts,
 )
 
 # ==============================================================
@@ -100,6 +105,8 @@ from .services.comparison import (
 CLASSIFICATION_DATASET_FILENAME = (
     "current_classification_dataset.csv"
 )
+
+REGRESSION_DATASET_FILENAME = "current_regression_dataset.csv"
 
 
 
@@ -134,6 +141,13 @@ def _get_classification_dataset_path():
     return os.path.join(
         _get_upload_directory(),
         CLASSIFICATION_DATASET_FILENAME,
+    )
+
+
+def _get_regression_dataset_path():
+    return os.path.join(
+        _get_upload_directory(),
+        REGRESSION_DATASET_FILENAME,
     )
 
 
@@ -172,6 +186,75 @@ def index(request):
         request,
         "project1/index.html",
     )
+
+
+def regression(request):
+    """Upload and immediately validate a regression CSV dataset."""
+    context = {}
+    if request.method == "POST":
+        uploaded_file = request.FILES.get("csv_file")
+        if uploaded_file is None:
+            context["error"] = "Please choose a CSV file before continuing."
+            return render(request, "project1/regression.html", context)
+        if not uploaded_file.name.lower().endswith(".csv"):
+            context["error"] = "Only CSV files are supported."
+            return render(request, "project1/regression.html", context)
+
+        file_path = _get_regression_dataset_path()
+        try:
+            with open(file_path, "wb+") as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+            get_regression_target_choices(file_path)
+        except DatasetValidationError as error:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            context["error"] = str(error)
+            return render(request, "project1/regression.html", context)
+
+        request.session.pop("regression_target", None)
+        clear_regression_artifacts(settings.MEDIA_ROOT)
+        return redirect("project1:regression_setup")
+
+    return render(request, "project1/regression.html", context)
+
+
+def regression_setup(request):
+    """Let the user confirm a numeric target after inspecting the upload."""
+    file_path = _get_regression_dataset_path()
+    try:
+        df, column_information, removed_identifiers = inspect_dataset(file_path)
+        target_choices = get_regression_target_choices(file_path)
+    except DatasetValidationError as error:
+        return render(request, "project1/regression.html", {"error": str(error)})
+
+    suggested_target = (
+        df.columns[-1]
+        if df.columns[-1] in target_choices
+        else target_choices[-1]
+    )
+    form = RegressionDatasetSetupForm(
+        request.POST or None,
+        target_choices=target_choices,
+        initial={"target_column": suggested_target},
+    )
+    if request.method == "POST" and form.is_valid():
+        target_column = form.cleaned_data["target_column"]
+        try:
+            prepare_regression_dataset(file_path, target_column)
+        except DatasetValidationError as error:
+            form.add_error("target_column", str(error))
+        else:
+            request.session["regression_target"] = target_column
+            return redirect("project1:regression_analyze")
+
+    return render(request, "project1/regression_setup.html", {
+        "form": form,
+        "suggested_target": suggested_target,
+        "column_information": column_information,
+        "removed_identifier_columns": removed_identifiers,
+        "tables": df.head().to_html(classes="data-table", index=False),
+    })
 
 
 # ==============================================================

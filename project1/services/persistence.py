@@ -11,6 +11,12 @@ CLASSIFICATION_METADATA_FILENAME = (
     "classification_metadata.pkl"
 )
 
+REGRESSION_ARTIFACT_FILENAMES = (
+    "regression_model.pkl",
+    "regression_metadata.pkl",
+    "regression_results.pkl",
+)
+
 
 class ModelNotFoundError(FileNotFoundError):
     """Raised when no trained model is available."""
@@ -108,3 +114,12 @@ def load_classification_model(
     )
 
     return model, metadata
+
+
+def clear_regression_artifacts(media_root):
+    """Remove only artifacts belonging to the previous regression run."""
+    model_directory = _get_model_directory(media_root)
+    for filename in REGRESSION_ARTIFACT_FILENAMES:
+        path = os.path.join(model_directory, filename)
+        if os.path.exists(path):
+            os.remove(path)

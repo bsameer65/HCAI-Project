@@ -1,0 +1,15 @@
+{% load static %}
+<!DOCTYPE html>
+<html><head><title>Regression Dataset</title><link rel="stylesheet" href="{% static 'project1/style.css' %}"></head>
+<body><div class="page-container">
+<a href="{% url 'project1:index' %}" class="back-arrow" title="Back to Project 1">&larr;</a>
+<div class="page-header"><h1>Regression Task</h1><p>Upload a CSV dataset, then choose the numerical value you want the model to predict.</p></div>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+<div class="card"><h2>Upload CSV</h2><div class="upload-box">
+<h3>Select your regression dataset</h3>
+<p>Numeric and categorical input features are supported. The target must be numerical.</p>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}
+<input type="file" name="csv_file" accept=".csv,text/csv" required>
+<div class="action-row"><button type="submit" class="button">Inspect Dataset</button></div>
+</form></div></div>
+</div></body></html>

@@ -6,6 +6,9 @@ app_name = "project1"
 urlpatterns = [
     path("", views.index, name="index"),
 
+    path("regression/", views.regression, name="regression"),
+    path("regression/setup/", views.regression_setup, name="regression_setup"),
+
     path(
         "classification/",
         views.classification,
