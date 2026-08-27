@@ -1,189 +1,902 @@
+/* =========================================================
+   PROJECT 1 — SHARED HCAI VISUAL STYLE
+   Matches the visual language used in Project 3
+   ========================================================= */
+
+
+/* ---------- Page shell ---------- */
+
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Arial, sans-serif;
     background: #f5f7fb;
+    min-height: 100vh;
     margin: 0;
     color: #222;
+    line-height: 1.55;
 }
 
 .page-container {
-    max-width: 1100px;
-    margin: 40px auto;
-    padding: 20px;
+    max-width: 1020px;
+    margin: 36px auto;
+    padding: 0 20px;
 }
+
+
+/* ---------- Main header / hero ---------- */
+
+.page-header {
+    background: linear-gradient(
+        135deg,
+        #1a4f8a 0%,
+        #2d6cb4 100%
+    );
+
+    color: white;
+    border-radius: 14px;
+    padding: 30px 35px;
+    margin-bottom: 28px;
+    text-align: center;
+}
+
+.page-header h1 {
+    margin: 0 0 8px 0;
+    font-size: 1.85rem;
+    font-weight: 700;
+}
+
+.page-header p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.98rem;
+    line-height: 1.6;
+}
+
+
+/* ---------- Cards ---------- */
 
 .card {
     background: white;
     border-radius: 14px;
-    padding: 25px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    margin-bottom: 25px;
+    padding: 24px 28px;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.06);
+
+    margin-bottom: 24px;
 }
+
+.card h2 {
+    margin-top: 0;
+
+    color: #1a4f8a;
+
+    font-size: 1.15rem;
+
+    border-bottom:
+        2px solid #e8edf5;
+
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+}
+
+.card h3 {
+    margin-top: 18px;
+    color: #1a4f8a;
+    font-size: 1rem;
+    margin-bottom: 8px;
+}
+
+
+/* ---------- Text ---------- */
 
 .centered-text {
     text-align: center;
 }
 
-.back-arrow {
-    text-decoration: none;
-    font-size: 28px;
-    color: #333;
-    display: inline-block;
-    margin-bottom: 15px;
-}
-
-.back-arrow:hover {
-    color: #007bff;
-}
-
-h1, h2, h3 {
-    margin-top: 0;
-}
-
 .help-text {
-    color: #666;
+    color: #6b7a90;
+    font-size: 0.91rem;
     line-height: 1.6;
 }
 
-.button {
-    background: #007bff;
+strong {
+    color: #333;
+}
+
+
+/* ---------- Back arrow ---------- */
+
+.back-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 38px;
+    height: 38px;
+
+    border-radius: 50%;
+
+    background: white;
+    border: 1.5px solid #1a4f8a;
+
+    color: #1a4f8a;
+
+    text-decoration: none;
+
+    font-size: 22px;
+    font-weight: 600;
+
+    margin-bottom: 18px;
+
+    transition:
+        background 0.18s,
+        color 0.18s,
+        transform 0.18s;
+}
+
+.back-arrow:hover {
+    background: #1a4f8a;
     color: white;
-    padding: 10px 18px;
+    transform: translateX(-2px);
+}
+
+
+/* ---------- Buttons ---------- */
+
+.button {
+    background: #1a4f8a;
+    color: white;
+
+    padding: 10px 22px;
+
     border: none;
     border-radius: 8px;
+
     cursor: pointer;
+
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
+
     text-decoration: none;
-    font-size: 15px;
     display: inline-block;
+
+    transition:
+        background 0.15s,
+        transform 0.15s,
+        box-shadow 0.15s;
 }
 
 .button:hover {
-    background: #0056b3;
+    background: #133d6e;
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 3px 8px rgba(26, 79, 138, 0.18);
 }
 
 .secondary-button {
-    background: #6c757d;
+    background: white;
+    color: #1a4f8a;
+
+    border: 1.5px solid #1a4f8a;
 }
 
 .secondary-button:hover {
-    background: #545b62;
+    background: #1a4f8a;
+    color: white;
 }
 
-.upload-box {
-    border: 2px dashed #ccc;
-    border-radius: 12px;
-    padding: 25px;
-    text-align: center;
-    background: #fafafa;
+
+/* ---------- Button container ---------- */
+
+.action-row {
+    display: flex;
+    gap: 12px;
+
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+
+    margin-top: 22px;
 }
+
+
+/* ---------- Problem selection ---------- */
+
+.problem-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fit, minmax(260px, 1fr));
+
+    gap: 18px;
+    margin-top: 22px;
+}
+
+.problem-card {
+    padding: 26px;
+
+    background: #f8fafd;
+
+    border:
+        1.5px solid #dce5f1;
+
+    border-radius: 12px;
+
+    text-align: center;
+
+    transition:
+        border-color 0.15s,
+        transform 0.15s,
+        box-shadow 0.15s;
+}
+
+.problem-card:hover {
+    border-color: #1a4f8a;
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 4px 12px rgba(26, 79, 138, 0.12);
+}
+
+.problem-card h3 {
+    color: #1a4f8a;
+    margin-top: 0;
+}
+
+
+/* ---------- Upload ---------- */
+
+.upload-box {
+    background: #f0f4fb;
+
+    border:
+        2px dashed #b0c4de;
+
+    border-radius: 10px;
+
+    padding: 30px;
+
+    text-align: center;
+
+    color: #5a6d8a;
+}
+
+.upload-box h3 {
+    color: #1a4f8a;
+    margin-top: 0;
+}
+
+input[type="file"] {
+    background: white;
+
+    border:
+        1.5px solid #b0c4de;
+
+    border-radius: 8px;
+
+    padding: 9px 12px;
+
+    font-family: inherit;
+}
+
+
+/* ---------- Form controls ---------- */
 
 .form-row {
     display: flex;
-    gap: 15px;
+
+    gap: 16px;
+
     flex-wrap: wrap;
+
     align-items: center;
+
     margin-bottom: 20px;
 }
 
-select, input[type="file"] {
-    padding: 9px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
+.form-row label {
+    font-weight: 600;
+    font-size: 0.93rem;
 }
 
+select {
+    padding: 9px 12px;
+
+    border-radius: 8px;
+
+    border:
+        1.5px solid #b0c4de;
+
+    background: white;
+
+    font-family: inherit;
+    font-size: 0.93rem;
+
+    min-width: 180px;
+}
+
+select:focus {
+    outline: none;
+    border-color: #1a4f8a;
+
+    box-shadow:
+        0 0 0 3px rgba(26, 79, 138, 0.12);
+}
+
+
+/* ---------- Graph layout ---------- */
+
 .graph-row {
-    display: flex;
-    gap: 25px;
-    flex-wrap: wrap;
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fit, minmax(360px, 1fr));
+
+    gap: 22px;
+
+    margin-bottom: 24px;
 }
 
 .graph-card {
-    flex: 1;
-    min-width: 400px;
+    min-width: 0;
 }
 
 .graph-card img {
     width: 100%;
+    height: auto;
+
+    display: block;
+
     border-radius: 10px;
-    border: 1px solid #ddd;
+
+    border:
+        1px solid #dde4f0;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.07);
 }
 
-.action-row {
-    margin-top: 25px;
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
+
+/* ---------- Dataset table ---------- */
 
 .data-table {
     width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
 
-.data-table th,
-.data-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
+    border-collapse: collapse;
+
+    font-size: 0.88rem;
+
+    margin-top: 10px;
 }
 
 .data-table th {
-    background: #f0f2f5;
+    background: #1a4f8a;
+    color: white;
+
+    padding: 9px 12px;
+
+    text-align: left;
+    white-space: nowrap;
+
+    font-weight: 600;
 }
 
-.error {
-    color: #b00020;
-    background: #ffecec;
-    padding: 12px;
-    border-radius: 8px;
+.data-table td {
+    padding: 8px 12px;
+
+    border-bottom:
+        1px solid #e8edf5;
 }
 
-.success {
-    color: #116b2f;
-    background: #e9f8ef;
-    padding: 12px;
-    border-radius: 8px;
+.data-table tbody tr:nth-child(even) {
+    background: #fafbfe;
 }
+
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+
+/* ---------- Popup overlay ---------- */
 
 .popup {
     display: none;
-    border: 1px solid #ddd;
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 9999;
+
+    background:
+        rgba(15, 32, 55, 0.65);
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+}
+
+.popup-content {
+    width: min(500px, 100%);
+
     background: white;
-    padding: 25px;
+
     border-radius: 14px;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-    margin-top: 25px;
-}
-.prediction-card .prediction-form {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    width: 100% !important;
-    max-width: 520px !important;
-    margin: 30px auto 0 auto !important;
+
+    padding: 28px;
+
+    box-shadow:
+        0 18px 50px rgba(0, 0, 0, 0.28);
 }
 
-.prediction-card .prediction-field {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    margin-bottom: 20px !important;
-    text-align: left !important;
+.popup-content h2 {
+    color: #1a4f8a;
+    margin-top: 0;
+
+    border-bottom:
+        2px solid #e8edf5;
+
+    padding-bottom: 10px;
 }
 
-.prediction-card .prediction-field label {
-    display: block !important;
-    margin-bottom: 8px !important;
-    font-weight: 600 !important;
+
+/* ---------- Error / success ---------- */
+
+.error {
+    background: #fff0f0;
+
+    border:
+        1.5px solid #e57373;
+
+    border-radius: 10px;
+
+    padding: 14px 18px;
+
+    color: #b71c1c;
+
+    margin-bottom: 20px;
 }
 
-.prediction-card .prediction-field input {
-    display: block !important;
-    width: 100% !important;
-    height: 46px !important;
-    padding: 12px 16px !important;
-    border-radius: 14px !important;
-    border: 1px solid #ccc !important;
-    box-sizing: border-box !important;
-    font-size: 15px !important;
+.success {
+    background: #e8f5e9;
+
+    border-left:
+        4px solid #2e7d32;
+
+    border-radius: 6px;
+
+    padding: 12px 16px;
+
+    color: #1b5e20;
+
+    margin-bottom: 18px;
+}
+
+
+/* ---------- Training statistics ---------- */
+
+.training-stat-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fit, minmax(150px, 1fr));
+
+    gap: 14px;
+
+    margin-top: 18px;
+}
+
+.training-stat {
+    background: #eef3fb;
+
+    border-radius: 10px;
+
+    padding: 16px 12px;
+
+    text-align: center;
+}
+
+.training-stat-number {
+    display: block;
+
+    font-size: 1.5rem;
+    font-weight: 700;
+
+    color: #1a4f8a;
+
+    margin-bottom: 4px;
+}
+
+.training-stat-label {
+    font-size: 0.82rem;
+
+    color: #5a6d8a;
+}
+
+
+/* ---------- Prediction form ---------- */
+
+.prediction-card {
+    text-align: center;
+}
+
+.prediction-form {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: stretch;
+
+    width: 100%;
+    max-width: 520px;
+
+    margin: 30px auto 0;
+}
+
+.prediction-field {
+    display: flex;
+
+    flex-direction: column;
+
+    width: 100%;
+
+    margin-bottom: 20px;
+
+    text-align: left;
+}
+
+.prediction-field label {
+    display: block;
+
+    margin-bottom: 8px;
+
+    font-size: 0.93rem;
+    font-weight: 600;
+
+    color: #333;
+}
+
+.prediction-field input {
+    width: 100%;
+
+    height: 46px;
+
+    padding: 12px 16px;
+
+    box-sizing: border-box;
+
+    background: #f8fafd;
+
+    border:
+        1.5px solid #b0c4de;
+
+    border-radius: 10px;
+
+    font-family: inherit;
+    font-size: 0.95rem;
+
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s,
+        background 0.15s;
+}
+
+.prediction-field input:focus {
+    outline: none;
+
+    background: white;
+
+    border-color: #1a4f8a;
+
+    box-shadow:
+        0 0 0 3px rgba(26, 79, 138, 0.12);
+}
+
+
+/* ---------- Prediction result ---------- */
+
+.prediction-result {
+    display: inline-block;
+
+    margin-top: 8px;
+
+    padding: 10px 24px;
+
+    border-radius: 999px;
+
+    background: #eef3fb;
+
+    color: #1a4f8a;
+
+    font-size: 1.7rem;
+    font-weight: 700;
+}
+
+
+/* ---------- Info box ---------- */
+
+.info-box {
+    background: #eef3fb;
+
+    border-left:
+        4px solid #1a4f8a;
+
+    border-radius: 6px;
+
+    padding: 14px 16px;
+
+    font-size: 0.92rem;
+
+    line-height: 1.65;
+
+    margin-bottom: 18px;
+}
+
+
+/* ---------- Warning ---------- */
+
+.warning-box {
+    background: #fff8e1;
+
+    border-left:
+        4px solid #f9a825;
+
+    border-radius: 6px;
+
+    padding: 12px 16px;
+
+    color: #5d4037;
+
+    font-size: 0.9rem;
+
+    margin-bottom: 18px;
+}
+
+
+/* ---------- Divider ---------- */
+
+.divider {
+    border: none;
+
+    border-top:
+        2px solid #e8edf5;
+
+    margin: 28px 0;
+}
+
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 700px) {
+
+    .page-container {
+        margin: 20px auto;
+        padding: 0 14px;
+    }
+
+    .page-header {
+        padding: 24px 20px;
+    }
+
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .card {
+        padding: 20px;
+    }
+
+    .graph-row {
+        grid-template-columns: 1fr;
+    }
+
+    .form-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    select {
+        width: 100%;
+    }
+
+    .action-row {
+        flex-direction: column;
+    }
+
+    .button {
+        width: 100%;
+        box-sizing: border-box;
+        text-align: center;
+    }
+}
+
+.metric-summary-card .training-stat-grid {
+    margin-bottom: 18px;
+}
+
+.metric-summary-card .info-box {
+    margin-top: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.metric-summary-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.graph-row {
+    align-items: stretch;
+}
+
+.graph-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.graph-card img {
+    margin-top: auto;
+}
+
+.confusion-table {
+    text-align: center;
+}
+
+.confusion-table th,
+.confusion-table td {
+    text-align: center;
+}
+
+.confusion-table tbody th {
+    background: #eef3fb;
+    color: #1a4f8a;
+    font-weight: 700;
+}
+
+.metric-summary-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-summary-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-summary-content .training-stat-grid {
+    margin-top: 8px;
+}
+
+.metric-help {
+    margin-top: 20px;
+    margin-bottom: 0;
+}
+
+.graph-row {
+    align-items: stretch;
+}
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.confusion-table {
+    text-align: center;
+}
+
+.confusion-table th,
+.confusion-table td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.confusion-table tbody th {
+    background: #eef3fb;
+    color: #1a4f8a;
+    font-weight: 700;
+}
+
+/* Correct prediction */
+.confusion-correct {
+    background: #e8f5e9 !important;
+    color: #1b5e20;
+    font-weight: 700;
+}
+
+/* Wrong prediction */
+.confusion-error {
+    background: #fff1f0 !important;
+    color: #b71c1c;
+    font-weight: 600;
+}
+
+/* ==========================================================
+   Model Explainability
+   ========================================================== */
+
+.feature-importance-row {
+    margin-bottom: 18px;
+}
+
+.feature-importance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 12px;
+
+    margin-bottom: 6px;
+
+    font-size: 0.9rem;
+}
+
+.feature-importance-header span {
+    color: #333;
+    font-weight: 500;
+}
+
+.feature-importance-header strong {
+    color: #1a4f8a;
+}
+
+.importance-track {
+    width: 100%;
+    height: 10px;
+
+    background: #dfe7f2;
+
+    border-radius: 999px;
+
+    overflow: hidden;
+}
+
+.importance-fill {
+    height: 100%;
+
+    background: #1a4f8a;
+
+    border-radius: inherit;
+
+    transition: width 0.3s ease;
+}
+
+.comparison-chart {
+    display: block;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.comparison-best {
+    background: #e8f5e9 !important;
+    font-weight: 600;
+}
+
+.best-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #2e7d32;
+    color: white;
+    font-size: 0.75rem;
+}
+
+.regression-popup {
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.hyperparameter-section input {
+    padding: 9px 12px;
+    border: 1.5px solid #b0c4de;
+    border-radius: 8px;
+    font: inherit;
+    width: 150px;
+    box-sizing: border-box;
 }

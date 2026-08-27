@@ -1,0 +1,37 @@
+{% load static %}
+<!DOCTYPE html>
+<html><head><title>Analyze Regression Dataset</title><link rel="stylesheet" href="{% static 'project1/style.css' %}"></head>
+<body><div class="page-container">
+<a href="{% url 'project1:regression_setup' %}" class="back-arrow" title="Back to target setup">&larr;</a>
+<div class="page-header"><h1>Analyze Regression Dataset</h1><p>Explore numerical relationships before choosing how to train the model.</p></div>
+<div class="card"><h2>Dataset Information</h2><div class="info-box">
+<strong>Target:</strong> {{ target_column }}<br><strong>Numerical features:</strong> {{ numeric_features|length }}<br><strong>Categorical features:</strong> {{ categorical_features|length }}
+</div>{% if removed_identifier_columns %}<div class="warning-box">Identifier column(s) automatically excluded: <strong>{{ removed_identifier_columns|join:", " }}</strong></div>{% endif %}
+{% if categorical_features %}<p class="help-text">Categorical features retained for training: {{ categorical_features|join:", " }}. Scatter plots use numerical columns only.</p>{% endif %}</div>
+<div class="card"><h2>Visualization Controls</h2><form method="post">{% csrf_token %}<div class="form-row">
+<div><label for="plot_type">View</label><select id="plot_type" name="plot_type" onchange="updatePlotFields()"><option value="feature_target" {% if plot_type == 'feature_target' %}selected{% endif %}>Feature vs Target</option><option value="feature_feature" {% if plot_type == 'feature_feature' %}selected{% endif %}>Feature vs Feature</option><option value="target_distribution" {% if plot_type == 'target_distribution' %}selected{% endif %}>Target Distribution</option></select></div>
+<div id="x-field"><label for="x_col">First feature</label><select id="x_col" name="x_col">{% for column in numeric_columns %}<option value="{{ column }}" {% if column == selected_x %}selected{% endif %}>{{ column }}</option>{% endfor %}</select></div>
+<div id="y-field"><label for="y_col">Second feature</label><select id="y_col" name="y_col">{% for column in numeric_columns %}<option value="{{ column }}" {% if column == selected_y %}selected{% endif %}>{{ column }}</option>{% endfor %}</select></div>
+</div><div class="action-row"><button class="button" type="submit">Update Visualization</button><button class="button secondary-button" type="button" onclick="openTrainPopup()">Train Model</button></div></form>
+{% if not numeric_columns %}<div class="warning-box">There are no numerical input features to scatter, but categorical features remain available for model training.</div>{% endif %}</div>
+<div class="graph-row">{% if plot_url %}<div class="card graph-card"><h2>{{ plot_heading }}</h2><img src="{{ plot_url }}" alt="{{ plot_heading }} plot"></div>{% endif %}
+{% if plot_type != 'target_distribution' %}<div class="card graph-card"><h2>Target Distribution</h2><img src="{{ target_distribution_url }}" alt="Target distribution histogram"></div>{% endif %}</div>
+<div class="card"><h2>Dataset Preview</h2><div class="table-scroll">{{ tables|safe }}</div></div>
+</div>
+<div id="trainPopup" class="popup"><div class="popup-content regression-popup"><h2>Configure Model Training</h2><p class="help-text">You control the model, metric, split, and meaningful model-specific settings.</p>
+<form method="post" action="{% url 'project1:regression_train' %}">{% csrf_token %}<div class="form-row">
+<div><label for="model">Model</label><select id="model" name="model" onchange="updateHyperparameters()">{% for key, name in regressor_choices.items %}<option value="{{ key }}">{{ name }}</option>{% endfor %}</select></div>
+<div><label for="test_size">Test Size</label><select id="test_size" name="test_size"><option value="0.2">20% Test</option><option value="0.3">30% Test</option><option value="0.4">40% Test</option></select></div>
+<div><label for="metric">Primary Metric</label><select id="metric" name="metric">{% for key, name in metric_choices.items %}<option value="{{ key }}">{{ name }}</option>{% endfor %}</select></div></div><hr class="divider">
+<div id="linear_regression-parameters" class="hyperparameter-section"><p class="info-box">Linear Regression has no required model-specific hyperparameters.</p></div>
+<div id="decision_tree_regressor-parameters" class="hyperparameter-section"><h3>Decision Tree Settings</h3><div class="form-row"><div><label for="tree_max_depth">Maximum Depth</label><input id="tree_max_depth" name="tree_max_depth" type="number" min="1" max="50" value="5"></div><div><label for="tree_min_samples_split">Minimum Samples Split</label><input id="tree_min_samples_split" name="tree_min_samples_split" type="number" min="2" max="50" value="2"></div></div></div>
+<div id="random_forest_regressor-parameters" class="hyperparameter-section"><h3>Random Forest Settings</h3><div class="form-row"><div><label for="rf_n_estimators">Number of Trees</label><input id="rf_n_estimators" name="rf_n_estimators" type="number" min="10" max="500" value="100"></div><div><label for="rf_max_depth">Maximum Depth</label><input id="rf_max_depth" name="rf_max_depth" type="number" min="1" max="50" value="10"></div><div><label for="rf_min_samples_split">Minimum Samples Split</label><input id="rf_min_samples_split" name="rf_min_samples_split" type="number" min="2" max="50" value="2"></div></div></div>
+<div id="knn_regressor-parameters" class="hyperparameter-section"><h3>KNN Settings</h3><div class="form-row"><div><label for="knn_neighbors">Neighbors</label><input id="knn_neighbors" name="knn_neighbors" type="number" min="1" max="50" value="5"></div><div><label for="knn_weights">Weighting</label><select id="knn_weights" name="knn_weights"><option value="uniform">Uniform</option><option value="distance">Distance</option></select></div><div><label for="knn_metric">Distance Metric</label><select id="knn_metric" name="knn_metric"><option value="euclidean">Euclidean</option><option value="manhattan">Manhattan</option></select></div></div></div>
+<div class="action-row"><button class="button" type="submit">Train Model</button><button class="button secondary-button" type="button" onclick="closeTrainPopup()">Cancel</button></div></form></div></div>
+<script>
+function updatePlotFields(){const type=document.getElementById('plot_type').value;document.getElementById('x-field').style.display=type==='target_distribution'?'none':'block';document.getElementById('y-field').style.display=type==='feature_feature'?'block':'none';}
+function openTrainPopup(){document.getElementById('trainPopup').style.display='flex';updateHyperparameters();}
+function closeTrainPopup(){document.getElementById('trainPopup').style.display='none';}
+function updateHyperparameters(){const selected=document.getElementById('model').value;document.querySelectorAll('.hyperparameter-section').forEach(function(section){const active=section.id===selected+'-parameters';section.style.display=active?'block':'none';section.querySelectorAll('input,select').forEach(function(field){field.disabled=!active;});});}
+document.getElementById('trainPopup').addEventListener('click',function(event){if(event.target===this){closeTrainPopup();}});updatePlotFields();
+</script></body></html>

@@ -1,0 +1,17 @@
+{% load static %}
+<!DOCTYPE html>
+<html><head><title>Configure Regression</title><link rel="stylesheet" href="{% static 'project1/style.css' %}"></head>
+<body><div class="page-container">
+<a href="{% url 'project1:regression' %}" class="back-arrow" title="Back to upload">&larr;</a>
+<div class="page-header"><h1>Configure Regression Problem</h1><p>Review the detected columns and keep the prediction target under your control.</p></div>
+{% if removed_identifier_columns %}<div class="warning-box">Identifier column(s) automatically excluded: <strong>{{ removed_identifier_columns|join:", " }}</strong></div>{% endif %}
+<div class="card"><h2>Target Selection</h2>
+<p class="help-text">Suggested target: <strong>{{ suggested_target }}</strong>. Only numerical columns are available.</p>
+<form method="post">{% csrf_token %}<div class="form-row">{{ form.target_column.label_tag }} {{ form.target_column }}</div>
+{% if form.target_column.errors %}<div class="error">{{ form.target_column.errors }}</div>{% endif %}
+<div class="action-row"><button class="button" type="submit">Continue to Analysis</button></div></form></div>
+<div class="card"><h2>Detected Columns</h2><div class="table-scroll"><table class="data-table"><thead><tr><th>Column</th><th>Type</th><th>Unique values</th><th>Missing values</th></tr></thead><tbody>
+{% for column in column_information %}<tr><td>{{ column.name }}</td><td>{{ column.type|title }}</td><td>{{ column.unique }}</td><td>{{ column.missing }}</td></tr>{% endfor %}
+</tbody></table></div></div>
+<div class="card"><h2>Dataset Preview</h2><div class="table-scroll">{{ tables|safe }}</div></div>
+</div></body></html>

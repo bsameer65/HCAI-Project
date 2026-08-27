@@ -1,0 +1,569 @@
+import os
+import uuid
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+
+def _save_figure(media_root, media_url, prefix):
+    """
+    Save the currently active matplotlib figure using
+    a unique filename and return its media URL.
+    """
+
+    filename = f"{prefix}_{uuid.uuid4().hex}.png"
+
+    file_path = os.path.join(
+        media_root,
+        filename,
+    )
+
+    plt.tight_layout()
+
+    plt.savefig(
+        file_path,
+        dpi=120,
+        bbox_inches="tight",
+    )
+
+    plt.close()
+
+    return f"{media_url}{filename}"
+
+
+def create_classification_scatter(
+    df,
+    x_column,
+    y_column,
+    target_column,
+    media_root,
+    media_url,
+):
+    """
+    Create a scatter plot of two selected features.
+
+    Each target class is displayed separately so matplotlib
+    automatically assigns a different color to each class.
+    """
+
+    plt.figure(
+        figsize=(7, 5)
+    )
+
+    classes = df[target_column].dropna().unique()
+
+    for class_value in classes:
+
+        class_data = df[
+            df[target_column] == class_value
+        ]
+
+        plt.scatter(
+            class_data[x_column],
+            class_data[y_column],
+            label=str(class_value),
+            alpha=0.75,
+        )
+
+    plt.xlabel(x_column)
+    plt.ylabel(y_column)
+
+    plt.title(
+        f"{x_column} vs {y_column}"
+    )
+
+    plt.legend(
+        title=target_column
+    )
+
+    plt.grid(
+        alpha=0.2
+    )
+
+    return _save_figure(
+        media_root,
+        media_url,
+        "classification_scatter",
+    )
+
+
+def create_class_distribution(
+    df,
+    target_column,
+    media_root,
+    media_url,
+):
+    """
+    Create a class-distribution bar chart.
+
+    Each class is represented using a different color
+    and its observation count is shown above the bar.
+    """
+
+    class_counts = (
+        df[target_column]
+        .value_counts()
+        .sort_index()
+    )
+
+    plt.figure(
+        figsize=(7, 5)
+    )
+
+    # Generate one different color per class
+    color_map = plt.get_cmap("tab10")
+
+    colors = [
+        color_map(i)
+        for i in range(
+            len(class_counts)
+        )
+    ]
+
+    bars = plt.bar(
+        class_counts.index.astype(str),
+        class_counts.values,
+        color=colors,
+        alpha=0.85,
+    )
+
+    plt.xlabel(
+        target_column
+    )
+
+    plt.ylabel(
+        "Number of examples"
+    )
+
+    plt.title(
+        f"Class Distribution — {target_column}"
+    )
+
+    plt.grid(
+        axis="y",
+        alpha=0.2,
+    )
+
+    # Display number above each bar
+    for bar in bars:
+
+        height = bar.get_height()
+
+        plt.text(
+            bar.get_x()
+            + bar.get_width() / 2,
+
+            height,
+
+            f"{int(height)}",
+
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
+
+    return _save_figure(
+        media_root,
+        media_url,
+        "classification_distribution",
+    )
+
+
+def create_score_comparison_chart(
+    train_score,
+    test_score,
+    metric_name,
+    media_root,
+    media_url,
+):
+    """
+    Create a bar chart comparing training and testing
+    performance for the selected evaluation metric.
+    """
+
+    plt.figure(figsize=(6, 4))
+
+    labels = [
+        "Training",
+        "Testing",
+    ]
+
+    values = [
+        train_score * 100,
+        test_score * 100,
+    ]
+
+    colors = [
+        "#1a4f8a",
+        "#2e7d32",
+    ]
+
+    bars = plt.bar(
+        labels,
+        values,
+        color=colors,
+        width=0.65,
+        alpha=0.9,
+    )
+
+    plt.ylabel(
+        f"{metric_name} (%)"
+    )
+
+    plt.title(
+        f"Training vs Testing {metric_name}"
+    )
+
+    # Keep some space above bars for labels
+    upper_limit = min(
+        110,
+        max(values) + 12
+    )
+
+    plt.ylim(
+        0,
+        upper_limit
+    )
+
+    plt.grid(
+        axis="y",
+        alpha=0.2,
+    )
+
+    # Add values above bars
+    for bar, value in zip(
+        bars,
+        values,
+    ):
+        plt.text(
+            bar.get_x()
+            + bar.get_width() / 2,
+            bar.get_height() + 1.2,
+            f"{value:.2f}%",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
+
+    return _save_figure(
+        media_root,
+        media_url,
+        "classification_score",
+    )
+
+def create_feature_importance_chart(
+    explanation_items,
+    method_name,
+    media_root,
+    media_url,
+):
+    """
+    Visualize model feature importance.
+    """
+
+    # Reverse so highest feature appears at the top
+    items = list(
+        reversed(
+            explanation_items
+        )
+    )
+
+    feature_names = [
+        item["feature"]
+        for item in items
+    ]
+
+    importance_values = [
+        item["percentage"]
+        for item in items
+    ]
+
+    plt.figure(
+        figsize=(7, 5)
+    )
+
+    bars = plt.barh(
+        feature_names,
+        importance_values,
+        color="#1a4f8a",
+        alpha=0.9,
+    )
+
+    plt.xlabel(
+        "Relative Importance (%)"
+    )
+
+    plt.title(
+        method_name
+    )
+
+    plt.grid(
+        axis="x",
+        alpha=0.2,
+    )
+
+    # Numbers beside bars
+    for bar, value in zip(
+        bars,
+        importance_values,
+    ):
+
+        plt.text(
+            bar.get_width() + 0.5,
+            bar.get_y()
+            + bar.get_height() / 2,
+            f"{value:.1f}%",
+            va="center",
+            fontweight="bold",
+        )
+
+    # Leave space for percentage labels
+    if importance_values:
+
+        plt.xlim(
+            0,
+            max(importance_values) * 1.2
+            if max(importance_values) > 0
+            else 1,
+        )
+
+    return _save_figure(
+        media_root,
+        media_url,
+        "classification_explanation",
+    )
+
+def create_model_comparison_chart(
+    comparison_results,
+    metric_name,
+    media_root,
+    media_url,
+):
+    """
+    Compare all classification models using the
+    same selected evaluation metric.
+    """
+
+    model_names = [
+        result["model_name"]
+        for result in comparison_results
+    ]
+
+    scores = [
+        result["primary_score"] * 100
+        for result in comparison_results
+    ]
+
+    plt.figure(
+        figsize=(8, 5)
+    )
+
+    color_map = plt.get_cmap(
+        "tab10"
+    )
+
+    colors = [
+        color_map(index)
+        for index in range(
+            len(model_names)
+        )
+    ]
+
+    bars = plt.bar(
+        model_names,
+        scores,
+        color=colors,
+        alpha=0.9,
+    )
+
+    plt.ylabel(
+        f"{metric_name} (%)"
+    )
+
+    plt.title(
+        f"Model Comparison — {metric_name}"
+    )
+
+    plt.ylim(
+        0,
+        min(
+            110,
+            max(scores) + 12,
+        ),
+    )
+
+    plt.xticks(
+        rotation=15,
+        ha="right",
+    )
+
+    plt.grid(
+        axis="y",
+        alpha=0.2,
+    )
+
+    for bar, value in zip(
+        bars,
+        scores,
+    ):
+
+        plt.text(
+            bar.get_x()
+            + bar.get_width() / 2,
+
+            bar.get_height() + 1,
+
+            f"{value:.2f}%",
+
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold",
+        )
+
+    return _save_figure(
+        media_root,
+        media_url,
+        "model_comparison",
+    )
+
+
+def create_regression_comparison_chart(
+    comparison_results,
+    metric_name,
+    media_root,
+    media_url,
+):
+    """Plot regression scores in their natural units."""
+    model_names = [result["model_name"] for result in comparison_results]
+    scores = [result["primary_score"] for result in comparison_results]
+    colors = ["#2e7d32" if index == 0 else "#1a4f8a"
+              for index in range(len(model_names))]
+    plt.figure(figsize=(8, 5))
+    bars = plt.bar(model_names, scores, color=colors, alpha=0.9)
+    plt.ylabel(metric_name)
+    plt.title(f"Regression Model Comparison — {metric_name}")
+    plt.xticks(rotation=15, ha="right")
+    plt.grid(axis="y", alpha=0.2)
+    for bar, value in zip(bars, scores):
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{value:.4g}",
+            ha="center",
+            va="bottom" if value >= 0 else "top",
+            fontsize=9,
+            fontweight="bold",
+        )
+    return _save_figure(media_root, media_url, "regression_model_comparison")
+
+
+def create_hyperparameter_experiment_chart(
+    experiment_results,
+    parameter_name,
+    metric_name,
+    media_root,
+    media_url,
+    percentage=False,
+):
+    """Show every candidate evaluated in a human-controlled parameter grid."""
+    labels = [str(item["parameter_value"]) for item in experiment_results]
+    multiplier = 100 if percentage else 1
+    scores = [item["score"] * multiplier for item in experiment_results]
+    colors = ["#2e7d32" if item["is_best"] else "#1a4f8a"
+              for item in experiment_results]
+    plt.figure(figsize=(8, 5))
+    bars = plt.bar(labels, scores, color=colors, alpha=0.9)
+    plt.xlabel(parameter_name)
+    plt.ylabel(f"{metric_name}{' (%)' if percentage else ''}")
+    plt.title(f"Hyperparameter Experiment — {parameter_name}")
+    plt.grid(axis="y", alpha=0.2)
+    for bar, value in zip(bars, scores):
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{value:.4g}",
+            ha="center",
+            va="bottom" if value >= 0 else "top",
+            fontsize=9,
+        )
+    return _save_figure(media_root, media_url, "hyperparameter_experiment")
+
+
+def create_regression_scatter(
+    df,
+    x_column,
+    y_column,
+    media_root,
+    media_url,
+    title=None,
+):
+    """Plot the relationship between two numerical regression columns."""
+    plt.figure(figsize=(7, 5))
+    plt.scatter(df[x_column], df[y_column], color="#1a4f8a", alpha=0.7)
+    plt.xlabel(x_column)
+    plt.ylabel(y_column)
+    plt.title(title or f"{x_column} vs {y_column}")
+    plt.grid(alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_scatter")
+
+
+def create_target_distribution(
+    df,
+    target_column,
+    media_root,
+    media_url,
+):
+    """Create a histogram for a numerical regression target."""
+    plt.figure(figsize=(7, 5))
+    plt.hist(df[target_column], bins="auto", color="#2e7d32", alpha=0.8,
+             edgecolor="white")
+    plt.xlabel(target_column)
+    plt.ylabel("Number of examples")
+    plt.title(f"Target Distribution — {target_column}")
+    plt.grid(axis="y", alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_target_distribution")
+
+
+def create_actual_vs_predicted_plot(
+    actual,
+    predicted,
+    target_column,
+    media_root,
+    media_url,
+):
+    """Plot test predictions against actual values and the ideal diagonal."""
+    lower = min(min(actual), min(predicted))
+    upper = max(max(actual), max(predicted))
+    plt.figure(figsize=(7, 5))
+    plt.scatter(actual, predicted, color="#1a4f8a", alpha=0.75)
+    plt.plot([lower, upper], [lower, upper], "--", color="#2e7d32",
+             label="Ideal prediction")
+    plt.xlabel(f"Actual {target_column}")
+    plt.ylabel(f"Predicted {target_column}")
+    plt.title("Actual vs Predicted")
+    plt.legend()
+    plt.grid(alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_actual_predicted")
+
+
+def create_residual_plot(
+    actual,
+    predicted,
+    media_root,
+    media_url,
+):
+    """Plot actual-minus-predicted residuals around a zero reference."""
+    residuals = [actual_value - predicted_value for actual_value, predicted_value
+                 in zip(actual, predicted)]
+    plt.figure(figsize=(7, 5))
+    plt.scatter(predicted, residuals, color="#1a4f8a", alpha=0.75)
+    plt.axhline(0, color="#b71c1c", linestyle="--", label="Zero error")
+    plt.xlabel("Predicted value")
+    plt.ylabel("Residual (actual - predicted)")
+    plt.title("Residual Plot")
+    plt.legend()
+    plt.grid(alpha=0.2)
+    return _save_figure(media_root, media_url, "regression_residuals")
