@@ -886,3 +886,17 @@ select:focus {
     color: white;
     font-size: 0.75rem;
 }
+
+.regression-popup {
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.hyperparameter-section input {
+    padding: 9px 12px;
+    border: 1.5px solid #b0c4de;
+    border-radius: 8px;
+    font: inherit;
+    width: 150px;
+    box-sizing: border-box;
+}

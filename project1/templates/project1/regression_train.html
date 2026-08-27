@@ -1,0 +1,15 @@
+{% load static %}
+<!DOCTYPE html>
+<html><head><title>Regression Results</title><link rel="stylesheet" href="{% static 'project1/style.css' %}"></head>
+<body><div class="page-container">
+<a href="{% url 'project1:regression_analyze' %}" class="back-arrow" title="Back to analysis">&larr;</a>
+<div class="page-header"><h1>Regression Training Results</h1><p>Review performance before deciding whether to keep or revise this model.</p></div>
+{% if error %}<div class="error">{{ error }}</div>{% if form_errors %}<div class="card">{{ form_errors }}</div>{% endif %}{% endif %}
+{% if training_complete %}
+<div class="card"><h2>Model Configuration</h2><div class="info-box"><strong>Model:</strong> {{ model_name }}<br><strong>Target:</strong> {{ target_column }}<br><strong>Primary metric:</strong> {{ metric_name }}<br><strong>Split:</strong> {{ train_size }}% training / {{ test_size }}% testing</div></div>
+<div class="card metric-summary-card"><h2>Primary Metric</h2><div class="training-stat-grid"><div class="training-stat"><span class="training-stat-number">{{ train_score }}</span><span class="training-stat-label">Training {{ metric_name }}</span></div><div class="training-stat"><span class="training-stat-number">{{ test_score }}</span><span class="training-stat-label">Testing {{ metric_name }}</span></div></div>
+<p class="help-text">MAE, MSE and RMSE are better when lower. R² is better when higher.</p></div>
+<div class="card"><h2>Detailed Metrics</h2><div class="table-scroll"><table class="data-table"><thead><tr><th>Dataset</th><th>MAE</th><th>MSE</th><th>RMSE</th><th>R²</th></tr></thead><tbody><tr><td>Training</td><td>{{ train_metrics.mae }}</td><td>{{ train_metrics.mse }}</td><td>{{ train_metrics.rmse }}</td><td>{{ train_metrics.r2 }}</td></tr><tr><td>Testing</td><td>{{ test_metrics.mae }}</td><td>{{ test_metrics.mse }}</td><td>{{ test_metrics.rmse }}</td><td>{{ test_metrics.r2 }}</td></tr></tbody></table></div></div>
+<div class="card"><h2>Selected Hyperparameters</h2>{% if parameters %}<div class="info-box">{% for key, value in parameters.items %}<strong>{{ key }}:</strong> {{ value }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>{% else %}<p class="help-text">Linear Regression uses its standard configuration.</p>{% endif %}</div>
+<div class="card centered-text"><h2>Continue Experimenting</h2><div class="action-row"><a class="button secondary-button" href="{% url 'project1:regression_analyze' %}">Train Another Model</a></div></div>
+{% endif %}</div></body></html>

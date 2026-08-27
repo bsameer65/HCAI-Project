@@ -15,7 +15,9 @@ from sklearn.model_selection import train_test_split
 from .forms import (
     ClassificationTrainingForm,
     RegressionDatasetSetupForm,
+    RegressionTrainingForm,
     get_classifier_parameters,
+    get_regressor_parameters,
 )
 
 
@@ -38,7 +40,9 @@ from .services.dataset import (
 
 from .services.algorithms import (
     create_classifier,
+    create_regressor,
     CLASSIFIER_CHOICES,
+    REGRESSOR_CHOICES,
     UnsupportedAlgorithmError,
 )
 
@@ -53,6 +57,9 @@ from .services.evaluation import (
     calculate_confusion_matrix,
     CLASSIFICATION_METRICS,
     UnsupportedMetricError,
+    evaluate_regressor,
+    get_selected_regression_metric,
+    REGRESSION_METRICS,
 )
 
 
@@ -90,6 +97,10 @@ from .services.persistence import (
     load_classification_model,
     ModelNotFoundError,
     clear_regression_artifacts,
+    save_regression_model,
+    load_regression_model,
+    save_regression_results,
+    load_regression_results,
 )
 
 # ==============================================================
@@ -315,7 +326,126 @@ def regression_analyze(request):
         "plot_heading": plot_heading,
         "plot_url": plot_url,
         "target_distribution_url": target_distribution_url,
+        "training_form": RegressionTrainingForm(),
+        "regressor_choices": REGRESSOR_CHOICES,
+        "metric_choices": REGRESSION_METRICS,
         "tables": df.head().to_html(classes="data-table", index=False),
+    })
+
+
+def regression_train(request):
+    """Train the selected regression pipeline and persist reusable results."""
+    if request.method != "POST":
+        return redirect("project1:regression_analyze")
+
+    target_column = request.session.get("regression_target")
+    if not target_column:
+        return redirect("project1:regression_setup")
+    try:
+        dataset = prepare_regression_dataset(
+            _get_regression_dataset_path(), target_column
+        )
+    except DatasetValidationError as error:
+        return render(request, "project1/regression.html", {"error": str(error)})
+
+    form = RegressionTrainingForm(request.POST)
+    if not form.is_valid():
+        return render(request, "project1/regression_train.html", {
+            "error": (
+                "Some training settings are invalid. Please return to the "
+                "analysis page and check the selected configuration."
+            ),
+            "form_errors": form.errors,
+        })
+
+    cleaned = form.cleaned_data
+    model_key = cleaned["model"]
+    metric = cleaned["metric"]
+    test_size = float(cleaned["test_size"])
+    parameters = get_regressor_parameters(cleaned)
+    X = dataset["dataframe"][dataset["feature_columns"]]
+    y = dataset["dataframe"][target_column]
+
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=42
+        )
+        model = create_regressor(
+            model_key,
+            dataset["numeric_features"],
+            dataset["categorical_features"],
+            parameters,
+        )
+        model.fit(X_train, y_train)
+        train_predictions = model.predict(X_train)
+        test_predictions = model.predict(X_test)
+    except (ValueError, UnsupportedAlgorithmError) as error:
+        return render(request, "project1/regression_train.html", {
+            "error": f"The model could not be trained with this configuration. Details: {error}"
+        })
+
+    train_metrics = evaluate_regressor(y_train, train_predictions)
+    test_metrics = evaluate_regressor(y_test, test_predictions)
+    try:
+        train_score = get_selected_regression_metric(train_metrics, metric)
+        test_score = get_selected_regression_metric(test_metrics, metric)
+    except UnsupportedMetricError as error:
+        return render(request, "project1/regression_train.html", {"error": str(error)})
+
+    categorical_options = {
+        feature: sorted(
+            dataset["dataframe"][feature].dropna().astype(str).unique().tolist()
+        )
+        for feature in dataset["categorical_features"]
+    }
+    metadata = {
+        "problem_type": "regression",
+        "model_key": model_key,
+        "model_name": REGRESSOR_CHOICES[model_key],
+        "feature_columns": dataset["feature_columns"],
+        "numeric_features": dataset["numeric_features"],
+        "categorical_features": dataset["categorical_features"],
+        "target_column": target_column,
+        "test_size": test_size,
+        "metric": metric,
+        "metric_name": REGRESSION_METRICS[metric],
+        "parameters": parameters,
+        "categorical_options": categorical_options,
+    }
+    results = {
+        "training_complete": True,
+        "model_name": metadata["model_name"],
+        "metric_name": metadata["metric_name"],
+        "selected_metric": metric,
+        "parameters": parameters,
+        "target_column": target_column,
+        "feature_columns": dataset["feature_columns"],
+        "train_size": round((1 - test_size) * 100),
+        "test_size": round(test_size * 100),
+        "train_score": round(float(train_score), 4),
+        "test_score": round(float(test_score), 4),
+        "train_metrics": {key: round(float(value), 4) for key, value in train_metrics.items()},
+        "test_metrics": {key: round(float(value), 4) for key, value in test_metrics.items()},
+        "actual_test": y_test.tolist(),
+        "predicted_test": test_predictions.tolist(),
+    }
+    save_regression_model(model, metadata, settings.MEDIA_ROOT)
+    save_regression_results(results, settings.MEDIA_ROOT)
+    return redirect("project1:regression_result")
+
+
+def regression_result(request):
+    """Display the latest regression result without retraining."""
+    try:
+        _, metadata = load_regression_model(settings.MEDIA_ROOT)
+        results = load_regression_results(settings.MEDIA_ROOT)
+    except ModelNotFoundError:
+        return render(request, "project1/regression_train.html", {
+            "error": "No trained regression model is available. Please train a model first."
+        })
+    return render(request, "project1/regression_train.html", {
+        **results,
+        "metadata": metadata,
     })
 
 

@@ -17,6 +17,10 @@ REGRESSION_ARTIFACT_FILENAMES = (
     "regression_results.pkl",
 )
 
+REGRESSION_MODEL_FILENAME = REGRESSION_ARTIFACT_FILENAMES[0]
+REGRESSION_METADATA_FILENAME = REGRESSION_ARTIFACT_FILENAMES[1]
+REGRESSION_RESULTS_FILENAME = REGRESSION_ARTIFACT_FILENAMES[2]
+
 
 class ModelNotFoundError(FileNotFoundError):
     """Raised when no trained model is available."""
@@ -123,3 +127,30 @@ def clear_regression_artifacts(media_root):
         path = os.path.join(model_directory, filename)
         if os.path.exists(path):
             os.remove(path)
+
+
+def save_regression_model(model, metadata, media_root):
+    model_directory = _get_model_directory(media_root)
+    joblib.dump(model, os.path.join(model_directory, REGRESSION_MODEL_FILENAME))
+    joblib.dump(metadata, os.path.join(model_directory, REGRESSION_METADATA_FILENAME))
+
+
+def load_regression_model(media_root):
+    model_directory = _get_model_directory(media_root)
+    model_path = os.path.join(model_directory, REGRESSION_MODEL_FILENAME)
+    metadata_path = os.path.join(model_directory, REGRESSION_METADATA_FILENAME)
+    if not os.path.exists(model_path) or not os.path.exists(metadata_path):
+        raise ModelNotFoundError("No trained regression model was found.")
+    return joblib.load(model_path), joblib.load(metadata_path)
+
+
+def save_regression_results(results, media_root):
+    model_directory = _get_model_directory(media_root)
+    joblib.dump(results, os.path.join(model_directory, REGRESSION_RESULTS_FILENAME))
+
+
+def load_regression_results(media_root):
+    path = os.path.join(_get_model_directory(media_root), REGRESSION_RESULTS_FILENAME)
+    if not os.path.exists(path):
+        raise ModelNotFoundError("No regression training results were found.")
+    return joblib.load(path)
