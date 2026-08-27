@@ -12,6 +12,8 @@ urlpatterns = [
     path("regression/train/", views.regression_train, name="regression_train"),
     path("regression/result/", views.regression_result, name="regression_result"),
     path("regression/test/", views.regression_test, name="regression_test"),
+    path("regression/explain/", views.regression_explain, name="regression_explain"),
+    path("regression/compare/", views.regression_compare, name="regression_compare"),
 
     path(
         "classification/",

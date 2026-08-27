@@ -77,6 +77,7 @@ from .services.visualization import (
     create_target_distribution,
     create_actual_vs_predicted_plot,
     create_residual_plot,
+    create_regression_comparison_chart,
 )
 
 
@@ -86,6 +87,7 @@ from .services.visualization import (
 
 from .services.explainability import (
     get_feature_importance,
+    get_regression_feature_importance,
     ExplainabilityError,
 )
 
@@ -111,6 +113,7 @@ from .services.persistence import (
 
 from .services.comparison import (
     compare_classifiers,
+    compare_regressors,
 )
 
 # ==============================================================
@@ -510,6 +513,106 @@ def regression_test(request):
             context["entered_values"] = request.POST
 
     return render(request, "project1/regression_test.html", context)
+
+
+def regression_explain(request):
+    """Explain the latest fitted regression pipeline without retraining it."""
+    try:
+        model, metadata = load_regression_model(settings.MEDIA_ROOT)
+        dataset = prepare_regression_dataset(
+            _get_regression_dataset_path(), metadata["target_column"]
+        )
+        X = dataset["dataframe"][metadata["feature_columns"]]
+        y = dataset["dataframe"][metadata["target_column"]]
+        _, X_test, _, y_test = train_test_split(
+            X, y, test_size=metadata["test_size"], random_state=42
+        )
+        explanation = get_regression_feature_importance(
+            model, metadata["model_key"], X_test, y_test
+        )
+        chart_url = create_feature_importance_chart(
+            explanation["items"],
+            explanation["method"],
+            settings.MEDIA_ROOT,
+            settings.MEDIA_URL,
+        )
+    except (ModelNotFoundError, DatasetValidationError) as error:
+        return render(request, "project1/regression_explain.html", {"error": str(error)})
+    except (ValueError, ExplainabilityError) as error:
+        return render(request, "project1/regression_explain.html", {
+            "error": f"The model explanation could not be calculated. {error}"
+        })
+
+    return render(request, "project1/regression_explain.html", {
+        "model_name": metadata["model_name"],
+        "target_column": metadata["target_column"],
+        "parameters": metadata["parameters"],
+        "explanation_method": explanation["method"],
+        "explanation_items": explanation["items"],
+        "explanation_chart_url": chart_url,
+    })
+
+
+def regression_compare(request):
+    """Compare all regressors fairly without replacing the user's saved model."""
+    target_column = request.session.get("regression_target")
+    if not target_column:
+        return redirect("project1:regression_setup")
+    try:
+        dataset = prepare_regression_dataset(
+            _get_regression_dataset_path(), target_column
+        )
+    except DatasetValidationError as error:
+        return render(request, "project1/regression_compare.html", {"error": str(error)})
+
+    selected_metric = request.GET.get("metric", "mae")
+    if selected_metric not in REGRESSION_METRICS:
+        selected_metric = "mae"
+    try:
+        test_size = float(request.GET.get("test_size", 0.2))
+    except ValueError:
+        test_size = 0.2
+    if test_size not in {0.2, 0.3, 0.4}:
+        test_size = 0.2
+
+    X = dataset["dataframe"][dataset["feature_columns"]]
+    y = dataset["dataframe"][target_column]
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=42
+        )
+        results = compare_regressors(
+            X_train, X_test, y_train, y_test, selected_metric,
+            dataset["numeric_features"], dataset["categorical_features"],
+        )
+    except ValueError as error:
+        return render(request, "project1/regression_compare.html", {
+            "error": f"The comparison could not be completed. {error}"
+        })
+
+    chart_url = create_regression_comparison_chart(
+        results,
+        REGRESSION_METRICS[selected_metric],
+        settings.MEDIA_ROOT,
+        settings.MEDIA_URL,
+    )
+    for index, result in enumerate(results):
+        result["is_best"] = index == 0
+        for metric in ("primary_score", "mae", "mse", "rmse", "r2"):
+            result[metric] = round(float(result[metric]), 4)
+
+    return render(request, "project1/regression_compare.html", {
+        "results": results,
+        "selected_metric": selected_metric,
+        "metric_name": REGRESSION_METRICS[selected_metric],
+        "metric_choices": REGRESSION_METRICS,
+        "test_size": test_size,
+        "train_size_percent": round((1 - test_size) * 100),
+        "test_size_percent": round(test_size * 100),
+        "comparison_chart_url": chart_url,
+        "target_column": target_column,
+        "lower_is_better": selected_metric != "r2",
+    })
 
 
 # ==============================================================

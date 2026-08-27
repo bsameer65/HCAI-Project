@@ -427,6 +427,36 @@ def create_model_comparison_chart(
     )
 
 
+def create_regression_comparison_chart(
+    comparison_results,
+    metric_name,
+    media_root,
+    media_url,
+):
+    """Plot regression scores in their natural units."""
+    model_names = [result["model_name"] for result in comparison_results]
+    scores = [result["primary_score"] for result in comparison_results]
+    colors = ["#2e7d32" if index == 0 else "#1a4f8a"
+              for index in range(len(model_names))]
+    plt.figure(figsize=(8, 5))
+    bars = plt.bar(model_names, scores, color=colors, alpha=0.9)
+    plt.ylabel(metric_name)
+    plt.title(f"Regression Model Comparison — {metric_name}")
+    plt.xticks(rotation=15, ha="right")
+    plt.grid(axis="y", alpha=0.2)
+    for bar, value in zip(bars, scores):
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{value:.4g}",
+            ha="center",
+            va="bottom" if value >= 0 else "top",
+            fontsize=9,
+            fontweight="bold",
+        )
+    return _save_figure(media_root, media_url, "regression_model_comparison")
+
+
 def create_regression_scatter(
     df,
     x_column,

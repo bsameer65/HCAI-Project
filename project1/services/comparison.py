@@ -1,10 +1,13 @@
 from .algorithms import (
     create_classifier,
     CLASSIFIER_CHOICES,
+    create_regressor,
+    REGRESSOR_CHOICES,
 )
 
 from .evaluation import (
     evaluate_classifier,
+    evaluate_regressor,
 )
 
 
@@ -29,6 +32,17 @@ DEFAULT_CLASSIFIER_PARAMETERS = {
     "logistic_regression": {
         "C": 1.0,
         "max_iter": 1000,
+    },
+}
+
+DEFAULT_REGRESSOR_PARAMETERS = {
+    "linear_regression": {},
+    "decision_tree_regressor": {"max_depth": 5, "min_samples_split": 2},
+    "random_forest_regressor": {
+        "n_estimators": 100, "max_depth": 10, "min_samples_split": 2,
+    },
+    "knn_regressor": {
+        "n_neighbors": 5, "weights": "uniform", "metric": "euclidean",
     },
 }
 
@@ -103,4 +117,36 @@ def compare_classifiers(
         reverse=True,
     )
 
+    return results
+
+
+def compare_regressors(
+    X_train,
+    X_test,
+    y_train,
+    y_test,
+    primary_metric,
+    numeric_features,
+    categorical_features,
+):
+    """Compare all regressors on one shared split and metric."""
+    results = []
+    for model_key, model_name in REGRESSOR_CHOICES.items():
+        parameters = DEFAULT_REGRESSOR_PARAMETERS[model_key]
+        model = create_regressor(
+            model_key, numeric_features, categorical_features, parameters
+        )
+        model.fit(X_train, y_train)
+        metrics = evaluate_regressor(y_test, model.predict(X_test))
+        results.append({
+            "model_key": model_key,
+            "model_name": model_name,
+            "primary_score": metrics[primary_metric],
+            **metrics,
+        })
+
+    results.sort(
+        key=lambda result: result["primary_score"],
+        reverse=primary_metric == "r2",
+    )
     return results

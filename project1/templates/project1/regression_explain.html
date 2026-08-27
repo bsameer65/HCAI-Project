@@ -1,0 +1,9 @@
+{% load static %}
+<!DOCTYPE html>
+<html><head><title>Explain Regression Model</title><link rel="stylesheet" href="{% static 'project1/style.css' %}"></head>
+<body><div class="page-container"><a href="{% url 'project1:regression_result' %}" class="back-arrow" title="Back to results">&larr;</a>
+<div class="page-header"><h1>Explain Regression Model</h1><p>Inspect which inputs most strongly influence the fitted model's behavior.</p></div>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+{% if explanation_items %}<div class="card"><h2>Explanation Context</h2><div class="info-box"><strong>Model:</strong> {{ model_name }}<br><strong>Target:</strong> {{ target_column }}<br><strong>Method:</strong> {{ explanation_method }}</div><div class="warning-box">Feature importance reflects model behaviour. It does not imply causality.</div></div>
+<div class="graph-row"><div class="card graph-card"><h2>{{ explanation_method }}</h2><img src="{{ explanation_chart_url }}" alt="Regression feature importance"></div><div class="card"><h2>Importance Details</h2>{% for item in explanation_items %}<div class="feature-importance-row"><div class="feature-importance-header"><span>{{ item.feature }}</span><strong>{{ item.percentage }}%</strong></div><div class="importance-track"><div class="importance-fill" style="width: {{ item.percentage }}%"></div></div></div>{% endfor %}</div></div>{% endif %}
+<div class="action-row"><a class="button secondary-button" href="{% url 'project1:regression_result' %}">Back to Results</a></div></div></body></html>
