@@ -78,6 +78,7 @@ from .services.visualization import (
     create_actual_vs_predicted_plot,
     create_residual_plot,
     create_regression_comparison_chart,
+    create_hyperparameter_experiment_chart,
 )
 
 
@@ -114,6 +115,10 @@ from .services.persistence import (
 from .services.comparison import (
     compare_classifiers,
     compare_regressors,
+    run_classifier_parameter_experiment,
+    run_regressor_parameter_experiment,
+    CLASSIFIER_EXPERIMENT_CHOICES,
+    REGRESSOR_EXPERIMENT_CHOICES,
 )
 
 # ==============================================================
@@ -574,6 +579,11 @@ def regression_compare(request):
         test_size = 0.2
     if test_size not in {0.2, 0.3, 0.4}:
         test_size = 0.2
+    experiment_model = request.GET.get(
+        "experiment_model", "decision_tree_regressor"
+    )
+    if experiment_model not in REGRESSOR_EXPERIMENT_CHOICES:
+        experiment_model = "decision_tree_regressor"
 
     X = dataset["dataframe"][dataset["feature_columns"]]
     y = dataset["dataframe"][target_column]
@@ -584,6 +594,16 @@ def regression_compare(request):
         results = compare_regressors(
             X_train, X_test, y_train, y_test, selected_metric,
             dataset["numeric_features"], dataset["categorical_features"],
+        )
+        experiment = run_regressor_parameter_experiment(
+            experiment_model,
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            selected_metric,
+            dataset["numeric_features"],
+            dataset["categorical_features"],
         )
     except ValueError as error:
         return render(request, "project1/regression_compare.html", {
@@ -596,10 +616,19 @@ def regression_compare(request):
         settings.MEDIA_ROOT,
         settings.MEDIA_URL,
     )
+    experiment_chart_url = create_hyperparameter_experiment_chart(
+        experiment["results"],
+        experiment["parameter_name"],
+        REGRESSION_METRICS[selected_metric],
+        settings.MEDIA_ROOT,
+        settings.MEDIA_URL,
+    )
     for index, result in enumerate(results):
         result["is_best"] = index == 0
         for metric in ("primary_score", "mae", "mse", "rmse", "r2"):
             result[metric] = round(float(result[metric]), 4)
+    for item in experiment["results"]:
+        item["display_score"] = round(float(item["score"]), 4)
 
     return render(request, "project1/regression_compare.html", {
         "results": results,
@@ -612,6 +641,12 @@ def regression_compare(request):
         "comparison_chart_url": chart_url,
         "target_column": target_column,
         "lower_is_better": selected_metric != "r2",
+        "experiment_choices": REGRESSOR_EXPERIMENT_CHOICES,
+        "experiment_model": experiment_model,
+        "experiment_model_name": REGRESSOR_EXPERIMENT_CHOICES[experiment_model],
+        "experiment_parameter": experiment["parameter_name"],
+        "experiment_results": experiment["results"],
+        "experiment_chart_url": experiment_chart_url,
     })
 
 
@@ -2037,6 +2072,13 @@ def classification_compare(request):
     }:
         test_size = 0.2
 
+    experiment_model = request.GET.get(
+        "experiment_model",
+        "decision_tree",
+    )
+    if experiment_model not in CLASSIFIER_EXPERIMENT_CHOICES:
+        experiment_model = "decision_tree"
+
     X = df[
         feature_columns
     ]
@@ -2067,6 +2109,15 @@ def classification_compare(request):
             primary_metric=selected_metric,
         )
 
+        experiment = run_classifier_parameter_experiment(
+            experiment_model,
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            selected_metric,
+        )
+
     except ValueError as error:
 
         context["error"] = str(error)
@@ -2091,6 +2142,17 @@ def classification_compare(request):
             media_url=settings.MEDIA_URL,
         )
     )
+
+    experiment_chart_url = create_hyperparameter_experiment_chart(
+        experiment["results"],
+        experiment["parameter_name"],
+        metric_name,
+        settings.MEDIA_ROOT,
+        settings.MEDIA_URL,
+        percentage=True,
+    )
+    for item in experiment["results"]:
+        item["score_percent"] = round(float(item["score"]) * 100, 2)
 
     formatted_results = []
 
@@ -2169,6 +2231,24 @@ def classification_compare(request):
 
         "target_column":
             target_column,
+
+        "experiment_choices":
+            CLASSIFIER_EXPERIMENT_CHOICES,
+
+        "experiment_model":
+            experiment_model,
+
+        "experiment_model_name":
+            CLASSIFIER_EXPERIMENT_CHOICES[experiment_model],
+
+        "experiment_parameter":
+            experiment["parameter_name"],
+
+        "experiment_results":
+            experiment["results"],
+
+        "experiment_chart_url":
+            experiment_chart_url,
     })
 
     return render(

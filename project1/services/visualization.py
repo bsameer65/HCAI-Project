@@ -457,6 +457,38 @@ def create_regression_comparison_chart(
     return _save_figure(media_root, media_url, "regression_model_comparison")
 
 
+def create_hyperparameter_experiment_chart(
+    experiment_results,
+    parameter_name,
+    metric_name,
+    media_root,
+    media_url,
+    percentage=False,
+):
+    """Show every candidate evaluated in a human-controlled parameter grid."""
+    labels = [str(item["parameter_value"]) for item in experiment_results]
+    multiplier = 100 if percentage else 1
+    scores = [item["score"] * multiplier for item in experiment_results]
+    colors = ["#2e7d32" if item["is_best"] else "#1a4f8a"
+              for item in experiment_results]
+    plt.figure(figsize=(8, 5))
+    bars = plt.bar(labels, scores, color=colors, alpha=0.9)
+    plt.xlabel(parameter_name)
+    plt.ylabel(f"{metric_name}{' (%)' if percentage else ''}")
+    plt.title(f"Hyperparameter Experiment — {parameter_name}")
+    plt.grid(axis="y", alpha=0.2)
+    for bar, value in zip(bars, scores):
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{value:.4g}",
+            ha="center",
+            va="bottom" if value >= 0 else "top",
+            fontsize=9,
+        )
+    return _save_figure(media_root, media_url, "hyperparameter_experiment")
+
+
 def create_regression_scatter(
     df,
     x_column,
