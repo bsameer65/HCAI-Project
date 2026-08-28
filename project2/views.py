@@ -23,6 +23,10 @@ from .services.plot_utils import (
     plot_ale,
 )
 
+from .services.model_comparison_utils import (
+    compare_models,
+)
+
 
 # ---------------------------------------------------------------------------
 # Shared model-selection defaults
@@ -44,7 +48,8 @@ def _get_model_settings(request):
     On POST:
         Use the submitted values and save them in the session.
 
-    This keeps Train, Counterfactuals, and PDP/ALE linked together.
+    This keeps Train, Counterfactuals, PDP/ALE,
+    and Model Comparison linked together.
     """
 
     # First use values already remembered in the session
@@ -90,8 +95,13 @@ def _get_model_settings(request):
         )
 
         # Remember the latest selection
-        request.session["p2_model_type"] = model_type
-        request.session["p2_lambda_value"] = lambda_value
+        request.session[
+            "p2_model_type"
+        ] = model_type
+
+        request.session[
+            "p2_lambda_value"
+        ] = lambda_value
 
     return model_type, lambda_value
 
@@ -119,7 +129,10 @@ def index(request):
         "num_rows": len(df),
         "numerical_features": num_feats,
         "categorical_features": cat_feats,
-        "all_features": num_feats + cat_feats,
+        "all_features": (
+            num_feats
+            + cat_feats
+        ),
         "target_name": "species",
         "class_names": class_names,
         "preview_table": df.head().to_html(
@@ -329,8 +342,6 @@ def counterfactual(request):
 
         try:
 
-            # Select exactly the model corresponding
-            # to current model_type + lambda.
             selected = (
                 get_selected_model(
                     model_type,
@@ -387,12 +398,9 @@ def counterfactual(request):
         "target_class": (
             target_class
         ),
-
-        # New Human-Centric control
         "sort_by": (
             sort_by
         ),
-
         "cf_result": (
             cf_result
         ),
@@ -454,8 +462,6 @@ def pdp_ale(request):
             )
         )
 
-        # Only numerical features are allowed
-        # for these plots
         if (
             feature_name
             not in NUMERICAL_FEATURES
@@ -467,8 +473,6 @@ def pdp_ale(request):
 
         try:
 
-            # Get the same selected model
-            # corresponding to model_type + lambda.
             selected = (
                 get_selected_model(
                     model_type,
@@ -586,5 +590,160 @@ def pdp_ale(request):
     return render(
         request,
         "project2/pdp_ale.html",
+        context,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Model Comparison
+# ---------------------------------------------------------------------------
+
+def model_comparison(request):
+    """
+    Compare the selected Decision Tree and Logistic Regression models
+    for the same penguin observation.
+
+    Both model families use the same lambda value so the user can
+    inspect:
+
+        - predicted class
+        - prediction confidence
+        - full class probability distribution
+        - model accuracy
+        - model complexity
+        - agreement or disagreement
+
+    This helps communicate that explanations are model-dependent.
+    """
+
+    (
+        df,
+        X,
+        y,
+        num_feats,
+        cat_feats,
+        class_names,
+    ) = load_penguin_data()
+
+    # --------------------------------------------------------------
+    # Lambda is shared with the other pages
+    # --------------------------------------------------------------
+
+    (
+        model_type,
+        lambda_value,
+    ) = _get_model_settings(
+        request
+    )
+
+    # model_type is not directly used for comparison because
+    # this page always compares both DT and LR.
+
+    row_index = 0
+
+    comparison = None
+
+    error = None
+
+    # --------------------------------------------------------------
+    # Penguin dropdown
+    # --------------------------------------------------------------
+
+    sample_options = [
+        {
+            "index": i,
+            "label": (
+                f"Row {i} — "
+                f"{row['species']}"
+            ),
+        }
+        for i, row
+        in df.iterrows()
+    ]
+
+    # --------------------------------------------------------------
+    # Process comparison request
+    # --------------------------------------------------------------
+
+    if request.method == "POST":
+
+        try:
+
+            row_index = int(
+                request.POST.get(
+                    "row_index",
+                    0,
+                )
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+
+            row_index = 0
+
+        # Keep row valid
+        if (
+            row_index < 0
+            or row_index >= len(df)
+        ):
+
+            row_index = 0
+
+        try:
+
+            comparison = (
+                compare_models(
+                    row_index=(
+                        row_index
+                    ),
+                    lambda_value=(
+                        lambda_value
+                    ),
+                )
+            )
+
+        except Exception as exc:
+
+            error = str(
+                exc
+            )
+
+    # --------------------------------------------------------------
+    # Template context
+    # --------------------------------------------------------------
+
+    context = {
+        "page_title": (
+            "Model Comparison — Project 2"
+        ),
+        "lambda_value": (
+            lambda_value
+        ),
+        "row_index": (
+            row_index
+        ),
+        "sample_options": (
+            sample_options
+        ),
+        "comparison": (
+            comparison
+        ),
+        "error": (
+            error
+        ),
+        "all_features": (
+            num_feats
+            + cat_feats
+        ),
+        "class_names": (
+            class_names
+        ),
+    }
+
+    return render(
+        request,
+        "project2/model_comparison.html",
         context,
     )
