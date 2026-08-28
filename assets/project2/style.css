@@ -511,11 +511,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
     align-items: stretch;
-    margin-bottom: 24px;
-}
-
-.p2-effect-grid > .p2-card {
-    margin-bottom: 0;
+    margin-bottom: 40px;
 }
 
 
@@ -592,52 +588,4 @@
         align-items: flex-start;
     }
 
-}
-
-/* ============================================================
-   ANALYSIS CONTEXT CARDS
-   ============================================================ */
-
-.p2-context-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
-    margin-top: 16px;
-}
-
-.p2-context-box {
-    background: #eef3fb;
-    border-radius: 10px;
-    padding: 16px;
-    text-align: center;
-    min-width: 0;
-}
-
-.p2-context-label {
-    display: block;
-    margin-bottom: 7px;
-    color: #5a6d8a;
-    font-size: 0.82rem;
-    font-weight: 500;
-}
-
-.p2-context-value {
-    display: block;
-    color: #1a4f8a;
-    font-size: 1rem;
-    font-weight: 600;
-    line-height: 1.4;
-    overflow-wrap: anywhere;
-}
-
-@media (max-width: 800px) {
-    .p2-context-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 500px) {
-    .p2-context-grid {
-        grid-template-columns: 1fr;
-    }
 }

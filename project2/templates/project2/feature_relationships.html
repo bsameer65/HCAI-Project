@@ -3,7 +3,6 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
 
     <meta
@@ -11,15 +10,12 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>
-        {{ page_title }}
-    </title>
+    <title>{{ page_title }}</title>
 
     <link
         rel="stylesheet"
-        href="{% static 'project2/style.css' %}"
+        href="{% static 'project2/style.css' %}?v=3"
     >
-
 </head>
 
 
@@ -28,9 +24,9 @@
 <div class="p2-container">
 
 
-    <!-- ============================================================= -->
-    <!-- HEADER                                                        -->
-    <!-- ============================================================= -->
+    <!-- ========================================================= -->
+    <!-- HEADER                                                    -->
+    <!-- ========================================================= -->
 
     <div class="p2-header">
 
@@ -39,18 +35,16 @@
         </h1>
 
         <p>
-
             Examine whether relationships between numerical features
-            may affect how PDP and ALE explanations should be interpreted.
-
+            may influence how PDP and ALE explanations are interpreted.
         </p>
 
     </div>
 
 
-    <!-- ============================================================= -->
-    <!-- NAVIGATION                                                    -->
-    <!-- ============================================================= -->
+    <!-- ========================================================= -->
+    <!-- NAVIGATION                                                -->
+    <!-- ========================================================= -->
 
     <nav class="p2-nav">
 
@@ -77,105 +71,85 @@
     </nav>
 
 
-    <!-- ============================================================= -->
-    <!-- CURRENT ANALYSIS CONTEXT                                      -->
-    <!-- ============================================================= -->
+    <!-- ========================================================= -->
+    <!-- CURRENT ANALYSIS                                          -->
+    <!-- ========================================================= -->
 
     <div class="p2-card">
 
         <h2>
-            🔎 Current Analysis
+            Current Analysis
         </h2>
 
 
-        <div
-            style="
-                display:grid;
-                grid-template-columns:repeat(
-                    auto-fit,
-                    minmax(180px, 1fr)
-                );
-                gap:16px;
-                margin-top:18px;
-            "
-        >
+        <div class="p2-context-grid">
 
+            <div class="p2-context-box">
 
-            <div class="p2-info-box">
-
-                <strong>
+                <span class="p2-context-label">
                     Selected Feature
-                </strong>
+                </span>
 
-                <br><br>
-
-                {{ feature_name }}
+                <span class="p2-context-value">
+                    {{ feature_name }}
+                </span>
 
             </div>
 
 
-            <div class="p2-info-box">
+            <div class="p2-context-box">
 
-                <strong>
+                <span class="p2-context-label">
                     Model Type
-                </strong>
+                </span>
 
-                <br><br>
+                <span class="p2-context-value">
 
-                {% if model_type == "dt" %}
+                    {% if model_type == "dt" %}
+                        Decision Tree
+                    {% else %}
+                        Logistic Regression
+                    {% endif %}
 
-                    Decision Tree
-
-                {% else %}
-
-                    Logistic Regression
-
-                {% endif %}
+                </span>
 
             </div>
 
 
-            <div class="p2-info-box">
+            <div class="p2-context-box">
 
-                <strong>
+                <span class="p2-context-label">
                     λ
-                </strong>
+                </span>
 
-                <br><br>
-
-                {{ lambda_value }}
+                <span class="p2-context-value">
+                    {{ lambda_value }}
+                </span>
 
             </div>
 
 
             {% if selected_model_label %}
 
-            <div class="p2-info-box">
+            <div class="p2-context-box">
 
-                <strong>
+                <span class="p2-context-label">
                     Selected Model
-                </strong>
+                </span>
 
-                <br><br>
-
-                {{ selected_model_label }}
+                <span class="p2-context-value">
+                    {{ selected_model_label }}
+                </span>
 
             </div>
 
             {% endif %}
 
-
         </div>
 
 
-        <p
-            class="p2-muted"
-            style="margin-top:18px;"
-        >
-
-            These settings were carried over automatically from
-            the PDP / ALE page. You do not need to select them again.
-
+        <p class="p2-muted">
+            These settings were carried over from the PDP / ALE page.
         </p>
 
 
@@ -189,16 +163,16 @@
     </div>
 
 
-    <!-- ============================================================= -->
-    <!-- ERROR                                                         -->
-    <!-- ============================================================= -->
+    <!-- ========================================================= -->
+    <!-- ERROR                                                     -->
+    <!-- ========================================================= -->
 
     {% if error %}
 
     <div class="p2-error-card">
 
         <strong>
-            ⚠ Relationship analysis failed:
+            Relationship analysis failed:
         </strong>
 
         {{ error }}
@@ -211,96 +185,84 @@
     {% if relationship_analysis %}
 
 
-    <!-- ============================================================= -->
-    <!-- STRONGEST RELATIONSHIP                                        -->
-    <!-- ============================================================= -->
+    <!-- ========================================================= -->
+    <!-- STRONGEST RELATIONSHIP                                    -->
+    <!-- ========================================================= -->
 
     <div class="p2-card">
 
         <h2>
-            🔗 Strongest Numerical Relationship
+            Strongest Numerical Relationship
         </h2>
 
 
-        <div
-            style="
-                display:grid;
-                grid-template-columns:repeat(
-                    auto-fit,
-                    minmax(180px, 1fr)
-                );
-                gap:16px;
-                margin-top:18px;
-            "
-        >
+        <div class="p2-context-grid">
 
+            <div class="p2-context-box">
 
-            <div class="p2-info-box">
-
-                <strong>
+                <span class="p2-context-label">
                     Selected Feature
-                </strong>
+                </span>
 
-                <br><br>
-
-                {{ relationship_analysis.selected_feature }}
-
-            </div>
-
-
-            <div class="p2-info-box">
-
-                <strong>
-                    Strongest Related Feature
-                </strong>
-
-                <br><br>
-
-                {{ relationship_analysis.strongest_feature }}
+                <span class="p2-context-value">
+                    {{ relationship_analysis.selected_feature }}
+                </span>
 
             </div>
 
 
-            <div class="p2-info-box">
+            <div class="p2-context-box">
 
-                <strong>
-                    Pearson Correlation
-                </strong>
+                <span class="p2-context-label">
+                    Related Feature
+                </span>
 
-                <br><br>
-
-                {{ relationship_analysis.strongest_correlation }}
+                <span class="p2-context-value">
+                    {{ relationship_analysis.strongest_feature }}
+                </span>
 
             </div>
 
 
-            <div class="p2-info-box">
+            <div class="p2-context-box">
 
-                <strong>
+                <span class="p2-context-label">
+                    Pearson r
+                </span>
+
+                <span class="p2-context-value">
+                    {{ relationship_analysis.strongest_correlation }}
+                </span>
+
+            </div>
+
+
+            <div class="p2-context-box">
+
+                <span class="p2-context-label">
                     Relationship
-                </strong>
+                </span>
 
-                <br><br>
-
-                {{ relationship_analysis.strength }}
-                {{ relationship_analysis.direction }}
+                <span class="p2-context-value">
+                    {{ relationship_analysis.strength }}
+                    {{ relationship_analysis.direction }}
+                </span>
 
             </div>
-
 
         </div>
 
     </div>
 
 
-    <!-- ============================================================= -->
-    <!-- INTERPRETATION                                                -->
-    <!-- ============================================================= -->
+    <!-- ========================================================= -->
+    <!-- INTERPRETATION                                            -->
+    <!-- ========================================================= -->
 
     <div class="p2-card">
 
         <h2>
-            🧠 What does this mean?
+            Relationship Interpretation
         </h2>
 
 
@@ -309,7 +271,7 @@
         <div class="p2-warning-box">
 
             <strong>
-                ⚠ Strong feature dependency detected
+                Strong feature relationship detected
             </strong>
 
             <br><br>
@@ -320,7 +282,6 @@
 
 
         {% elif relationship_analysis.warning_level == "medium" %}
-
 
         <div class="p2-info-box">
 
@@ -337,11 +298,10 @@
 
         {% else %}
 
-
-        <div class="p2-info-box">
+        <div class="p2-success-box">
 
             <strong>
-                ✓ No strong numerical relationship detected
+                No strong numerical relationship detected
             </strong>
 
             <br><br>
@@ -350,29 +310,25 @@
 
         </div>
 
-
         {% endif %}
 
 
         <p class="p2-muted">
-
-            Correlation describes statistical association in this
-            dataset. It does not show that one penguin measurement
-            causes another.
-
+            Correlation describes association within this dataset
+            and does not imply causation.
         </p>
 
     </div>
 
 
-    <!-- ============================================================= -->
-    <!-- ALL RELATIONSHIPS                                             -->
-    <!-- ============================================================= -->
+    <!-- ========================================================= -->
+    <!-- ALL RELATIONSHIPS                                         -->
+    <!-- ========================================================= -->
 
     <div class="p2-card">
 
         <h2>
-            📊 Relationships with {{ feature_name }}
+            Relationships with {{ feature_name }}
         </h2>
 
 
@@ -452,58 +408,33 @@
     </div>
 
 
-    <!-- ============================================================= -->
-    <!-- PDP VS ALE                                                     -->
-    <!-- ============================================================= -->
+    <!-- ========================================================= -->
+    <!-- PDP VS ALE                                                -->
+    <!-- ========================================================= -->
 
     <div class="p2-card">
 
         <h2>
-            📈 PDP vs ALE under Feature Relationships
+            PDP vs ALE
         </h2>
 
 
-        <div class="p2-info-box">
+        <p class="p2-muted">
 
-            <strong>
-                Why compare both?
-            </strong>
+            PDP shows the overall effect of changing the selected
+            feature, while ALE focuses on local changes where
+            observations occur. When features are related, ALE is
+            generally less affected by uncommon feature combinations.
 
-            <br><br>
-
-            <strong>PDP</strong> evaluates the selected feature across
-            its range while retaining the other observed feature values.
-
-            <br><br>
-
-            When features are related, this can evaluate combinations
-            that are uncommon in the dataset.
-
-            <br><br>
-
-            <strong>ALE</strong> instead evaluates local changes within
-            intervals where observations actually occur. It is therefore
-            generally less affected by correlated features, although it
-            does not remove every possible dependency issue.
-
-        </div>
+        </p>
 
 
-        <div
-            style="
-                display:grid;
-                grid-template-columns:repeat(
-                    auto-fit,
-                    minmax(340px, 1fr)
-                );
-                gap:20px;
-                margin-top:20px;
-            "
-        >
+        <div class="p2-effect-grid">
 
 
             <!-- PDP -->
-            <div class="p2-card">
+
+            <div class="p2-card p2-effect-card">
 
                 <h3>
                     PDP — {{ feature_name }}
@@ -525,9 +456,7 @@
                 {% else %}
 
                 <div class="p2-warning-box">
-
                     PDP could not be generated.
-
                 </div>
 
                 {% endif %}
@@ -536,7 +465,8 @@
 
 
             <!-- ALE -->
-            <div class="p2-card">
+
+            <div class="p2-card p2-effect-card">
 
                 <h3>
                     ALE — {{ feature_name }}
@@ -558,40 +488,34 @@
                 {% else %}
 
                 <div class="p2-warning-box">
-
                     ALE could not be generated.
-
                 </div>
 
                 {% endif %}
 
             </div>
 
-
         </div>
 
     </div>
 
 
-    <!-- ============================================================= -->
-    <!-- CORRELATION MATRIX                                            -->
-    <!-- ============================================================= -->
+    <!-- ========================================================= -->
+    <!-- CORRELATION MATRIX                                        -->
+    <!-- ========================================================= -->
 
     <div class="p2-card">
 
         <h2>
-            🧩 Numerical Feature Correlation Matrix
+            Numerical Feature Correlation Matrix
         </h2>
 
 
         <p class="p2-muted">
 
-            The matrix provides context for relationships among all
-            numerical penguin measurements.
-
-            Values close to +1 indicate a strong positive relationship,
-            values close to −1 indicate a strong negative relationship,
-            and values near 0 indicate little linear relationship.
+            Values closer to +1 or −1 indicate stronger linear
+            relationships. Values near 0 indicate weaker linear
+            relationships.
 
         </p>
 
@@ -665,56 +589,24 @@
     </div>
 
 
-    <!-- ============================================================= -->
-    <!-- HUMAN-CENTRIC TAKEAWAY                                        -->
-    <!-- ============================================================= -->
-
-    <div class="p2-card">
-
-        <h2>
-            👤 Human-Centric Takeaway
-        </h2>
-
-
-        <div class="p2-info-box">
-
-            Feature-effect plots should not be interpreted without
-            considering the data on which they are based.
-
-            <br><br>
-
-            Showing feature relationships alongside PDP and ALE helps
-            the user recognise when an explanation may rely on unusual
-            combinations of feature values.
-
-            <br><br>
-
-            This makes limitations of the explanation visible rather
-            than presenting a plot as an unquestionable explanation
-            of model behaviour.
-
-        </div>
-
-    </div>
 
 
     {% endif %}
 
 
-    <!-- ============================================================= -->
-    <!-- RETURN TO PDP / ALE                                           -->
-    <!-- ============================================================= -->
+    <!-- ========================================================= -->
+    <!-- BACK                                                      -->
+    <!-- ========================================================= -->
 
-    <div style="margin-top:24px;">
+    <a
+        href="{% url 'project2:pdp_ale' %}"
+        class="p2-btn"
+    >
+        ← Back to PDP / ALE
+    </a>
 
-        <a
-            href="{% url 'project2:pdp_ale' %}"
-            class="p2-btn"
-        >
-            ← Back to PDP / ALE
-        </a>
 
-    </div>
+    <br><br>
 
 
     <a

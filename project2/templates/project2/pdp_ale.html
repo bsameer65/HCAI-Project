@@ -16,9 +16,10 @@
     </title>
 
     <link
-        rel="stylesheet"
-        href="{% static 'project2/style.css' %}"
-    >
+    rel="stylesheet"
+    href="{% static 'project2/style.css' %}?v=3"
+>
+
 
 </head>
 
@@ -28,7 +29,10 @@
 <div class="p2-container">
 
 
-    <!-- Header -->
+    <!-- ============================================================= -->
+    <!-- HEADER                                                        -->
+    <!-- ============================================================= -->
+
     <div class="p2-header">
 
         <h1>
@@ -36,17 +40,17 @@
         </h1>
 
         <p>
-
-            Explore how numerical features influence
-            model predictions using Partial Dependence
-            Plots (PDP) and Accumulated Local Effects (ALE).
-
+            Compare global and local feature effects
+            using PDP and ALE.
         </p>
 
     </div>
 
 
-    <!-- Navigation -->
+    <!-- ============================================================= -->
+    <!-- NAVIGATION                                                    -->
+    <!-- ============================================================= -->
+
     <nav class="p2-nav">
 
         <a href="{% url 'project2:index' %}">
@@ -82,19 +86,8 @@
     <div class="p2-card">
 
         <h2>
-            ⚙️ Settings
+            Settings
         </h2>
-
-
-        <div class="p2-info-box">
-
-            The model type and λ are shared with the
-            Train and Counterfactual pages.
-
-            Changing them here also updates the current
-            model selection used by the other pages.
-
-        </div>
 
 
         <form
@@ -113,14 +106,13 @@
                     Model Type
 
                     <span class="p2-label-help">
-                        PDP and ALE are generated for this model
+                        Select the model used for both explanations
                     </span>
 
                 </label>
 
 
                 <div class="p2-radio-group">
-
 
                     <label class="p2-radio-label">
 
@@ -155,7 +147,6 @@
 
                     </label>
 
-
                 </div>
 
             </div>
@@ -175,19 +166,14 @@
                         {{ lambda_value }}
                     </span>
 
-
                     <span class="p2-label-help">
-
-                        Changing λ can select a different
-                        model for the plots
-
+                        Higher values favour simpler models
                     </span>
 
                 </label>
 
 
                 <div class="p2-slider-row">
-
 
                     <span class="p2-slider-hint">
                         ← Accuracy
@@ -198,12 +184,11 @@
                         type="range"
                         id="pdp_lambda"
                         name="lambda_value"
-
                         min="0"
                         max="0.1"
                         step="0.005"
-
                         value="{{ lambda_value }}"
+                        class="p2-slider"
 
                         oninput="
                             document.getElementById(
@@ -211,15 +196,12 @@
                             ).textContent =
                             parseFloat(this.value).toFixed(3)
                         "
-
-                        class="p2-slider"
                     >
 
 
                     <span class="p2-slider-hint">
                         Simplicity →
                     </span>
-
 
                 </div>
 
@@ -237,7 +219,7 @@
                     Numerical Feature
 
                     <span class="p2-label-help">
-                        Select the feature whose effect should be explained
+                        Feature to analyse
                     </span>
 
                 </label>
@@ -258,9 +240,7 @@
                         selected
                         {% endif %}
                     >
-
                         {{ feat }}
-
                     </option>
 
                     {% endfor %}
@@ -277,7 +257,6 @@
                 Generate PDP &amp; ALE
             </button>
 
-
         </form>
 
     </div>
@@ -292,17 +271,10 @@
     <div class="p2-error-card">
 
         <strong>
-            ⚠ Plot generation failed:
+            Plot generation failed:
         </strong>
 
         {{ error }}
-
-        <br>
-
-        <em>
-            Try selecting another feature,
-            model type, or λ value.
-        </em>
 
     </div>
 
@@ -316,242 +288,146 @@
     {% if pdp_plot_url or ale_plot_url %}
 
 
-    <!-- ============================================================= -->
-    <!-- PDP                                                           -->
-    <!-- ============================================================= -->
-
-    {% if pdp_plot_url %}
-
-    <div class="p2-card">
-
-        <h2>
-            📈 PDP — {{ feature_name }}
-        </h2>
+    <div class="p2-effect-grid">
 
 
-        <p class="p2-muted">
+        <!-- ========================================================= -->
+        <!-- PDP                                                       -->
+        <!-- ========================================================= -->
 
-            Each curve shows the
+        <div class="p2-card p2-effect-card">
 
-            <strong>
-                average predicted probability
-            </strong>
+            <h2>
 
-            for one penguin species while
+                PDP — {{ feature_name }}
 
-            <strong>
-                {{ feature_name }}
-            </strong>
+                <span
+                    class="p2-effect-help"
+                    title="Partial Dependence Plot: shows the average model prediction when the selected feature is varied across its range."
+                >
+                    i
+                </span>
 
-            is forced to different values across its range.
-
-            All other features retain their observed values.
-
-        </p>
-
-
-        <div class="p2-plot-wrapper">
-
-            <img
-                src="{{ pdp_plot_url }}"
-                alt="PDP plot for {{ feature_name }}"
-                class="p2-plot-img"
-            >
-
-        </div>
+            </h2>
 
 
-        <div
-            class="p2-info-box"
-            style="margin-top:14px;"
-        >
+            {% if pdp_plot_url %}
 
-            <strong>
-                How to read the PDP:
-            </strong>
+            <div class="p2-plot-wrapper">
 
-            <br>
+                <img
+                    src="{{ pdp_plot_url }}"
+                    alt="PDP plot for {{ feature_name }}"
+                    class="p2-plot-img"
+                >
 
-            • A <strong>rising curve</strong>
-            means larger feature values increase
-            the model's probability for that species.
-
-            <br>
-
-            • A <strong>falling curve</strong>
-            means larger values decrease the probability.
-
-            <br>
-
-            • A <strong>flat curve</strong>
-            means changing the feature does not substantially
-            affect the selected model's prediction.
-
-            <br><br>
-
-            <strong>Decision Tree note:</strong>
-
-            A tree can produce flat or step-like PDP curves because
-            predictions are constant inside leaves and only change
-            when relevant split thresholds are crossed.
-
-        </div>
-
-    </div>
-
-    {% endif %}
+            </div>
 
 
-    <!-- ============================================================= -->
-    <!-- ALE                                                           -->
-    <!-- ============================================================= -->
+            <p class="p2-muted p2-effect-description">
 
-    {% if ale_plot_url %}
+                Average predicted probability as
+                <strong>{{ feature_name }}</strong>
+                is varied across the dataset.
 
-    <div class="p2-card">
-
-        <h2>
-            📉 ALE — {{ feature_name }}
-        </h2>
+            </p>
 
 
-        <p class="p2-muted">
+            {% else %}
 
-            ALE measures how changing
+            <div class="p2-warning-box">
 
-            <strong>
-                {{ feature_name }}
-            </strong>
+                PDP could not be generated.
 
-            within local feature intervals changes the
-            predicted probability.
+            </div>
 
-            The accumulated effects are centred around zero.
-
-        </p>
-
-
-        <div class="p2-plot-wrapper">
-
-            <img
-                src="{{ ale_plot_url }}"
-                alt="ALE plot for {{ feature_name }}"
-                class="p2-plot-img"
-            >
+            {% endif %}
 
         </div>
 
 
-        <div
-            class="p2-info-box"
-            style="margin-top:14px;"
-        >
+        <!-- ========================================================= -->
+        <!-- ALE                                                       -->
+        <!-- ========================================================= -->
 
-            <strong>
-                How to read the ALE:
-            </strong>
+        <div class="p2-card p2-effect-card">
 
-            <br>
+            <h2>
 
-            • Values <strong>above zero</strong>
-            indicate a positive contribution relative
-            to the average prediction.
+                ALE — {{ feature_name }}
 
-            <br>
+                <span
+                    class="p2-effect-help"
+                    title="Accumulated Local Effects: shows how local changes in the selected feature affect the model prediction."
+                >
+                    i
+                </span>
 
-            • Values <strong>below zero</strong>
-            indicate a negative contribution.
+            </h2>
 
-            <br>
 
-            • A flat ALE means the model has little
-            local sensitivity to that feature.
+            {% if ale_plot_url %}
 
-            <br><br>
+            <div class="p2-plot-wrapper">
 
-            <strong>Derivative interpretation:</strong>
+                <img
+                    src="{{ ale_plot_url }}"
+                    alt="ALE plot for {{ feature_name }}"
+                    class="p2-plot-img"
+                >
 
-            Logistic Regression is differentiable,
-            so exact derivatives can in principle be calculated.
+            </div>
 
-            Decision Trees are piecewise constant and have
-            discontinuities at split thresholds, so discretisation
-            or finite differences are used for ALE.
+
+            <p class="p2-muted p2-effect-description">
+
+                Accumulated local prediction effect of
+                <strong>{{ feature_name }}</strong>
+                around observed feature values.
+
+            </p>
+
+
+            {% else %}
+
+            <div class="p2-warning-box">
+
+                ALE could not be generated for the selected
+                feature and model.
+
+            </div>
+
+            {% endif %}
 
         </div>
+
 
     </div>
 
 
-    {% else %}
-
-
-    <div class="p2-card">
-
-        <h2>
-            📉 ALE — {{ feature_name }}
-        </h2>
-
-
-        <div class="p2-warning-box">
-
-            Not enough valid observations were available
-            in the ALE bins.
-
-            Try another feature or model.
-
-        </div>
-
-    </div>
-
-
-    {% endif %}
-
-
     <!-- ============================================================= -->
-    <!-- DEEPER RELATIONSHIP ANALYSIS                                  -->
+    <!-- FEATURE RELATIONSHIP ACTION                                   -->
     <!-- ============================================================= -->
 
-    <div class="p2-card">
+    <div
+        class="p2-card"
+    >
 
-        <h2>
-            🔗 Could feature relationships affect these plots?
-        </h2>
+        <div class="p2-relationship-action">
 
+            <p>
 
-        <p class="p2-muted">
+                <strong>
+                    Want to inspect possible feature dependencies?
+                </strong>
 
-            PDP changes
+                <br>
 
-            <strong>
-                {{ feature_name }}
-            </strong>
+                Analyze whether relationships with other numerical
+                features may affect how these plots should be interpreted.
 
-            independently while keeping the other observed
-            feature values fixed.
+            </p>
 
-            If this feature is strongly related to another feature,
-            some combinations evaluated by PDP may be uncommon
-            in the observed data.
-
-        </p>
-
-
-        <div class="p2-info-box">
-
-            Continue to the relationship analysis to check whether
-
-            <strong>
-                {{ feature_name }}
-            </strong>
-
-            is correlated with the other numerical features and
-            what that means when comparing PDP and ALE.
-
-        </div>
-
-
-        <div style="margin-top:18px;">
 
             <a
                 href="{% url 'project2:feature_relationships' %}"
@@ -568,27 +444,24 @@
     {% else %}
 
 
-    <!-- No plots yet -->
+    <!-- ============================================================= -->
+    <!-- NO RESULTS                                                    -->
+    <!-- ============================================================= -->
+
     <div class="p2-info-box">
 
-        👆
-
-        <strong>
-            No plots generated yet.
-        </strong>
-
-        Choose a model type, λ value,
-        and numerical feature above, then press
-
-        <em>
-            Generate PDP &amp; ALE
-        </em>.
+        Select a model, λ value and numerical feature,
+        then generate PDP and ALE.
 
     </div>
 
 
     {% endif %}
 
+
+    <!-- ============================================================= -->
+    <!-- BACK                                                          -->
+    <!-- ============================================================= -->
 
     <a
         href="{% url 'home:index' %}"
@@ -601,4 +474,5 @@
 </div>
 
 </body>
+
 </html>
