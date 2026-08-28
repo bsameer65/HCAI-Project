@@ -1,0 +1,819 @@
+{% load static project2_tags %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {{ page_title }}
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'project2/style.css' %}"
+    >
+
+</head>
+
+
+<body class="p2-page">
+
+<div class="p2-container">
+
+
+    <!-- ============================================================= -->
+    <!-- HEADER                                                        -->
+    <!-- ============================================================= -->
+
+    <div class="p2-header">
+
+        <h1>
+            Model Agreement & Disagreement
+        </h1>
+
+        <p>
+            Compare the Decision Tree and Logistic Regression
+            for the same penguin.
+
+            This helps show whether the prediction and its
+            explanation are stable across different model types.
+        </p>
+
+    </div>
+
+
+    <!-- ============================================================= -->
+    <!-- NAVIGATION                                                    -->
+    <!-- ============================================================= -->
+
+    <nav class="p2-nav">
+
+        <a href="{% url 'project2:index' %}">
+            Home
+        </a>
+
+        <a href="{% url 'project2:train' %}">
+            Train
+        </a>
+
+        <a href="{% url 'project2:counterfactual' %}">
+            Counterfactuals
+        </a>
+
+        <a href="{% url 'project2:pdp_ale' %}">
+            PDP / ALE
+        </a>
+
+        <a
+            href="{% url 'project2:model_comparison' %}"
+            class="active"
+        >
+            Model Comparison
+        </a>
+
+    </nav>
+
+
+    <!-- ============================================================= -->
+    <!-- SETTINGS                                                      -->
+    <!-- ============================================================= -->
+
+    <div class="p2-card">
+
+        <h2>
+            ⚙️ Comparison Settings
+        </h2>
+
+
+        <div class="p2-info-box">
+
+            Both models are selected using the same
+            <strong>λ</strong> value.
+
+            Each model family still selects its own best candidate
+            using:
+
+            <strong>
+                test accuracy − λ × complexity
+            </strong>
+
+        </div>
+
+
+        <form
+            method="POST"
+            action="{% url 'project2:model_comparison' %}"
+        >
+
+            {% csrf_token %}
+
+
+            <!--
+                The comparison page always compares both models.
+                This hidden input only keeps the shared session helper
+                compatible with the rest of the project.
+            -->
+            <input
+                type="hidden"
+                name="model_type"
+                value="dt"
+            >
+
+
+            <!-- Lambda -->
+            <div class="p2-form-row">
+
+                <label
+                    class="p2-label"
+                    for="comparison_lambda"
+                >
+
+                    λ =
+                    <span id="comparison_lambda_display">
+                        {{ lambda_value }}
+                    </span>
+
+                    <span class="p2-label-help">
+                        Higher λ places more importance on simpler models
+                    </span>
+
+                </label>
+
+
+                <div class="p2-slider-row">
+
+                    <span class="p2-slider-hint">
+                        ← Accuracy
+                    </span>
+
+
+                    <input
+                        type="range"
+                        id="comparison_lambda"
+                        name="lambda_value"
+
+                        min="0"
+                        max="0.1"
+                        step="0.005"
+
+                        value="{{ lambda_value }}"
+
+                        oninput="
+                            document.getElementById(
+                                'comparison_lambda_display'
+                            ).textContent =
+                            parseFloat(this.value).toFixed(3)
+                        "
+
+                        class="p2-slider"
+                    >
+
+
+                    <span class="p2-slider-hint">
+                        Simplicity →
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- Penguin -->
+            <div class="p2-form-row">
+
+                <label
+                    class="p2-label"
+                    for="row_index"
+                >
+
+                    Select a Penguin
+
+                    <span class="p2-label-help">
+                        The same observation will be evaluated
+                        by both models
+                    </span>
+
+                </label>
+
+
+                <select
+                    name="row_index"
+                    id="row_index"
+                    class="p2-select"
+                >
+
+                    {% for opt in sample_options %}
+
+                    <option
+                        value="{{ opt.index }}"
+
+                        {% if opt.index == row_index %}
+                        selected
+                        {% endif %}
+                    >
+
+                        {{ opt.label }}
+
+                    </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="p2-btn"
+            >
+                Compare Models
+            </button>
+
+
+        </form>
+
+    </div>
+
+
+    <!-- ============================================================= -->
+    <!-- ERROR                                                         -->
+    <!-- ============================================================= -->
+
+    {% if error %}
+
+    <div class="p2-error-card">
+
+        <strong>
+            ⚠ Model comparison failed:
+        </strong>
+
+        {{ error }}
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- ============================================================= -->
+    <!-- RESULTS                                                       -->
+    <!-- ============================================================= -->
+
+    {% if comparison %}
+
+
+        <!-- ========================================================= -->
+        <!-- AGREEMENT STATUS                                          -->
+        <!-- ========================================================= -->
+
+        {% if comparison.agree %}
+
+        <div class="p2-success-box">
+
+            <strong>
+                ✓ Models agree
+            </strong>
+
+            <br><br>
+
+            Both models predict
+
+            <strong>
+                {{ comparison.decision_tree.prediction }}
+            </strong>
+
+            for this penguin.
+
+        </div>
+
+        {% else %}
+
+        <div class="p2-warning-box">
+
+            <strong>
+                ⚠ Models disagree
+            </strong>
+
+            <br><br>
+
+            Decision Tree predicts
+
+            <strong>
+                {{ comparison.decision_tree.prediction }}
+            </strong>
+
+            while Logistic Regression predicts
+
+            <strong>
+                {{ comparison.logistic_regression.prediction }}.
+            </strong>
+
+        </div>
+
+        {% endif %}
+
+
+        <!-- ========================================================= -->
+        <!-- ORIGINAL OBSERVATION                                      -->
+        <!-- ========================================================= -->
+
+        <div class="p2-card">
+
+            <h2>
+                🐧 Selected Penguin
+                (Row {{ comparison.row_index }})
+            </h2>
+
+
+            <div class="p2-table-scroll">
+
+                <table class="p2-table">
+
+                    <thead>
+
+                        <tr>
+
+                            {% for feat in all_features %}
+
+                            <th>
+                                {{ feat }}
+                            </th>
+
+                            {% endfor %}
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        <tr>
+
+                            {% for feat in all_features %}
+
+                            <td>
+                                {{ comparison.decision_tree.observation|get_dict_value:feat }}
+                            </td>
+
+                            {% endfor %}
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================================= -->
+        <!-- MODEL COMPARISON                                          -->
+        <!-- ========================================================= -->
+
+        <div class="p2-card">
+
+            <h2>
+                🔍 Prediction Comparison
+            </h2>
+
+
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:repeat(
+                        auto-fit,
+                        minmax(320px, 1fr)
+                    );
+                    gap:20px;
+                    margin-top:18px;
+                "
+            >
+
+
+                <!-- ================================================= -->
+                <!-- DECISION TREE                                     -->
+                <!-- ================================================= -->
+
+                <div class="p2-card">
+
+                    <h2>
+                        🌳 Decision Tree
+                    </h2>
+
+
+                    <div class="p2-cf-summary">
+
+                        <span class="p2-cf-label">
+                            Prediction:
+                        </span>
+
+                        <span class="p2-class-badge">
+
+                            {{ comparison.decision_tree.prediction }}
+
+                        </span>
+
+                    </div>
+
+
+                    <div
+                        style="
+                            margin-top:16px;
+                            line-height:1.8;
+                        "
+                    >
+
+                        <div>
+
+                            <strong>
+                                Confidence:
+                            </strong>
+
+                            {{ comparison.decision_tree.confidence }}%
+
+                        </div>
+
+
+                        <div>
+
+                            <strong>
+                                Test Accuracy:
+                            </strong>
+
+                            {{ comparison.decision_tree.accuracy }}%
+
+                        </div>
+
+
+                        <div>
+
+                            <strong>
+                                Complexity:
+                            </strong>
+
+                            {{ comparison.decision_tree.complexity }}
+                            leaves
+
+                        </div>
+
+
+                        <div>
+
+                            <strong>
+                                Selected model:
+                            </strong>
+
+                            {{ comparison.decision_tree.model_label }}
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Probability distribution -->
+                    <h3 style="margin-top:24px;">
+                        Class Probabilities
+                    </h3>
+
+
+                    {% for item in comparison.decision_tree.probabilities %}
+
+                    <div
+                        style="
+                            margin-top:12px;
+                        "
+                    >
+
+                        <div
+                            style="
+                                display:flex;
+                                justify-content:space-between;
+                                gap:12px;
+                                margin-bottom:5px;
+                            "
+                        >
+
+                            <span>
+                                {{ item.class_name }}
+                            </span>
+
+                            <strong>
+                                {{ item.probability }}%
+                            </strong>
+
+                        </div>
+
+
+                        <div
+                            style="
+                                width:100%;
+                                height:10px;
+                                background:#ececec;
+                                border-radius:999px;
+                                overflow:hidden;
+                            "
+                        >
+
+                            <div
+                                style="
+                                    width:{{ item.probability }}%;
+                                    height:100%;
+                                    background:#4f6f8f;
+                                    border-radius:999px;
+                                "
+                            >
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    {% endfor %}
+
+
+                </div>
+
+
+                <!-- ================================================= -->
+                <!-- LOGISTIC REGRESSION                               -->
+                <!-- ================================================= -->
+
+                <div class="p2-card">
+
+                    <h2>
+                        📈 Logistic Regression
+                    </h2>
+
+
+                    <div class="p2-cf-summary">
+
+                        <span class="p2-cf-label">
+                            Prediction:
+                        </span>
+
+                        <span class="p2-class-badge p2-badge-target">
+
+                            {{ comparison.logistic_regression.prediction }}
+
+                        </span>
+
+                    </div>
+
+
+                    <div
+                        style="
+                            margin-top:16px;
+                            line-height:1.8;
+                        "
+                    >
+
+                        <div>
+
+                            <strong>
+                                Confidence:
+                            </strong>
+
+                            {{ comparison.logistic_regression.confidence }}%
+
+                        </div>
+
+
+                        <div>
+
+                            <strong>
+                                Test Accuracy:
+                            </strong>
+
+                            {{ comparison.logistic_regression.accuracy }}%
+
+                        </div>
+
+
+                        <div>
+
+                            <strong>
+                                Complexity:
+                            </strong>
+
+                            {{ comparison.logistic_regression.complexity }}
+                            non-zero coefficients
+
+                        </div>
+
+
+                        <div>
+
+                            <strong>
+                                Selected model:
+                            </strong>
+
+                            {{ comparison.logistic_regression.model_label }}
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Probability distribution -->
+                    <h3 style="margin-top:24px;">
+                        Class Probabilities
+                    </h3>
+
+
+                    {% for item in comparison.logistic_regression.probabilities %}
+
+                    <div
+                        style="
+                            margin-top:12px;
+                        "
+                    >
+
+                        <div
+                            style="
+                                display:flex;
+                                justify-content:space-between;
+                                gap:12px;
+                                margin-bottom:5px;
+                            "
+                        >
+
+                            <span>
+                                {{ item.class_name }}
+                            </span>
+
+                            <strong>
+                                {{ item.probability }}%
+                            </strong>
+
+                        </div>
+
+
+                        <div
+                            style="
+                                width:100%;
+                                height:10px;
+                                background:#ececec;
+                                border-radius:999px;
+                                overflow:hidden;
+                            "
+                        >
+
+                            <div
+                                style="
+                                    width:{{ item.probability }}%;
+                                    height:100%;
+                                    background:#657a58;
+                                    border-radius:999px;
+                                "
+                            >
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    {% endfor %}
+
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================================= -->
+        <!-- CONFIDENCE DIFFERENCE                                     -->
+        <!-- ========================================================= -->
+
+        <div class="p2-card">
+
+            <h2>
+                📊 Confidence Comparison
+            </h2>
+
+
+            <p>
+
+                The absolute difference between the two models'
+                prediction confidence is:
+
+                <strong>
+                    {{ comparison.confidence_difference }}%
+                </strong>
+
+            </p>
+
+
+            {% if comparison.confidence_difference >= 20 %}
+
+            <div class="p2-warning-box">
+
+                The models differ substantially in confidence.
+
+                Even if they predict the same class, one model may
+                be much less certain than the other.
+
+            </div>
+
+            {% else %}
+
+            <div class="p2-info-box">
+
+                The two models have relatively similar confidence
+                for this observation.
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+
+        <!-- ========================================================= -->
+        <!-- HUMAN-CENTRIC INTERPRETATION                              -->
+        <!-- ========================================================= -->
+
+        <div class="p2-card">
+
+            <h2>
+                🧠 Why does agreement matter?
+            </h2>
+
+
+            <div
+                class="{% if comparison.agree %}p2-info-box{% else %}p2-warning-box{% endif %}"
+            >
+
+                {{ comparison.interpretation }}
+
+            </div>
+
+
+            <p class="p2-muted">
+
+                A counterfactual, PDP, or ALE plot explains the behaviour
+                of a particular trained model.
+
+                It should not automatically be interpreted as a universal
+                explanation of the real-world penguin.
+
+            </p>
+
+        </div>
+
+
+    {% else %}
+
+
+        <!-- ========================================================= -->
+        <!-- NO COMPARISON YET                                         -->
+        <!-- ========================================================= -->
+
+        <div class="p2-info-box">
+
+            👆
+
+            <strong>
+                No comparison generated yet.
+            </strong>
+
+            Select a penguin and λ value, then press
+
+            <em>
+                Compare Models
+            </em>.
+
+        </div>
+
+
+    {% endif %}
+
+
+    <!-- ============================================================= -->
+    <!-- BACK                                                          -->
+    <!-- ============================================================= -->
+
+    <a
+        href="{% url 'home:index' %}"
+        class="p2-back"
+    >
+        ← Back to Project Hub
+    </a>
+
+
+</div>
+
+</body>
+</html>

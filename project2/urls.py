@@ -38,4 +38,10 @@ urlpatterns = [
         name="model_comparison",
     ),
 
+    path(
+        "feature-relationships/",
+        views.feature_relationships,
+        name="feature_relationships",
+    ),
+
 ]
