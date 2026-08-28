@@ -1,219 +1,1084 @@
-# Responsible for manually computing:
-    # PDP values,
-    # ALE values.
-
-# No library should be used for PDP/ALE computation.
-# You can still use:
-# model.predict_proba(...)
-
 """
-effect_plot_utils.py — Manual PDP and ALE computation for project2.
+effect_plot_utils.py — Manual PDP, ALE, and derivative-based ALE
+computation for project2.
 
 No external explainability library is used.
-Only model.predict_proba() is called to get predictions.
 
-# PDP and ALE are computed manually to make the explanation method
-# transparent — students and graders can see exactly how the values are derived,
-# rather than treating a library as a black box.
+PDP and standard ALE use only:
+    pipeline.predict_proba(...)
+
+Derivative-based ALE additionally uses the fitted Logistic Regression
+coefficients and the StandardScaler parameters so that the analytical
+probability derivative can be computed with respect to the original
+numerical feature.
 """
 
 import numpy as np
 import pandas as pd
 
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
-# ── PDP ───────────────────────────────────────────────────────────────────────
 
-def compute_pdp(pipeline, X, feature_name, class_names, n_grid=50):
+# ============================================================================
+# PDP
+# ============================================================================
+
+def compute_pdp(
+    pipeline,
+    X,
+    feature_name,
+    class_names,
+    n_grid=50,
+):
     """
     Compute Partial Dependence Plot values for one numerical feature.
 
-    Algorithm (manual, no library):
-    --------------------------------
-    For each value v in the feature's grid:
-        1. Copy the full dataset X.
-        2. Set the selected feature to v for ALL rows.
-        3. Call pipeline.predict_proba() on the modified dataset.
-        4. Average the predicted probabilities across all rows.
+    Algorithm
+    ---------
+    For each value v in the feature grid:
 
-    This gives the average model response when the feature is forced to v,
-    marginalising over all other features.
+        1. Copy X.
+        2. Set the selected feature to v for every row.
+        3. Compute predicted class probabilities.
+        4. Average probabilities over all observations.
 
-    # PDP is computed manually to make the explanation method
-    # transparent — the loop below is the exact definition of PDP from
-    # Friedman (2001), with no hidden abstractions.
+    No external PDP library is used.
 
     Parameters
     ----------
-    pipeline     : fitted sklearn Pipeline (prep + clf)
-    X            : pd.DataFrame — original feature matrix (un-encoded)
-    feature_name : str — which numerical feature to vary
-    class_names  : list[str] — ordered species names matching predict_proba columns
-    n_grid       : int — number of evenly-spaced grid points across the feature range
+    pipeline : fitted sklearn Pipeline
+        Preprocessing + classifier.
+
+    X : pd.DataFrame
+        Original unencoded feature matrix.
+
+    feature_name : str
+        Numerical feature to analyse.
+
+    class_names : list[str]
+        Class names in the same order as predict_proba columns.
+
+    n_grid : int
+        Number of feature values at which PDP is evaluated.
 
     Returns
     -------
-    dict with:
-        grid_values : list[float]   — the feature values used as x-axis
-        pdp_values  : dict[str -> list[float]]  — mean probability per class at each grid point
+    dict
+        {
+            "grid_values": [...],
+            "pdp_values": {
+                class_name: [...]
+            }
+        }
     """
+
     col_min = float(X[feature_name].min())
     col_max = float(X[feature_name].max())
-    grid_values = np.linspace(col_min, col_max, n_grid)
 
-    # Accumulator: one list per class
-    pdp_values = {cls: [] for cls in class_names}
+    grid_values = np.linspace(
+        col_min,
+        col_max,
+        n_grid,
+    )
 
-    X_copy = X.copy()
+    pdp_values = {
+        cls: []
+        for cls in class_names
+    }
 
     for grid_val in grid_values:
-        # Step 1-2: force the feature to grid_val for every row
-        X_copy[feature_name] = grid_val
 
-        # Step 3: get predicted probabilities (shape: n_rows x n_classes)
-        proba = pipeline.predict_proba(X_copy)
+        X_modified = X.copy()
 
-        # Step 4: average over all rows
-        mean_proba = proba.mean(axis=0)
+        X_modified[feature_name] = grid_val
 
-        for i, cls in enumerate(class_names):
-            pdp_values[cls].append(round(float(mean_proba[i]), 5))
+        probabilities = pipeline.predict_proba(
+            X_modified
+        )
+
+        mean_probabilities = probabilities.mean(
+            axis=0
+        )
+
+        for class_index, cls in enumerate(class_names):
+
+            pdp_values[cls].append(
+                round(
+                    float(
+                        mean_probabilities[class_index]
+                    ),
+                    5,
+                )
+            )
 
     return {
         "grid_values": grid_values.tolist(),
-        "pdp_values":  pdp_values,
+        "pdp_values": pdp_values,
     }
 
 
-# ── ALE ───────────────────────────────────────────────────────────────────────
+# ============================================================================
+# STANDARD BIN-BASED ALE
+# ============================================================================
 
-def compute_ale(pipeline, X, feature_name, class_names, n_bins=10):
+def compute_ale(
+    pipeline,
+    X,
+    feature_name,
+    class_names,
+    n_bins=10,
+):
     """
-    Compute Accumulated Local Effects (ALE) for one numerical feature.
+    Compute standard bin-based Accumulated Local Effects (ALE).
 
-    ALE is more reliable than PDP when features are correlated, because it only
-    looks at local changes within each bin — it never asks the model to predict
-    on impossible (out-of-distribution) feature combinations.
+    This implementation is model-agnostic and therefore works for both:
 
-    # bin-based ALE keeps the method model-agnostic and works
-    # identically for both Decision Trees and Logistic Regression:
-    #   - Logistic Regression is differentiable, so exact partial derivatives
-    #     exist in theory, but bin-based ALE is simpler to implement and explain.
-    #   - Decision Trees are piecewise constant and not smoothly differentiable,
-    #     so a derivative-based approach would not work anyway.
-    #   - Using bin-based ALE for both gives a consistent, model-agnostic interface.
+        - Decision Trees
+        - Logistic Regression
 
-    Algorithm (manual, no library):
-    --------------------------------
-    1. Compute quantile bin edges for the selected feature.
-    2. For each bin [z_low, z_high]:
-        a. Find all rows whose feature value falls inside this bin.
-        b. If no rows → skip this bin.
-        c. Create two copies of those rows:
-               X_low  — feature set to z_low  (lower bin edge)
-               X_high — feature set to z_high (upper bin edge)
-        d. Compute predict_proba for both copies.
-        e. Local effect = mean( proba_high - proba_low )  per class.
-    3. Accumulate local effects across bins (running sum) → raw ALE.
-    4. Centre the ALE by subtracting the weighted mean so the overall
-       average effect is near zero — this makes curves comparable across features.
+    Algorithm
+    ---------
+    1. Divide the selected feature into quantile intervals.
+
+    2. For each interval [z_low, z_high]:
+
+       a. Find observations naturally occurring inside the interval.
+
+       b. Replace the feature by z_low.
+
+       c. Replace the feature by z_high.
+
+       d. Compute the difference between the two predictions.
+
+       e. Average the difference.
+
+    3. Accumulate the local effects.
+
+    4. Centre the accumulated curve around zero.
+
+    No external ALE library is used.
 
     Parameters
     ----------
-    pipeline     : fitted sklearn Pipeline (prep + clf)
-    X            : pd.DataFrame — original feature matrix (un-encoded)
-    feature_name : str — which numerical feature to analyse
-    class_names  : list[str] — species names matching predict_proba columns
-    n_bins       : int — number of quantile bins
+    pipeline : fitted sklearn Pipeline
+
+    X : pd.DataFrame
+
+    feature_name : str
+
+    class_names : list[str]
+
+    n_bins : int
 
     Returns
     -------
-    dict with:
-        bin_centres : list[float]   — mid-point of each bin (x-axis)
-        ale_values  : dict[str -> list[float]]  — centred ALE per class per bin
-        n_bins_used : int — bins that actually contained data
+    dict
+        {
+            "bin_centres": [...],
+            "ale_values": {...},
+            "n_bins_used": int
+        }
     """
-    # Step 1: compute quantile bin edges
-    quantiles  = np.linspace(0, 100, n_bins + 1)
-    bin_edges  = np.percentile(X[feature_name].dropna(), quantiles)
-    # Remove duplicate edges that arise from low-variance columns
-    bin_edges  = np.unique(bin_edges)
+
+    quantiles = np.linspace(
+        0,
+        100,
+        n_bins + 1,
+    )
+
+    bin_edges = np.percentile(
+        X[feature_name].dropna(),
+        quantiles,
+    )
+
+    # Duplicate edges can occur for low-variance variables.
+    bin_edges = np.unique(bin_edges)
+
     n_intervals = len(bin_edges) - 1
 
     if n_intervals == 0:
-        # Degenerate case: feature has no variance
+
         return {
             "bin_centres": [],
-            "ale_values":  {cls: [] for cls in class_names},
+            "ale_values": {
+                cls: []
+                for cls in class_names
+            },
             "n_bins_used": 0,
         }
 
-    # Accumulators
-    local_effects  = {cls: [] for cls in class_names}  # per-bin Δ
-    bin_centres    = []
-    bin_counts     = []   # number of samples in each bin (for centering)
+    local_effects = {
+        cls: []
+        for cls in class_names
+    }
+
+    bin_centres = []
+    bin_counts = []
 
     X_work = X.copy()
 
-    for i in range(n_intervals):
-        z_low  = bin_edges[i]
-        z_high = bin_edges[i + 1]
+    for interval_index in range(n_intervals):
 
-        # Step 2a: find rows whose feature lies inside this bin
-        if i == n_intervals - 1:
-            # Include the right edge in the last bin
-            mask = (X_work[feature_name] >= z_low) & (X_work[feature_name] <= z_high)
+        z_low = bin_edges[interval_index]
+        z_high = bin_edges[interval_index + 1]
+
+        # Include the maximum value in the final interval.
+        if interval_index == n_intervals - 1:
+
+            mask = (
+                (X_work[feature_name] >= z_low)
+                &
+                (X_work[feature_name] <= z_high)
+            )
+
         else:
-            mask = (X_work[feature_name] >= z_low) & (X_work[feature_name] < z_high)
 
-        X_bin = X_work[mask].copy()
+            mask = (
+                (X_work[feature_name] >= z_low)
+                &
+                (X_work[feature_name] < z_high)
+            )
+
+        X_bin = X_work.loc[mask].copy()
+
+        bin_centre = float(
+            (z_low + z_high) / 2
+        )
+
+        bin_centres.append(
+            round(bin_centre, 4)
+        )
+
+        # ------------------------------------------------------------------
+        # Empty interval
+        # ------------------------------------------------------------------
 
         if len(X_bin) == 0:
-            # Step 2b: no data in this bin — record a zero effect so the
-            # x-axis stays continuous, but don't let it distort centering
-            bin_centres.append(round(float((z_low + z_high) / 2), 4))
+
             bin_counts.append(0)
+
             for cls in class_names:
                 local_effects[cls].append(0.0)
+
             continue
 
-        # Step 2c: two copies — feature forced to bin edges
-        X_low  = X_bin.copy(); X_low[feature_name]  = z_low
-        X_high = X_bin.copy(); X_high[feature_name] = z_high
+        # ------------------------------------------------------------------
+        # Evaluate lower and upper boundaries
+        # ------------------------------------------------------------------
 
-        # Step 2d: predicted probabilities for both
-        proba_low  = pipeline.predict_proba(X_low)   # shape (n_bin, n_classes)
-        proba_high = pipeline.predict_proba(X_high)
+        X_low = X_bin.copy()
+        X_high = X_bin.copy()
 
-        # Step 2e: mean local effect per class
-        delta = (proba_high - proba_low).mean(axis=0)
+        X_low[feature_name] = z_low
+        X_high[feature_name] = z_high
 
-        bin_centres.append(round(float((z_low + z_high) / 2), 4))
+        proba_low = pipeline.predict_proba(
+            X_low
+        )
+
+        proba_high = pipeline.predict_proba(
+            X_high
+        )
+
+        local_delta = (
+            proba_high - proba_low
+        ).mean(axis=0)
+
         bin_counts.append(len(X_bin))
-        for j, cls in enumerate(class_names):
-            local_effects[cls].append(round(float(delta[j]), 6))
 
-    # Step 3: accumulate local effects (running sum) → raw ALE
+        for class_index, cls in enumerate(class_names):
+
+            local_effects[cls].append(
+                round(
+                    float(
+                        local_delta[class_index]
+                    ),
+                    6,
+                )
+            )
+
+    # ----------------------------------------------------------------------
+    # Accumulate local effects
+    # ----------------------------------------------------------------------
+
     ale_raw = {}
-    for cls in class_names:
-        ale_raw[cls] = list(np.cumsum(local_effects[cls]))
 
-    # Step 4: centre — subtract weighted mean so average ALE ≈ 0
-    # Weighting by bin count makes the centering reflect the data distribution.
-    counts = np.array(bin_counts, dtype=float)
-    total  = counts.sum()
+    for cls in class_names:
+
+        ale_raw[cls] = list(
+            np.cumsum(
+                local_effects[cls]
+            )
+        )
+
+    # ----------------------------------------------------------------------
+    # Centre ALE around zero
+    # ----------------------------------------------------------------------
+
+    counts = np.asarray(
+        bin_counts,
+        dtype=float,
+    )
+
+    total_count = counts.sum()
 
     ale_values = {}
+
     for cls in class_names:
-        raw = np.array(ale_raw[cls])
-        if total > 0:
-            weighted_mean = float(np.dot(counts, raw) / total)
+
+        raw_values = np.asarray(
+            ale_raw[cls],
+            dtype=float,
+        )
+
+        if total_count > 0:
+
+            weighted_mean = float(
+                np.dot(
+                    counts,
+                    raw_values,
+                )
+                / total_count
+            )
+
         else:
             weighted_mean = 0.0
-        centred = [round(float(v - weighted_mean), 5) for v in raw]
-        ale_values[cls] = centred
+
+        centred_values = (
+            raw_values - weighted_mean
+        )
+
+        ale_values[cls] = [
+            round(float(value), 5)
+            for value in centred_values
+        ]
 
     return {
         "bin_centres": bin_centres,
-        "ale_values":  ale_values,
-        "n_bins_used": int(sum(1 for c in bin_counts if c > 0)),
+        "ale_values": ale_values,
+        "n_bins_used": int(
+            sum(
+                count > 0
+                for count in bin_counts
+            )
+        ),
+    }
+
+
+# ============================================================================
+# DERIVATIVE-BASED ALE — LOGISTIC REGRESSION ONLY
+# ============================================================================
+
+def _get_classifier_from_pipeline(pipeline):
+    """
+    Return the final estimator from a fitted sklearn Pipeline.
+
+    The project pipeline consists of preprocessing followed by the
+    classifier, so the final step is expected to be LogisticRegression.
+    """
+
+    if not isinstance(pipeline, Pipeline):
+        raise ValueError(
+            "Derivative-based ALE requires a fitted sklearn Pipeline."
+        )
+
+    if not pipeline.steps:
+        raise ValueError(
+            "The supplied pipeline contains no steps."
+        )
+
+    return pipeline.steps[-1][1]
+
+
+def _get_preprocessor_from_pipeline(pipeline):
+    """
+    Find the fitted ColumnTransformer inside the pipeline.
+    """
+
+    for _, step in pipeline.steps:
+
+        if isinstance(step, ColumnTransformer):
+            return step
+
+        # Some projects wrap preprocessing inside another Pipeline.
+        if isinstance(step, Pipeline):
+
+            for _, nested_step in step.steps:
+
+                if isinstance(
+                    nested_step,
+                    ColumnTransformer,
+                ):
+                    return nested_step
+
+    raise ValueError(
+        "Could not find the fitted ColumnTransformer "
+        "required for derivative-based ALE."
+    )
+
+
+def _find_standard_scaler(transformer):
+    """
+    Find a StandardScaler inside either:
+
+        StandardScaler
+
+    or:
+
+        Pipeline(... StandardScaler ...)
+    """
+
+    if isinstance(
+        transformer,
+        StandardScaler,
+    ):
+        return transformer
+
+    if isinstance(
+        transformer,
+        Pipeline,
+    ):
+
+        for _, step in transformer.steps:
+
+            if isinstance(
+                step,
+                StandardScaler,
+            ):
+                return step
+
+    return None
+
+
+def _get_feature_scale(
+    preprocessor,
+    feature_name,
+):
+    """
+    Return the StandardScaler scale for one original numerical feature.
+
+    The derivative of Logistic Regression is naturally expressed with
+    respect to the transformed feature:
+
+        z = (x - mean) / scale
+
+    To obtain the derivative with respect to the original feature x,
+    the derivative must therefore be divided by `scale`.
+    """
+
+    for (
+        _,
+        transformer,
+        columns,
+    ) in preprocessor.transformers_:
+
+        if transformer == "drop":
+            continue
+
+        if isinstance(
+            columns,
+            (str, int),
+        ):
+            columns = [columns]
+
+        else:
+            try:
+                columns = list(columns)
+            except TypeError:
+                continue
+
+        if feature_name not in columns:
+            continue
+
+        scaler = _find_standard_scaler(
+            transformer
+        )
+
+        if scaler is None:
+
+            # If the feature is not scaled, dz/dx = 1.
+            return 1.0
+
+        feature_position = columns.index(
+            feature_name
+        )
+
+        scale = float(
+            scaler.scale_[feature_position]
+        )
+
+        if scale == 0:
+            return 1.0
+
+        return scale
+
+    raise ValueError(
+        f"Could not determine preprocessing scale "
+        f"for feature '{feature_name}'."
+    )
+
+
+def _get_transformed_feature_index(
+    preprocessor,
+    feature_name,
+):
+    """
+    Find the selected original feature inside the transformed design matrix.
+
+    ColumnTransformer.get_feature_names_out() typically returns names such as:
+
+        num__bill_length_mm
+        cat__island_Biscoe
+
+    The selected numerical feature is identified by matching either the
+    complete name or the suffix after '__'.
+    """
+
+    try:
+        transformed_names = list(
+            preprocessor.get_feature_names_out()
+        )
+
+    except Exception as exc:
+
+        raise ValueError(
+            "Could not obtain transformed feature names "
+            "from the preprocessing pipeline."
+        ) from exc
+
+    matching_indices = []
+
+    for index, transformed_name in enumerate(
+        transformed_names
+    ):
+
+        transformed_name = str(
+            transformed_name
+        )
+
+        if (
+            transformed_name == feature_name
+            or
+            transformed_name.endswith(
+                f"__{feature_name}"
+            )
+        ):
+            matching_indices.append(index)
+
+    if len(matching_indices) != 1:
+
+        raise ValueError(
+            f"Could not uniquely locate transformed feature "
+            f"'{feature_name}'."
+        )
+
+    return matching_indices[0]
+
+
+def _prepare_logistic_coefficients(
+    classifier,
+    n_probability_classes,
+):
+    """
+    Return one coefficient row per probability class.
+
+    Multiclass Logistic Regression
+    ------------------------------
+    sklearn provides:
+
+        coef_.shape == (n_classes, n_features)
+
+    which can directly be used in the softmax derivative.
+
+    Binary Logistic Regression
+    --------------------------
+    sklearn may provide only one coefficient vector:
+
+        coef_.shape == (1, n_features)
+
+    In that case we represent the two logits as:
+
+        class 0: 0
+        class 1: beta
+
+    so the same derivative formula remains valid.
+    """
+
+    coefficients = np.asarray(
+        classifier.coef_,
+        dtype=float,
+    )
+
+    if (
+        coefficients.shape[0]
+        == n_probability_classes
+    ):
+        return coefficients
+
+    if (
+        n_probability_classes == 2
+        and coefficients.shape[0] == 1
+    ):
+
+        zero_row = np.zeros_like(
+            coefficients[0]
+        )
+
+        return np.vstack(
+            [
+                zero_row,
+                coefficients[0],
+            ]
+        )
+
+    raise ValueError(
+        "Unexpected Logistic Regression coefficient shape."
+    )
+
+
+def compute_derivative_ale(
+    pipeline,
+    X,
+    feature_name,
+    class_names,
+    n_bins=10,
+):
+    """
+    Compute derivative-based ALE for Logistic Regression probabilities.
+
+    This is an additional model-specific explanation.
+
+    It does NOT replace the standard bin-based ALE implementation.
+
+    ------------------------------------------------------------------------
+    Mathematical idea
+    ------------------------------------------------------------------------
+
+    For multiclass Logistic Regression:
+
+        p_k(x) = softmax_k(x)
+
+    and for transformed feature z_j:
+
+        d p_k / d z_j
+        =
+        p_k *
+        (
+            beta_kj
+            -
+            sum_l p_l * beta_lj
+        )
+
+    Numerical features in this project are standardized:
+
+        z_j = (x_j - mean_j) / scale_j
+
+    therefore:
+
+        d p_k / d x_j
+        =
+        (1 / scale_j)
+        *
+        d p_k / d z_j
+
+    This function evaluates that analytical derivative at the actual
+    observations occurring within each ALE interval.
+
+    The average derivative inside an interval is multiplied by the interval
+    width to approximate the accumulated change:
+
+        local_effect
+        ≈
+        mean(derivative) * interval_width
+
+    The local effects are then accumulated and centred, just like standard ALE.
+
+    Important terminology
+    ---------------------
+    The Logistic Regression probability derivative itself is analytical.
+
+    However, the ALE expectation and integration are still estimated from
+    empirical observations and finite bins. Therefore this should be called:
+
+        "Derivative-based ALE"
+
+    rather than:
+
+        "Exact ALE"
+
+    Parameters
+    ----------
+    pipeline : fitted sklearn Pipeline
+        Must end with LogisticRegression or another compatible linear
+        probabilistic classifier exposing coef_.
+
+    X : pd.DataFrame
+        Original unencoded observations.
+
+    feature_name : str
+        Numerical feature to analyse.
+
+    class_names : list[str]
+        Names corresponding to predict_proba columns.
+
+    n_bins : int
+        Number of quantile ALE intervals.
+
+    Returns
+    -------
+    dict
+        {
+            "bin_centres": [...],
+            "ale_values": {...},
+            "n_bins_used": int,
+            "method": "derivative"
+        }
+    """
+
+    classifier = _get_classifier_from_pipeline(
+        pipeline
+    )
+
+    if not hasattr(
+        classifier,
+        "coef_",
+    ):
+        raise ValueError(
+            "Derivative-based ALE is only available "
+            "for Logistic Regression."
+        )
+
+    preprocessor = _get_preprocessor_from_pipeline(
+        pipeline
+    )
+
+    transformed_feature_index = (
+        _get_transformed_feature_index(
+            preprocessor,
+            feature_name,
+        )
+    )
+
+    feature_scale = _get_feature_scale(
+        preprocessor,
+        feature_name,
+    )
+
+    # ----------------------------------------------------------------------
+    # Quantile ALE intervals
+    # ----------------------------------------------------------------------
+
+    feature_values = (
+        X[feature_name]
+        .dropna()
+        .to_numpy()
+    )
+
+    if len(feature_values) == 0:
+
+        return {
+            "bin_centres": [],
+            "ale_values": {
+                cls: []
+                for cls in class_names
+            },
+            "n_bins_used": 0,
+            "method": "derivative",
+        }
+
+    quantiles = np.linspace(
+        0,
+        100,
+        n_bins + 1,
+    )
+
+    bin_edges = np.percentile(
+        feature_values,
+        quantiles,
+    )
+
+    bin_edges = np.unique(
+        bin_edges
+    )
+
+    n_intervals = (
+        len(bin_edges) - 1
+    )
+
+    if n_intervals == 0:
+
+        return {
+            "bin_centres": [],
+            "ale_values": {
+                cls: []
+                for cls in class_names
+            },
+            "n_bins_used": 0,
+            "method": "derivative",
+        }
+
+    # ----------------------------------------------------------------------
+    # Determine classifier coefficient matrix
+    # ----------------------------------------------------------------------
+
+    sample_probabilities = (
+        pipeline.predict_proba(
+            X.iloc[:1]
+        )
+    )
+
+    n_probability_classes = (
+        sample_probabilities.shape[1]
+    )
+
+    if len(class_names) != n_probability_classes:
+
+        raise ValueError(
+            "class_names does not match the number "
+            "of predict_proba classes."
+        )
+
+    coefficient_matrix = (
+        _prepare_logistic_coefficients(
+            classifier,
+            n_probability_classes,
+        )
+    )
+
+    beta_feature = coefficient_matrix[
+        :,
+        transformed_feature_index,
+    ]
+
+    # Convert derivative from standardized units
+    # back to original feature units.
+    beta_feature_original = (
+        beta_feature / feature_scale
+    )
+
+    # ----------------------------------------------------------------------
+    # Compute derivative local effects
+    # ----------------------------------------------------------------------
+
+    local_effects = {
+        cls: []
+        for cls in class_names
+    }
+
+    bin_centres = []
+    bin_counts = []
+
+    for interval_index in range(
+        n_intervals
+    ):
+
+        z_low = float(
+            bin_edges[interval_index]
+        )
+
+        z_high = float(
+            bin_edges[interval_index + 1]
+        )
+
+        if interval_index == n_intervals - 1:
+
+            mask = (
+                (X[feature_name] >= z_low)
+                &
+                (X[feature_name] <= z_high)
+            )
+
+        else:
+
+            mask = (
+                (X[feature_name] >= z_low)
+                &
+                (X[feature_name] < z_high)
+            )
+
+        X_bin = X.loc[mask].copy()
+
+        bin_centre = (
+            z_low + z_high
+        ) / 2
+
+        bin_centres.append(
+            round(
+                float(bin_centre),
+                4,
+            )
+        )
+
+        # ------------------------------------------------------------------
+        # Empty interval
+        # ------------------------------------------------------------------
+
+        if len(X_bin) == 0:
+
+            bin_counts.append(0)
+
+            for cls in class_names:
+                local_effects[cls].append(
+                    0.0
+                )
+
+            continue
+
+        # ------------------------------------------------------------------
+        # Probabilities at actual observed rows
+        # ------------------------------------------------------------------
+
+        probabilities = (
+            pipeline.predict_proba(
+                X_bin
+            )
+        )
+
+        # Shape:
+        #
+        # probabilities:
+        #     n_samples x n_classes
+        #
+        # beta_feature_original:
+        #     n_classes
+        #
+        # For each row:
+        #
+        # sum_l p_l * beta_lj
+        #
+        weighted_beta = (
+            probabilities
+            @ beta_feature_original
+        )
+
+        # Softmax probability derivative:
+        #
+        # dp_k/dx_j =
+        #
+        # p_k *
+        # (
+        #   beta_kj
+        #   -
+        #   sum_l p_l beta_lj
+        # )
+        derivatives = (
+            probabilities
+            *
+            (
+                beta_feature_original[
+                    np.newaxis,
+                    :
+                ]
+                -
+                weighted_beta[
+                    :,
+                    np.newaxis,
+                ]
+            )
+        )
+
+        mean_derivative = (
+            derivatives.mean(
+                axis=0
+            )
+        )
+
+        interval_width = (
+            z_high - z_low
+        )
+
+        # Numerical approximation of integral over this interval.
+        local_delta = (
+            mean_derivative
+            * interval_width
+        )
+
+        bin_counts.append(
+            len(X_bin)
+        )
+
+        for class_index, cls in enumerate(
+            class_names
+        ):
+
+            local_effects[cls].append(
+                round(
+                    float(
+                        local_delta[
+                            class_index
+                        ]
+                    ),
+                    6,
+                )
+            )
+
+    # ----------------------------------------------------------------------
+    # Accumulate local derivative effects
+    # ----------------------------------------------------------------------
+
+    derivative_ale_raw = {}
+
+    for cls in class_names:
+
+        derivative_ale_raw[cls] = (
+            np.cumsum(
+                local_effects[cls]
+            )
+        )
+
+    # ----------------------------------------------------------------------
+    # Centre the curves
+    # ----------------------------------------------------------------------
+
+    counts = np.asarray(
+        bin_counts,
+        dtype=float,
+    )
+
+    total_count = counts.sum()
+
+    derivative_ale_values = {}
+
+    for cls in class_names:
+
+        raw_values = np.asarray(
+            derivative_ale_raw[cls],
+            dtype=float,
+        )
+
+        if total_count > 0:
+
+            weighted_mean = float(
+                np.dot(
+                    counts,
+                    raw_values,
+                )
+                / total_count
+            )
+
+        else:
+            weighted_mean = 0.0
+
+        centred_values = (
+            raw_values
+            - weighted_mean
+        )
+
+        derivative_ale_values[cls] = [
+            round(float(value), 5)
+            for value in centred_values
+        ]
+
+    return {
+        "bin_centres": bin_centres,
+        "ale_values": derivative_ale_values,
+        "n_bins_used": int(
+            sum(
+                count > 0
+                for count in bin_counts
+            )
+        ),
+        "method": "derivative",
     }

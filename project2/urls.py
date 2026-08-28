@@ -7,7 +7,6 @@ app_name = "project2"
 
 
 urlpatterns = [
-
     path(
         "",
         views.index,
@@ -44,4 +43,9 @@ urlpatterns = [
         name="feature_relationships",
     ),
 
+    path(
+        "ale-validation/",
+        views.ale_validation,
+        name="ale_validation",
+    ),
 ]
