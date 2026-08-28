@@ -37,13 +37,11 @@
 
 
         <p>
-
             Select a penguin and a desired species.
 
-            The app searches for the smallest changes
-            that would make the currently selected model
+            The app searches for nearby changes
+            that make the currently selected model
             predict the desired species.
-
         </p>
 
     </div>
@@ -308,6 +306,54 @@
             </div>
 
 
+            <!-- Ranking -->
+            <div class="p2-form-row">
+
+                <label
+                    class="p2-label"
+                    for="sort_by"
+                >
+
+                    Rank Counterfactuals By
+
+                    <span class="p2-label-help">
+                        Choose whether explanations should prioritise
+                        overall closeness or fewer changed features
+                    </span>
+
+                </label>
+
+
+                <select
+                    name="sort_by"
+                    id="sort_by"
+                    class="p2-select"
+                >
+
+                    <option
+                        value="distance"
+                        {% if sort_by == "distance" %}
+                        selected
+                        {% endif %}
+                    >
+                        Closest overall change
+                    </option>
+
+
+                    <option
+                        value="sparsity"
+                        {% if sort_by == "sparsity" %}
+                        selected
+                        {% endif %}
+                    >
+                        Fewest features changed
+                    </option>
+
+                </select>
+
+            </div>
+
+
             <button
                 type="submit"
                 class="p2-btn"
@@ -339,7 +385,7 @@
 
         <em>
             Try adjusting the model, λ, penguin,
-            or target species.
+            target species, or ranking method.
         </em>
 
     </div>
@@ -354,287 +400,426 @@
     {% if cf_result %}
 
 
-    <!-- Original already belongs to target class -->
-    {% if cf_result.original_prediction == cf_result.target_class %}
-
-    <div class="p2-warning-box">
-
-        ⚠
-
-        <strong>
-
-            The model already predicts this penguin as
-            {{ cf_result.target_class }}.
-
-        </strong>
-
-        No changes are necessary.
-
-        Select a different desired species to generate
-        a meaningful counterfactual.
-
-    </div>
-
-    {% endif %}
-
-
-    <!-- Status -->
-    <div class="p2-success-box">
-
-        {{ cf_result.message }}
-
-    </div>
-
-
-    <!-- Original observation -->
-    <div class="p2-card">
-
-        <h2>
-
-            🐧 Original Penguin
-            (Row {{ row_index }})
-
-        </h2>
-
-
-        <div class="p2-cf-summary">
-
-            <span class="p2-cf-label">
-                Model predicted:
-            </span>
-
-            <span class="p2-class-badge">
-                {{ cf_result.original_prediction }}
-            </span>
-
-
-            <span
-                class="p2-cf-label"
-                style="margin-left:16px;"
-            >
-                Desired species:
-            </span>
-
-            <span class="p2-class-badge p2-badge-target">
-                {{ cf_result.target_class }}
-            </span>
-
-        </div>
-
-
-        <div
-            class="p2-table-scroll"
-            style="margin-top:14px;"
-        >
-
-            <table class="p2-table">
-
-
-                <thead>
-
-                    <tr>
-
-                        {% for feat in all_features %}
-
-                        <th>
-                            {{ feat }}
-                        </th>
-
-                        {% endfor %}
-
-                    </tr>
-
-                </thead>
-
-
-                <tbody>
-
-                    <tr>
-
-                        {% for feat in all_features %}
-
-                        <td>
-                            {{ cf_result.original_row|get_dict_value:feat }}
-                        </td>
-
-                        {% endfor %}
-
-                    </tr>
-
-                </tbody>
-
-
-            </table>
-
-        </div>
-
-    </div>
-
-
-    <!-- ============================================================= -->
-    <!-- COUNTERFACTUAL ROWS                                           -->
-    <!-- ============================================================= -->
-
-    {% if cf_result.counterfactuals %}
-
-
-    <div class="p2-card">
-
-        <h2>
-            🔀 Top Counterfactuals
-        </h2>
-
-
-        <p class="p2-muted">
-
-            🟡
-
-            <strong>
-                Highlighted cells
-            </strong>
-
-            indicate features that changed from the
-            original penguin.
-
-            The distance measures how different the
-            candidate is from the original observation.
-
-            Lower distance means a closer counterfactual.
-
-        </p>
-
-
-        <div class="p2-table-scroll">
-
-
-            <table class="p2-table">
-
-
-                <thead>
-
-                    <tr>
-
-                        <th>
-                            #
-                        </th>
-
-
-                        {% for feat in all_features %}
-
-                        <th>
-                            {{ feat }}
-                        </th>
-
-                        {% endfor %}
-
-
-                        <th>
-                            Distance
-                        </th>
-
-                    </tr>
-
-                </thead>
-
-
-                <tbody>
-
-
-                    {% for cf in cf_result.counterfactuals %}
-
-
-                    <tr>
-
-                        <td>
-                            <strong>
-                                {{ forloop.counter }}
-                            </strong>
-                        </td>
-
-
-                        {% for feat in all_features %}
-
-                        <td
-                            {% if cf.changes|get_dict_value:feat %}
-                            class="p2-cell-changed"
-                            {% endif %}
-                        >
-
-                            {{ cf|get_dict_value:feat }}
-
-                        </td>
-
-                        {% endfor %}
-
-
-                        <td>
-                            {{ cf.distance }}
-                        </td>
-
-
-                    </tr>
-
-
-                    {% endfor %}
-
-
-                </tbody>
-
-
-            </table>
-
-        </div>
-
-    </div>
-
-
-    {% else %}
-
-
-    <div class="p2-card">
+        <!-- ========================================================= -->
+        <!-- ALREADY TARGET                                            -->
+        <!-- ========================================================= -->
+
+        {% if cf_result.status == "already_target" %}
 
         <div class="p2-warning-box">
 
+            ⚠
+
             <strong>
-                No counterfactuals found.
+                The model already predicts this penguin as
+                {{ cf_result.target_class }}.
             </strong>
 
-            <br><br>
+            No changes are necessary.
 
-            The desired class may be difficult to reach
-            from this observation with the current model.
-
-            Try another target species, observation,
-            model type, or λ value.
+            Select a different desired species to generate
+            a meaningful counterfactual.
 
         </div>
 
-    </div>
+        {% endif %}
 
 
-    {% endif %}
+        <!-- ========================================================= -->
+        <!-- SUCCESS MESSAGE                                           -->
+        <!-- ========================================================= -->
+
+        {% if cf_result.status == "success" %}
+
+        <div class="p2-success-box">
+
+            {{ cf_result.message }}
+
+        </div>
+
+        {% endif %}
+
+
+        <!-- ========================================================= -->
+        <!-- ORIGINAL OBSERVATION                                      -->
+        <!-- ========================================================= -->
+
+        <div class="p2-card">
+
+            <h2>
+
+                🐧 Original Penguin
+                (Row {{ row_index }})
+
+            </h2>
+
+
+            <div class="p2-cf-summary">
+
+                <span class="p2-cf-label">
+                    Model predicted:
+                </span>
+
+                <span class="p2-class-badge">
+                    {{ cf_result.original_prediction }}
+                </span>
+
+
+                <span
+                    class="p2-cf-label"
+                    style="margin-left:16px;"
+                >
+                    Desired species:
+                </span>
+
+                <span class="p2-class-badge p2-badge-target">
+                    {{ cf_result.target_class }}
+                </span>
+
+            </div>
+
+
+            <div
+                class="p2-table-scroll"
+                style="margin-top:14px;"
+            >
+
+                <table class="p2-table">
+
+
+                    <thead>
+
+                        <tr>
+
+                            {% for feat in all_features %}
+
+                            <th>
+                                {{ feat }}
+                            </th>
+
+                            {% endfor %}
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        <tr>
+
+                            {% for feat in all_features %}
+
+                            <td>
+                                {{ cf_result.original_row|get_dict_value:feat }}
+                            </td>
+
+                            {% endfor %}
+
+                        </tr>
+
+                    </tbody>
+
+
+                </table>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================================= -->
+        <!-- SUCCESSFUL COUNTERFACTUALS                                -->
+        <!-- ========================================================= -->
+
+        {% if cf_result.status == "success" %}
+
+
+        <div class="p2-card">
+
+            <h2>
+                🔀 Top Counterfactuals
+            </h2>
+
+
+            <p class="p2-muted">
+
+                🟡
+
+                <strong>
+                    Highlighted cells
+                </strong>
+
+                indicate features that changed from the
+                original penguin.
+
+                Distance represents the MAD-weighted
+                L1 difference from the original observation.
+
+            </p>
+
+
+            <!-- Current ranking -->
+            <div class="p2-info-box">
+
+                <strong>
+                    Current ranking:
+                </strong>
+
+                {% if cf_result.sort_by == "sparsity" %}
+
+                    Fewest changed features first.
+                    Distance is used as a secondary criterion.
+
+                {% else %}
+
+                    Smallest overall distance first.
+                    Sparsity is used as a secondary criterion.
+
+                {% endif %}
+
+            </div>
+
+
+            <div class="p2-table-scroll">
+
+
+                <table class="p2-table">
+
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                #
+                            </th>
+
+
+                            {% for feat in all_features %}
+
+                            <th>
+                                {{ feat }}
+                            </th>
+
+                            {% endfor %}
+
+
+                            <th>
+                                Features Changed
+                            </th>
+
+
+                            <th>
+                                Distance
+                            </th>
+
+
+                            <th>
+                                Range Plausibility
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+
+                        {% for cf in cf_result.counterfactuals %}
+
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ forloop.counter }}
+                                </strong>
+                            </td>
+
+
+                            {% for feat in all_features %}
+
+                            <td
+                                {% if cf.changes|get_dict_value:feat %}
+                                class="p2-cell-changed"
+                                {% endif %}
+                            >
+
+                                {{ cf|get_dict_value:feat }}
+
+                            </td>
+
+                            {% endfor %}
+
+
+                            <!-- Number of changed features -->
+                            <td>
+
+                                <strong>
+                                    {{ cf.num_changes }}
+                                </strong>
+
+                            </td>
+
+
+                            <!-- Distance -->
+                            <td>
+
+                                {{ cf.distance }}
+
+                            </td>
+
+
+                            <!-- Plausibility -->
+                            <td>
+
+                                {% if cf.plausibility.is_plausible %}
+
+                                    <span class="p2-plausible-badge">
+                                        ✓ Within range
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="p2-implausible-badge">
+                                        ⚠ Outside range
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                        </tr>
+
+
+                        {% endfor %}
+
+
+                    </tbody>
+
+
+                </table>
+
+            </div>
+
+
+
+            <!-- ===================================================== -->
+            <!-- RANGE PLAUSIBILITY DETAILS                            -->
+            <!-- ===================================================== -->
+
+            <div
+                class="p2-warning-box"
+                style="margin-top:20px;"
+            >
+
+                <strong>
+                    ⚠ Range Plausibility Details
+                </strong>
+
+                <p>
+                    Counterfactuals marked
+                    <strong>Outside range</strong>
+                    contain one or more numerical values outside
+                    the values observed for
+                    <strong>{{ cf_result.target_class }}</strong>.
+
+                    This is a simple heuristic warning and does not
+                    necessarily mean that the counterfactual is impossible.
+                </p>
+
+
+                <div style="margin-top:12px;">
+
+                    {% for cf in cf_result.counterfactuals %}
+
+                        {% if not cf.plausibility.is_plausible %}
+
+                            <div style="margin-top:6px;">
+
+                                <strong>
+                                    CF {{ forloop.counter }}:
+                                </strong>
+
+                                {% for feat in cf.plausibility.outside_features %}
+
+                                    {{ feat }}
+
+                                    {% if not forloop.last %}
+                                        ,
+                                    {% endif %}
+
+                                {% endfor %}
+
+                            </div>
+
+                        {% endif %}
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+        {% endif %}
+
+
+        <!-- ========================================================= -->
+        <!-- SEARCH FAILED                                             -->
+        <!-- ========================================================= -->
+
+        {% if cf_result.status == "not_found" %}
+
+        <div class="p2-card">
+
+            <div class="p2-warning-box">
+
+                <strong>
+                    No counterfactuals found.
+                </strong>
+
+                <br><br>
+
+                The desired class may be difficult to reach
+                from this observation with the current model.
+
+                Try another target species, observation,
+                model type, λ value, or ranking option.
+
+            </div>
+
+        </div>
+
+        {% endif %}
 
 
     {% else %}
 
 
-    <!-- No result yet -->
-    <div class="p2-info-box">
+        <!-- No result yet -->
+        <div class="p2-info-box">
 
-        👆
+            👆
 
-        <strong>
-            No counterfactuals generated yet.
-        </strong>
+            <strong>
+                No counterfactuals generated yet.
+            </strong>
 
-        Choose a penguin and desired target species,
-        then press
+            Choose a penguin and desired target species,
+            then press
 
-        <em>
-            Generate Counterfactuals
-        </em>.
+            <em>
+                Generate Counterfactuals
+            </em>.
 
-    </div>
+        </div>
 
 
     {% endif %}

@@ -1,10 +1,27 @@
 from django.shortcuts import render
 
-from .data_utils import load_penguin_data, NUMERICAL_FEATURES
-from .model_utils import get_selected_model
-from .counterfactual_utils import generate_counterfactuals
-from .effect_plot_utils import compute_pdp, compute_ale
-from .plot_utils import plot_pdp, plot_ale
+from .services.data_utils import (
+    load_penguin_data,
+    NUMERICAL_FEATURES,
+)
+
+from .services.model_utils import (
+    get_selected_model,
+)
+
+from .services.counterfactual_utils import (
+    generate_counterfactuals,
+)
+
+from .services.effect_plot_utils import (
+    compute_pdp,
+    compute_ale,
+)
+
+from .services.plot_utils import (
+    plot_pdp,
+    plot_ale,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +83,10 @@ def _get_model_settings(request):
         # Keep lambda inside the allowed UI range
         lambda_value = max(
             MIN_LAMBDA,
-            min(MAX_LAMBDA, lambda_value),
+            min(
+                MAX_LAMBDA,
+                lambda_value,
+            ),
         )
 
         # Remember the latest selection
@@ -81,9 +101,18 @@ def _get_model_settings(request):
 # ---------------------------------------------------------------------------
 
 def index(request):
-    """Landing page — shows dataset overview."""
+    """
+    Landing page — shows dataset overview.
+    """
 
-    df, X, y, num_feats, cat_feats, class_names = load_penguin_data()
+    (
+        df,
+        X,
+        y,
+        num_feats,
+        cat_feats,
+        class_names,
+    ) = load_penguin_data()
 
     context = {
         "page_title": "Project 2: Explainability",
@@ -124,18 +153,26 @@ def train(request):
         number of non-zero coefficients
     """
 
-    model_type, lambda_value = _get_model_settings(request)
+    (
+        model_type,
+        lambda_value,
+    ) = _get_model_settings(
+        request
+    )
 
     result = None
 
     if request.method == "POST":
+
         result = get_selected_model(
             model_type,
             lambda_value,
         )
 
     context = {
-        "page_title": "Train Model — Project 2",
+        "page_title": (
+            "Train Model — Project 2"
+        ),
         "model_type": model_type,
         "lambda_value": lambda_value,
         "result": result,
@@ -154,89 +191,224 @@ def train(request):
 
 def counterfactual(request):
     """
-    Generate counterfactual explanations using the same model class and
-    lambda selection shared with the Train and PDP/ALE pages.
+    Generate counterfactual explanations using the same model class
+    and lambda selection shared with the Train and PDP/ALE pages.
+
+    Counterfactuals can be ranked either by:
+
+        distance:
+            smallest MAD-weighted L1 distance first
+
+        sparsity:
+            fewest changed features first
     """
 
-    df, X, y, num_feats, cat_feats, class_names = load_penguin_data()
+    (
+        df,
+        X,
+        y,
+        num_feats,
+        cat_feats,
+        class_names,
+    ) = load_penguin_data()
 
-    model_type, lambda_value = _get_model_settings(request)
+    (
+        model_type,
+        lambda_value,
+    ) = _get_model_settings(
+        request
+    )
+
+    # ------------------------------------------------------------------
+    # Default counterfactual settings
+    # ------------------------------------------------------------------
 
     row_index = 0
-    target_class = class_names[0]
+
+    target_class = (
+        class_names[0]
+    )
+
+    sort_by = "distance"
 
     cf_result = None
+
     error = None
 
+    # ------------------------------------------------------------------
     # Build options for the penguin dropdown
+    # ------------------------------------------------------------------
+
     sample_options = [
         {
             "index": i,
-            "label": f"Row {i} — {row['species']}",
+            "label": (
+                f"Row {i} — "
+                f"{row['species']}"
+            ),
         }
-        for i, row in df.iterrows()
+        for i, row
+        in df.iterrows()
     ]
+
+    # ------------------------------------------------------------------
+    # Process submitted counterfactual request
+    # ------------------------------------------------------------------
 
     if request.method == "POST":
 
-        # ---------------------------------------------------------------
+        # --------------------------------------------------------------
         # Selected penguin
-        # ---------------------------------------------------------------
+        # --------------------------------------------------------------
+
         try:
+
             row_index = int(
                 request.POST.get(
                     "row_index",
                     0,
                 )
             )
-        except (TypeError, ValueError):
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+
             row_index = 0
 
         # Keep row_index valid
-        if row_index < 0 or row_index >= len(df):
+        if (
+            row_index < 0
+            or row_index >= len(df)
+        ):
+
             row_index = 0
 
-        # ---------------------------------------------------------------
+        # --------------------------------------------------------------
         # Desired target class
-        # ---------------------------------------------------------------
-        target_class = request.POST.get(
-            "target_class",
-            class_names[0],
+        # --------------------------------------------------------------
+
+        target_class = (
+            request.POST.get(
+                "target_class",
+                class_names[0],
+            )
         )
 
-        if target_class not in class_names:
-            target_class = class_names[0]
+        if (
+            target_class
+            not in class_names
+        ):
 
-        try:
-            # Select exactly the model corresponding to current
-            # model_type + lambda.
-            selected = get_selected_model(
-                model_type,
-                lambda_value,
+            target_class = (
+                class_names[0]
             )
 
-            cf_result = generate_counterfactuals(
-                selected_model_info=selected,
-                row_index=row_index,
-                target_class_name=target_class,
+        # --------------------------------------------------------------
+        # Counterfactual ranking preference
+        # --------------------------------------------------------------
+
+        sort_by = (
+            request.POST.get(
+                "sort_by",
+                "distance",
+            )
+        )
+
+        if sort_by not in {
+            "distance",
+            "sparsity",
+        }:
+
+            sort_by = "distance"
+
+        # --------------------------------------------------------------
+        # Generate counterfactuals
+        # --------------------------------------------------------------
+
+        try:
+
+            # Select exactly the model corresponding
+            # to current model_type + lambda.
+            selected = (
+                get_selected_model(
+                    model_type,
+                    lambda_value,
+                )
+            )
+
+            cf_result = (
+                generate_counterfactuals(
+                    selected_model_info=(
+                        selected
+                    ),
+                    row_index=(
+                        row_index
+                    ),
+                    target_class_name=(
+                        target_class
+                    ),
+                    sort_by=(
+                        sort_by
+                    ),
+                )
             )
 
         except Exception as exc:
-            error = str(exc)
+
+            error = str(
+                exc
+            )
+
+    # ------------------------------------------------------------------
+    # Template context
+    # ------------------------------------------------------------------
 
     context = {
-        "page_title": "Counterfactuals — Project 2",
-        "model_type": model_type,
-        "lambda_value": lambda_value,
-        "class_names": class_names,
-        "sample_options": sample_options,
-        "row_index": row_index,
-        "target_class": target_class,
-        "cf_result": cf_result,
-        "error": error,
-        "num_features": num_feats,
-        "cat_features": cat_feats,
-        "all_features": num_feats + cat_feats,
+        "page_title": (
+            "Counterfactuals — Project 2"
+        ),
+        "model_type": (
+            model_type
+        ),
+        "lambda_value": (
+            lambda_value
+        ),
+        "class_names": (
+            class_names
+        ),
+        "sample_options": (
+            sample_options
+        ),
+        "row_index": (
+            row_index
+        ),
+        "target_class": (
+            target_class
+        ),
+
+        # New Human-Centric control
+        "sort_by": (
+            sort_by
+        ),
+
+        "cf_result": (
+            cf_result
+        ),
+        "error": (
+            error
+        ),
+        "num_features": (
+            num_feats
+        ),
+        "cat_features": (
+            cat_feats
+        ),
+        "all_features": (
+            num_feats
+            + cat_feats
+        ),
     }
 
     return render(
@@ -258,9 +430,16 @@ def pdp_ale(request):
     Counterfactuals through the Django session.
     """
 
-    model_type, lambda_value = _get_model_settings(request)
+    (
+        model_type,
+        lambda_value,
+    ) = _get_model_settings(
+        request
+    )
 
-    feature_name = NUMERICAL_FEATURES[0]
+    feature_name = (
+        NUMERICAL_FEATURES[0]
+    )
 
     pdp_plot_url = None
     ale_plot_url = None
@@ -268,67 +447,140 @@ def pdp_ale(request):
 
     if request.method == "POST":
 
-        feature_name = request.POST.get(
-            "feature_name",
-            NUMERICAL_FEATURES[0],
+        feature_name = (
+            request.POST.get(
+                "feature_name",
+                NUMERICAL_FEATURES[0],
+            )
         )
 
-        # Only numerical features are allowed for these plots
-        if feature_name not in NUMERICAL_FEATURES:
-            feature_name = NUMERICAL_FEATURES[0]
+        # Only numerical features are allowed
+        # for these plots
+        if (
+            feature_name
+            not in NUMERICAL_FEATURES
+        ):
+
+            feature_name = (
+                NUMERICAL_FEATURES[0]
+            )
 
         try:
-            # Get the same selected model corresponding to
-            # current model_type + lambda.
-            selected = get_selected_model(
-                model_type,
-                lambda_value,
+
+            # Get the same selected model
+            # corresponding to model_type + lambda.
+            selected = (
+                get_selected_model(
+                    model_type,
+                    lambda_value,
+                )
             )
 
-            # -----------------------------------------------------------
+            # ----------------------------------------------------------
             # PDP
-            # -----------------------------------------------------------
-            pdp_result = compute_pdp(
-                pipeline=selected["pipeline"],
-                X=selected["X"],
-                feature_name=feature_name,
-                class_names=selected["class_names"],
+            # ----------------------------------------------------------
+
+            pdp_result = (
+                compute_pdp(
+                    pipeline=(
+                        selected[
+                            "pipeline"
+                        ]
+                    ),
+                    X=(
+                        selected[
+                            "X"
+                        ]
+                    ),
+                    feature_name=(
+                        feature_name
+                    ),
+                    class_names=(
+                        selected[
+                            "class_names"
+                        ]
+                    ),
+                )
             )
 
-            pdp_plot_url = plot_pdp(
-                pdp_result,
-                feature_name,
-                selected["label"],
+            pdp_plot_url = (
+                plot_pdp(
+                    pdp_result,
+                    feature_name,
+                    selected[
+                        "label"
+                    ],
+                )
             )
 
-            # -----------------------------------------------------------
+            # ----------------------------------------------------------
             # ALE
-            # -----------------------------------------------------------
-            ale_result = compute_ale(
-                pipeline=selected["pipeline"],
-                X=selected["X"],
-                feature_name=feature_name,
-                class_names=selected["class_names"],
+            # ----------------------------------------------------------
+
+            ale_result = (
+                compute_ale(
+                    pipeline=(
+                        selected[
+                            "pipeline"
+                        ]
+                    ),
+                    X=(
+                        selected[
+                            "X"
+                        ]
+                    ),
+                    feature_name=(
+                        feature_name
+                    ),
+                    class_names=(
+                        selected[
+                            "class_names"
+                        ]
+                    ),
+                )
             )
 
-            ale_plot_url = plot_ale(
-                ale_result,
-                feature_name,
-                selected["label"],
+            ale_plot_url = (
+                plot_ale(
+                    ale_result,
+                    feature_name,
+                    selected[
+                        "label"
+                    ],
+                )
             )
 
         except Exception as exc:
-            error = str(exc)
+
+            error = str(
+                exc
+            )
 
     context = {
-        "page_title": "Feature Effect Plots — Project 2",
-        "model_type": model_type,
-        "lambda_value": lambda_value,
-        "feature_name": feature_name,
-        "numerical_features": NUMERICAL_FEATURES,
-        "pdp_plot_url": pdp_plot_url,
-        "ale_plot_url": ale_plot_url,
-        "error": error,
+        "page_title": (
+            "Feature Effect Plots — Project 2"
+        ),
+        "model_type": (
+            model_type
+        ),
+        "lambda_value": (
+            lambda_value
+        ),
+        "feature_name": (
+            feature_name
+        ),
+        "numerical_features": (
+            NUMERICAL_FEATURES
+        ),
+        "pdp_plot_url": (
+            pdp_plot_url
+        ),
+        "ale_plot_url": (
+            ale_plot_url
+        ),
+        "error": (
+            error
+        ),
     }
 
     return render(
