@@ -18,14 +18,13 @@
 
     <link
         rel="stylesheet"
-        href="{% static 'project2/style.css' %}?v=5"
+        href="{% static 'project2/style.css' %}?v=9"
     >
 
 </head>
 
 
 <body class="p2-page">
-
 
 <div class="p2-container">
 
@@ -41,8 +40,9 @@
         </h1>
 
         <p>
-            Compare model-agnostic finite-difference ALE with
-            derivative-based ALE for Logistic Regression.
+            Validate standard finite-difference ALE against an
+            analytical derivative-based calculation for
+            Logistic Regression.
         </p>
 
     </div>
@@ -78,7 +78,7 @@
 
 
     <!-- ============================================================= -->
-    <!-- CONTEXT                                                       -->
+    <!-- VALIDATION CONTEXT                                            -->
     <!-- ============================================================= -->
 
     <div class="p2-card">
@@ -87,16 +87,7 @@
             Validation Context
         </h2>
 
-        <p class="p2-muted">
-
-            Both explanation methods below use the same Logistic
-            Regression model, feature, observations and quantile bins.
-
-        </p>
-
-
         <div class="p2-context-grid">
-
 
             <div class="p2-context-box">
 
@@ -140,25 +131,14 @@
             <div class="p2-context-box">
 
                 <span class="p2-context-label">
-                    Selected Model
+                    ALE Bins
                 </span>
 
                 <span class="p2-context-value">
-
-                    {% if selected_model_label %}
-
-                        {{ selected_model_label }}
-
-                    {% else %}
-
-                        Not available
-
-                    {% endif %}
-
+                    10
                 </span>
 
             </div>
-
 
         </div>
 
@@ -171,82 +151,206 @@
 
     {% if error %}
 
+        <div class="p2-error-card">
 
-    <div class="p2-error-card">
+            <strong>
+                Validation failed:
+            </strong>
 
-        <strong>
-            Validation failed:
-        </strong>
+            {{ error }}
 
-        {{ error }}
-
-    </div>
-
+        </div>
 
     {% endif %}
 
 
+    {% if validation_result %}
+
+
     <!-- ============================================================= -->
-    <!-- COMPARISON PLOT                                               -->
+    <!-- SHORT INTRO                                                   -->
     <!-- ============================================================= -->
 
-    {% if comparison_plot_url %}
+    <div class="p2-info-box">
 
+        <strong>
+            What are we validating?
+        </strong>
+
+        Standard ALE and derivative-based ALE estimate the same
+        accumulated feature effect using different calculations.
+        Close agreement provides additional evidence that the
+        standard ALE explanation is numerically consistent.
+
+    </div>
+
+
+    <!-- ============================================================= -->
+    <!-- COMPARISON RESULTS                                            -->
+    <!-- ============================================================= -->
 
     <div class="p2-card">
 
-        <h2>
-            Standard ALE vs Derivative-based ALE
-        </h2>
+        <div class="p2-heading-with-tooltip">
+
+            <h2>
+                Comparison Results
+            </h2>
+
+
+            <span
+                class="p2-tooltip"
+                tabindex="0"
+                aria-label="Why use visual and numerical validation?"
+            >
+
+                <span class="p2-tooltip-icon">
+                    i
+                </span>
+
+
+                <span class="p2-tooltip-content">
+
+                    <strong>
+                        Why use both visual and numerical validation?
+                    </strong>
+
+                    The difference plot shows where the two methods
+                    disagree, while the numerical metrics quantify
+                    how large those differences are.
+
+                    The species-specific plots preserve the original
+                    explanation shape, avoiding reliance on visually
+                    inspecting nearly overlapping curves.
+
+                </span>
+
+            </span>
+
+        </div>
 
 
         <p class="p2-muted">
 
-            Solid lines show standard finite-difference ALE.
-            Dashed lines show derivative-based ALE.
+            The difference plot shows
 
-            Curves that remain close indicate agreement between
-            the two explanation calculations.
+            <strong>
+                Standard ALE − Derivative ALE
+            </strong>.
+
+            Values close to zero indicate stronger agreement.
 
         </p>
 
 
-        <div class="p2-plot-wrapper">
+        {% if comparison_plot_url %}
 
-            <img
-                src="{{ comparison_plot_url }}"
-                alt="Comparison of standard and derivative-based ALE for {{ feature_name }}"
-                class="p2-plot-img"
-            >
+            <div class="p2-plot-wrapper">
+
+                <img
+                    src="{{ comparison_plot_url }}"
+                    alt="ALE method validation for {{ feature_name }}"
+                    class="p2-plot-img"
+                >
+
+            </div>
+
+        {% endif %}
+
+
+        <!-- ========================================================= -->
+        <!-- MEAN ABSOLUTE DIFFERENCE                                  -->
+        <!-- ========================================================= -->
+
+        <div class="p2-validation-stat">
+
+            <div class="p2-validation-stat-heading">
+
+                <strong>
+                    Mean Absolute Difference by Species
+                </strong>
+
+                <span class="p2-muted">
+                    Lower values indicate stronger agreement.
+                </span>
+
+            </div>
+
+
+            {% for item in validation_result.class_comparisons %}
+
+                <span class="p2-validation-stat-item">
+
+                    {{ item.class_name }}:
+
+                    <strong>
+                        {{ item.mean_absolute_difference }}
+                    </strong>
+
+                </span>
+
+            {% endfor %}
 
         </div>
 
     </div>
 
 
-    {% endif %}
-
-
     <!-- ============================================================= -->
-    <!-- NUMERICAL VALIDATION                                          -->
+    <!-- METHOD AGREEMENT                                              -->
     <!-- ============================================================= -->
-
-    {% if validation_result %}
-
 
     <div class="p2-card">
 
-        <h2>
-            Method Agreement
-        </h2>
+        <div class="p2-heading-with-tooltip">
+
+            <h2>
+                Method Agreement
+            </h2>
+
+
+            <!-- Logistic Regression explanation -->
+            <span
+                class="p2-tooltip"
+                tabindex="0"
+                aria-label="Why is derivative ALE only available for Logistic Regression?"
+            >
+
+                <span class="p2-tooltip-icon">
+                    i
+                </span>
+
+
+                <span class="p2-tooltip-content">
+
+                    <strong>
+                        Why Logistic Regression only?
+                    </strong>
+
+                    Logistic Regression produces smooth probability
+                    functions whose derivatives can be calculated
+                    analytically.
+
+                    Decision Trees are piecewise constant: predictions
+                    remain unchanged inside leaves and change abruptly
+                    at split thresholds.
+
+                    A smooth derivative-based probability explanation
+                    is therefore not appropriate for Decision Trees.
+
+                </span>
+
+            </span>
+
+        </div>
 
 
         <p class="p2-muted">
 
-            Mean absolute difference measures the average distance
-            between the two ALE curves.
+            Mean |Δ| measures the average absolute difference between
+            the two ALE calculations.
 
-            Smaller values indicate closer numerical agreement.
+            Maximum |Δ| reports the largest observed difference.
 
         </p>
 
@@ -264,11 +368,11 @@
                         </th>
 
                         <th>
-                            Mean Absolute Difference
+                            Mean |Δ|
                         </th>
 
                         <th>
-                            Maximum Difference
+                            Maximum |Δ|
                         </th>
 
                         <th>
@@ -282,33 +386,50 @@
 
                 <tbody>
 
-
                     {% for item in validation_result.class_comparisons %}
 
+                        <tr>
 
-                    <tr>
+                            <td>
+                                {{ item.class_name }}
+                            </td>
 
-                        <td>
-                            {{ item.class_name }}
-                        </td>
 
-                        <td>
-                            {{ item.mean_absolute_difference }}
-                        </td>
+                            <td>
+                                {{ item.mean_absolute_difference }}
+                            </td>
 
-                        <td>
-                            {{ item.max_absolute_difference }}
-                        </td>
 
-                        <td>
-                            {{ item.agreement }}
-                        </td>
+                            <td>
+                                {{ item.max_absolute_difference }}
+                            </td>
 
-                    </tr>
 
+                            <td>
+
+                                <span
+                                    class="
+                                        p2-agreement-badge
+
+                                        {% if item.agreement == 'High' %}
+                                            p2-agreement-high
+                                        {% elif item.agreement == 'Moderate' %}
+                                            p2-agreement-moderate
+                                        {% else %}
+                                            p2-agreement-low
+                                        {% endif %}
+                                    "
+                                >
+
+                                    {{ item.agreement }}
+
+                                </span>
+
+                            </td>
+
+                        </tr>
 
                     {% endfor %}
-
 
                 </tbody>
 
@@ -316,155 +437,238 @@
 
         </div>
 
-    </div>
 
+        <!-- ========================================================= -->
+        <!-- OVERALL RESULT                                            -->
+        <!-- ========================================================= -->
 
-    <!-- ============================================================= -->
-    <!-- OVERALL RESULT                                                -->
-    <!-- ============================================================= -->
+        <div class="p2-validation-summary">
 
-    <div class="p2-card">
-
-        <h2>
-            Overall Validation Result
-        </h2>
-
-
-        <div class="p2-context-grid">
-
-
-            <div class="p2-context-box">
+            <div>
 
                 <span class="p2-context-label">
-                    Mean Difference
+                    Overall Mean |Δ|
                 </span>
 
-                <span class="p2-context-value">
+                <strong>
                     {{ validation_result.overall_mean_difference }}
-                </span>
+                </strong>
 
             </div>
 
 
-            <div class="p2-context-box">
+            <div>
 
                 <span class="p2-context-label">
-                    Maximum Difference
+                    Overall Maximum |Δ|
                 </span>
 
-                <span class="p2-context-value">
+                <strong>
                     {{ validation_result.overall_max_difference }}
-                </span>
+                </strong>
 
             </div>
 
 
-            <div class="p2-context-box">
+            <div>
 
                 <span class="p2-context-label">
-                    Agreement
+                    Overall Agreement
                 </span>
 
-                <span class="p2-context-value">
+
+                <span
+                    class="
+                        p2-agreement-badge
+
+                        {% if validation_result.overall_agreement == 'High' %}
+                            p2-agreement-high
+                        {% elif validation_result.overall_agreement == 'Moderate' %}
+                            p2-agreement-moderate
+                        {% else %}
+                            p2-agreement-low
+                        {% endif %}
+                    "
+                >
+
                     {{ validation_result.overall_agreement }}
+
                 </span>
 
             </div>
-
-
-            <div class="p2-context-box">
-
-                <span class="p2-context-label">
-                    ALE Bins
-                </span>
-
-                <span class="p2-context-value">
-                    {{ validation_result.n_bins }}
-                </span>
-
-            </div>
-
-
-        </div>
-
-
-        <div class="p2-info-box">
-
-            <strong>
-                Interpretation
-            </strong>
-
-            <br><br>
-
-            {{ validation_result.interpretation }}
 
         </div>
 
     </div>
 
+
+    <!-- ============================================================= -->
+    <!-- BIN SENSITIVITY                                               -->
+    <!-- ============================================================= -->
+
+    {% if sensitivity_result %}
+
+        <div class="p2-card">
+
+            <h2>
+                Bin Sensitivity Analysis
+            </h2>
+
+
+            <p class="p2-muted">
+
+                The validation is repeated using different ALE bin
+                resolutions to check whether the observed agreement
+                depends strongly on the selected number of intervals.
+
+            </p>
+
+
+            <div class="p2-table-wrapper">
+
+                <table class="p2-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                ALE Bins
+                            </th>
+
+                            <th>
+                                Overall Mean |Δ|
+                            </th>
+
+                            <th>
+                                Overall Maximum |Δ|
+                            </th>
+
+                            <th>
+                                Agreement
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for row in sensitivity_result.rows %}
+
+                            <tr
+                                {% if row.n_bins == 10 %}
+                                    class="p2-current-bin-row"
+                                {% endif %}
+                            >
+
+                                <td>
+
+                                    {{ row.n_bins }}
+
+                                    {% if row.n_bins == 10 %}
+
+                                        <span class="p2-current-label">
+                                            Current
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+
+                                <td>
+                                    {{ row.overall_mean_difference }}
+                                </td>
+
+
+                                <td>
+                                    {{ row.overall_max_difference }}
+                                </td>
+
+
+                                <td>
+
+                                    <span
+                                        class="
+                                            p2-agreement-badge
+
+                                            {% if row.agreement == 'High' %}
+                                                p2-agreement-high
+                                            {% elif row.agreement == 'Moderate' %}
+                                                p2-agreement-moderate
+                                            {% else %}
+                                                p2-agreement-low
+                                            {% endif %}
+                                        "
+                                    >
+
+                                        {{ row.agreement }}
+
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+            <div class="p2-info-box">
+
+                <strong>
+                    Interpretation:
+                </strong>
+
+                {{ sensitivity_result.interpretation }}
+
+            </div>
+
+        </div>
 
     {% endif %}
 
 
     <!-- ============================================================= -->
-    <!-- METHOD EXPLANATION                                            -->
+    <!-- INTERPRETATION                                                -->
     <!-- ============================================================= -->
 
     <div class="p2-card">
 
         <h2>
-            Why Compare These Methods?
+            Interpretation
         </h2>
 
 
         <p>
-
-            Standard ALE is model-agnostic.
-
-            It estimates local effects by comparing predictions at
-            the lower and upper boundaries of feature intervals.
-
-        </p>
-
-
-        <p>
-
-            Logistic Regression is differentiable, so its local
-            probability sensitivity can also be calculated
-            analytically from the fitted coefficients.
-
+            {{ validation_result.interpretation }}
         </p>
 
 
         <p class="p2-muted">
 
-            If both approaches produce similar accumulated effects,
-            this provides additional evidence that the finite-difference
-            ALE explanation is consistent with the model's analytical
-            local behaviour.
+            Standard ALE estimates local effects using finite prediction
+            differences between feature interval boundaries.
+
+            Derivative-based ALE uses analytical derivatives of the
+            Logistic Regression class probabilities.
+
+            Close agreement indicates that both approaches consistently
+            capture the same underlying local model behaviour.
 
         </p>
 
     </div>
 
 
-    <!-- ============================================================= -->
-    <!-- DECISION TREE NOTE                                            -->
-    <!-- ============================================================= -->
-
-    <div class="p2-info-box">
-
-        <strong>
-            Why not Decision Trees?
-        </strong>
-
-        Decision Trees are piecewise constant.
-
-        Their predictions remain constant inside leaves and change
-        abruptly at split thresholds, so a smooth derivative-based
-        probability explanation is not appropriate.
-
-    </div>
+    {% endif %}
 
 
     <!-- ============================================================= -->
@@ -482,7 +686,6 @@
 
 
 </div>
-
 
 </body>
 

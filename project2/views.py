@@ -5,6 +5,7 @@ from .services.data_utils import (
     NUMERICAL_FEATURES,
 )
 
+
 from .services.model_utils import (
     get_selected_model,
 )
@@ -33,8 +34,10 @@ from .services.feature_relationship_utils import (
     get_feature_relationship_analysis,
 )
 
+
 from .services.ale_validation_utils import (
     compare_ale_methods,
+    build_bin_sensitivity_analysis,
 )
 
 
@@ -847,32 +850,22 @@ def feature_relationships(request):
 
 def ale_validation(request):
     """
-    Validate standard ALE against derivative-based ALE.
+    Validate standard finite-difference ALE against derivative-based ALE.
 
-    This advanced explanation is specific to Logistic Regression.
+    Validation always uses Logistic Regression because the analytical
+    derivative calculation depends on a differentiable probability model.
 
-    Standard ALE:
-        estimates local effects using finite prediction differences
-        between interval boundaries.
-
-    Derivative-based ALE:
-        uses the analytical derivative of Logistic Regression class
-        probabilities and accumulates those local sensitivities.
-
-    Both methods use the same:
-        - Logistic Regression model
-        - feature
-        - observations
-        - lambda value
-        - quantile bins
-
-    Their agreement provides an additional check on the standard
-    model-agnostic ALE explanation.
+    The page includes:
+        1. Overlaid ALE comparison
+        2. Residual analysis
+        3. Per-class numerical agreement
+        4. Overall agreement
+        5. Bin sensitivity analysis
     """
 
-    # ----------------------------------------------------------------------
-    # Preserve user's current model setting
-    # ----------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Preserve currently selected Project 2 settings
+    # ------------------------------------------------------------------
 
     (
         current_model_type,
@@ -881,22 +874,17 @@ def ale_validation(request):
         request
     )
 
-    # ----------------------------------------------------------------------
-    # Validation itself always uses Logistic Regression.
+    # ------------------------------------------------------------------
+    # Validation specifically uses Logistic Regression.
     #
-    # We intentionally DO NOT overwrite:
-    #
-    #     request.session["p2_model_type"]
-    #
-    # This prevents the validation page from silently changing the model
-    # selected by the user elsewhere.
-    # ----------------------------------------------------------------------
+    # Do not overwrite the user's shared model selection.
+    # ------------------------------------------------------------------
 
     validation_model_type = "lr"
 
-    # ----------------------------------------------------------------------
-    # Use same feature selected on PDP / ALE page
-    # ----------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Use feature selected on PDP / ALE page
+    # ------------------------------------------------------------------
 
     feature_name = request.session.get(
         "p2_feature_name",
@@ -904,24 +892,21 @@ def ale_validation(request):
     )
 
     if feature_name not in NUMERICAL_FEATURES:
-
         feature_name = (
             NUMERICAL_FEATURES[0]
         )
 
     comparison_plot_url = None
-
     validation_result = None
-
+    sensitivity_result = None
     selected_model_label = None
-
     error = None
 
     try:
 
-        # ==================================================================
-        # Select Logistic Regression using current lambda
-        # ==================================================================
+        # ==============================================================
+        # Select Logistic Regression
+        # ==============================================================
 
         selected = get_selected_model(
             validation_model_type,
@@ -932,72 +917,80 @@ def ale_validation(request):
             selected["label"]
         )
 
-        # ==================================================================
-        # Standard finite-difference ALE
-        # ==================================================================
+        pipeline = selected["pipeline"]
+        X = selected["X"]
+        class_names = selected["class_names"]
+
+        # ==============================================================
+        # Main validation uses 10 bins
+        # ==============================================================
+
+        validation_bins = 10
 
         standard_ale = compute_ale(
-            pipeline=selected["pipeline"],
-
-            X=selected["X"],
-
+            pipeline=pipeline,
+            X=X,
             feature_name=feature_name,
-
-            class_names=selected[
-                "class_names"
-            ],
-
-            n_bins=10,
+            class_names=class_names,
+            n_bins=validation_bins,
         )
-
-        # ==================================================================
-        # Derivative-based ALE
-        # ==================================================================
 
         derivative_ale = compute_derivative_ale(
-            pipeline=selected["pipeline"],
-
-            X=selected["X"],
-
+            pipeline=pipeline,
+            X=X,
             feature_name=feature_name,
-
-            class_names=selected[
-                "class_names"
-            ],
-
-            n_bins=10,
+            class_names=class_names,
+            n_bins=validation_bins,
         )
 
-        # ==================================================================
+        # ==============================================================
         # Numerical comparison
-        # ==================================================================
+        # ==============================================================
 
         validation_result = compare_ale_methods(
             standard_ale=standard_ale,
-
             derivative_ale=derivative_ale,
-
-            class_names=selected[
-                "class_names"
-            ],
+            class_names=class_names,
         )
 
-        # ==================================================================
-        # Overlay comparison plot
-        # ==================================================================
+        # ==============================================================
+        # ALE + residual comparison plot
+        # ==============================================================
 
         comparison_plot_url = (
             plot_ale_comparison(
                 standard_ale=standard_ale,
+                derivative_ale=derivative_ale,
+                feature_name=feature_name,
+                model_label=selected_model_label,
+            )
+        )
 
-                derivative_ale=(
-                    derivative_ale
+        # ==============================================================
+        # Bin sensitivity analysis
+        #
+        # 5 / 10 / 20 bins
+        # ==============================================================
+
+        sensitivity_result = (
+            build_bin_sensitivity_analysis(
+                pipeline=pipeline,
+                X=X,
+                feature_name=feature_name,
+                class_names=class_names,
+
+                compute_ale_function=(
+                    compute_ale
                 ),
 
-                feature_name=feature_name,
+                compute_derivative_ale_function=(
+                    compute_derivative_ale
+                ),
 
-                model_label=(
-                    selected_model_label
+                bin_options=(
+                    5,
+                    10,
+                    20,
                 ),
             )
         )
@@ -1029,6 +1022,10 @@ def ale_validation(request):
 
         "validation_result": (
             validation_result
+        ),
+
+        "sensitivity_result": (
+            sensitivity_result
         ),
 
         "error": error,
