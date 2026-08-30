@@ -1,245 +1,669 @@
 {% load static project2_tags %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>{{ page_title }}</title>
+
     <link rel="stylesheet" href="{% static 'project2/style.css' %}">
 </head>
+
 <body class="p2-page">
+
 <div class="p2-container">
 
+    <!-- Header -->
     <div class="p2-header">
         <h1>Train a Model</h1>
-        <p>Choose a model type and adjust the λ slider to balance accuracy against simplicity.</p>
+
+        <p>
+            Choose a model type and adjust λ to balance
+            predictive accuracy against model simplicity.
+        </p>
     </div>
 
+
+    <!-- Navigation -->
     <nav class="p2-nav">
-        <a href="{% url 'project2:index' %}">Home</a>
-        <a href="{% url 'project2:train' %}" class="active">Train</a>
-        <a href="{% url 'project2:counterfactual' %}">Counterfactuals</a>
-        <a href="{% url 'project2:pdp_ale' %}">PDP / ALE</a>
+
+        <a href="{% url 'project2:index' %}">
+            Home
+        </a>
+
+        <a href="{% url 'project2:train' %}" class="active">
+            Train
+        </a>
+
+        <a href="{% url 'project2:counterfactual' %}">
+            Counterfactuals
+        </a>
+
+        <a href="{% url 'project2:pdp_ale' %}">
+            PDP / ALE
+        </a>
+
+        <a href="{% url 'project2:model_comparison' %}">
+            Model Comparison
+        </a>
+
     </nav>
 
-    <!-- ── Controls form ─────────────────────────────────────────────────── -->
+
+    <!-- ============================================================= -->
+    <!-- MODEL SETTINGS                                                -->
+    <!-- ============================================================= -->
+
     <div class="p2-card">
+
         <h2>⚙️ Model Settings</h2>
 
-        <!-- HCAI extra: explanation text helps non-expert users understand model behavior -->
         <div class="p2-info-box">
-            <strong>λ = 0</strong> → pick the most accurate model, regardless of complexity.<br>
-            <strong>λ = 1</strong> → strongly prefer simpler models, even if less accurate.<br>
+
+            The selected model maximises:
+
+            <br><br>
+
+            <strong>
+                Test Accuracy − λ × Model Complexity
+            </strong>
+
+            <br><br>
+
+            <strong>λ = 0</strong>
+            → only predictive accuracy matters.
+
+            <br>
+
+            <strong>Larger λ</strong>
+            → gives more importance to model simplicity.
+
         </div>
 
-        <form method="POST" action="{% url 'project2:train' %}">
+
+        <form
+            method="POST"
+            action="{% url 'project2:train' %}"
+        >
+
             {% csrf_token %}
 
-            <!-- Model type -->
+
+            <!-- Model Type -->
             <div class="p2-form-row">
+
                 <label class="p2-label">
+
                     Model Type
-                    <span class="p2-label-help">Select the algorithm to train</span>
+
+                    <span class="p2-label-help">
+                        Select the model family to evaluate
+                    </span>
+
                 </label>
+
+
                 <div class="p2-radio-group">
+
                     <label class="p2-radio-label">
-                        <input type="radio" name="model_type" value="dt"
-                               {% if model_type == "dt" %}checked{% endif %}>
+
+                        <input
+                            type="radio"
+                            name="model_type"
+                            value="dt"
+
+                            {% if model_type == "dt" %}
+                            checked
+                            {% endif %}
+                        >
+
                         Decision Tree
+
                     </label>
+
+
                     <label class="p2-radio-label">
-                        <input type="radio" name="model_type" value="lr"
-                               {% if model_type == "lr" %}checked{% endif %}>
+
+                        <input
+                            type="radio"
+                            name="model_type"
+                            value="lr"
+
+                            {% if model_type == "lr" %}
+                            checked
+                            {% endif %}
+                        >
+
                         Logistic Regression
+
                     </label>
+
                 </div>
+
             </div>
 
-            <!-- Lambda slider -->
+
+            <!-- Lambda -->
             <div class="p2-form-row">
-                <label class="p2-label" for="lambda_slider">
-                    λ = <span id="lambda_display">{{ lambda_value }}</span>
-                    <span class="p2-label-help">Drag to adjust the accuracy/simplicity trade-off</span>
-                </label>
-                <div class="p2-slider-row">
-                    <span class="p2-slider-hint">← Simpler</span>
-                    <input
-                        type="range" id="lambda_slider" name="lambda_value"
-                        min="0" max="1" step="0.01"
-                        value="{{ lambda_value }}"
-                        oninput="document.getElementById('lambda_display').textContent = parseFloat(this.value).toFixed(2)"
-                        class="p2-slider"
-                    >
-                    <span class="p2-slider-hint">More accurate →</span>
-                </div>
-                <!-- Dynamic lambda warning -->
-                <div class="p2-warning-box" id="lambda_warning" style="display:none;"></div>
-                <script>
-                (function() {
-                    var slider  = document.getElementById('lambda_slider');
-                    var warning = document.getElementById('lambda_warning');
-                    function update() {
-                        var v = parseFloat(slider.value);
-                        if (v >= 0.8) {
-                            warning.textContent = '⚠ Large λ strongly prefers simpler models — accuracy may drop significantly.';
-                            warning.style.display = 'block';
-                        } else if (v <= 0.1) {
-                            warning.textContent = 'ℹ Small λ prefers more accurate but possibly more complex models.';
-                            warning.style.display = 'block';
-                        } else {
-                            warning.style.display = 'none';
-                        }
-                    }
-                    slider.addEventListener('input', update);
-                    update();
-                })();
-                </script>
-            </div>
 
-            <button type="submit" class="p2-btn">Train &amp; Select Model</button>
-        </form>
-    </div>
-
-    <!-- ── Results ────────────────────────────────────────────────────────── -->
-    {% if result %}
-
-    <!-- Selected model summary -->
-    <div class="p2-card p2-best-card">
-        <h2>✅ Selected Model (λ = {{ result.lambda_value }})</h2>
-
-        <div class="p2-stat-row">
-            <div class="p2-stat-box">
-                <span class="p2-stat-number">{{ result.label }}</span>
-                <span class="p2-stat-label">Model</span>
-            </div>
-            <div class="p2-stat-box">
-                <span class="p2-stat-number">{% widthratio result.accuracy 1 100 %}%</span>
-                <span class="p2-stat-label">Test Accuracy</span>
-            </div>
-            <div class="p2-stat-box">
-                <span class="p2-stat-number">{{ result.complexity }}</span>
-                <span class="p2-stat-label">
-                    {% if result.model_type == "dt" %}Leaves{% else %}Non-zero Coefficients{% endif %}
-                </span>
-            </div>
-            <div class="p2-stat-box">
-                <span class="p2-stat-number">{{ result.objective }}</span>
-                <span class="p2-stat-label">Objective Score</span>
-            </div>
-            {% if result.model_type == "lr" %}
-            <div class="p2-stat-box">
-                <span class="p2-stat-number">{{ result.hyperparam }}</span>
-                <span class="p2-stat-label">C (regularisation)</span>
-            </div>
-            {% endif %}
-        </div>
-
-        
-    </div>
-    {% if result.model_type == "dt" and result.tree_image %}
-        <div class="p2-card">
-            <h2>🌳 Decision Tree Visualization</h2>
-
-            <p class="p2-muted">
-                This flowchart shows how the selected decision tree makes predictions.
-                Each split is a question about a feature, and each leaf is a final decision path.
-            </p>
-
-            <div class="p2-tree-wrapper">
-                <img
-                    src="data:image/png;base64,{{ result.tree_image }}"
-                    alt="Decision tree visualization"
-                    class="p2-tree-image"
+                <label
+                    class="p2-label"
+                    for="lambda_slider"
                 >
 
-                <p class="p2-tree-note">
-                    Tip: if the tree is wide, scroll horizontally inside this box.
-                </p>
+                    λ =
+                    <span id="lambda_display">
+                        {{ lambda_value }}
+                    </span>
+
+                    <span class="p2-label-help">
+                        Adjust the accuracy / simplicity trade-off
+                    </span>
+
+                </label>
+
+
+                <div class="p2-slider-row">
+
+                    <span class="p2-slider-hint">
+                        ← Accuracy
+                    </span>
+
+
+                    <input
+                        type="range"
+                        id="lambda_slider"
+                        name="lambda_value"
+
+                        min="0"
+                        max="0.1"
+                        step="0.005"
+
+                        value="{{ lambda_value }}"
+
+                        oninput="
+                            document.getElementById(
+                                'lambda_display'
+                            ).textContent =
+                            parseFloat(this.value).toFixed(3);
+
+                            updateLambdaWarning();
+                        "
+
+                        class="p2-slider"
+                    >
+
+
+                    <span class="p2-slider-hint">
+                        Simplicity →
+                    </span>
+
+                </div>
+
+
+                <div
+                    class="p2-warning-box"
+                    id="lambda_warning"
+                    style="display:none;"
+                ></div>
+
             </div>
+
+
+            <button
+                type="submit"
+                class="p2-btn"
+            >
+                Train &amp; Select Model
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <!-- Lambda information -->
+    <script>
+
+        function updateLambdaWarning() {
+
+            const slider =
+                document.getElementById("lambda_slider");
+
+            const warning =
+                document.getElementById("lambda_warning");
+
+            const value =
+                parseFloat(slider.value);
+
+
+            if (value >= 0.075) {
+
+                warning.textContent =
+                    "⚠ Higher λ strongly rewards simpler models, so test accuracy may decrease.";
+
+                warning.style.display =
+                    "block";
+
+            }
+
+            else if (value <= 0.01) {
+
+                warning.textContent =
+                    "ℹ Low λ places most of the emphasis on predictive accuracy.";
+
+                warning.style.display =
+                    "block";
+
+            }
+
+            else {
+
+                warning.style.display =
+                    "none";
+
+            }
+
+        }
+
+
+        updateLambdaWarning();
+
+    </script>
+
+
+    <!-- ============================================================= -->
+    <!-- RESULTS                                                       -->
+    <!-- ============================================================= -->
+
+    {% if result %}
+
+
+    <!-- Selected Model -->
+    <div class="p2-card p2-best-card">
+
+        <h2>
+            ✅ Selected Model
+            (λ = {{ result.lambda_value }})
+        </h2>
+
+
+        <p class="p2-muted">
+
+            This candidate achieved the
+            <strong>highest selection score</strong>
+
+            using:
+
+            <strong>
+                accuracy − λ × complexity
+            </strong>.
+
+        </p>
+
+
+        <div class="p2-stat-row">
+
+
+            <div class="p2-stat-box">
+
+                <span class="p2-stat-number">
+                    {{ result.label }}
+                </span>
+
+                <span class="p2-stat-label">
+                    Model
+                </span>
+
+            </div>
+
+
+            <div class="p2-stat-box">
+
+                <span class="p2-stat-number">
+                    {% widthratio result.accuracy 1 100 %}%
+                </span>
+
+                <span class="p2-stat-label">
+                    Test Accuracy
+                </span>
+
+            </div>
+
+
+            <div class="p2-stat-box">
+
+                <span class="p2-stat-number">
+                    {{ result.complexity }}
+                </span>
+
+                <span class="p2-stat-label">
+
+                    {% if result.model_type == "dt" %}
+
+                        Leaves
+
+                    {% else %}
+
+                        Non-zero Coefficients
+
+                    {% endif %}
+
+                </span>
+
+            </div>
+
+
+            <div class="p2-stat-box">
+
+                <span class="p2-stat-number">
+                    {{ result.objective }}
+                </span>
+
+                <span class="p2-stat-label">
+                    Selection Score
+                </span>
+
+            </div>
+
+
+            {% if result.model_type == "lr" %}
+
+            <div class="p2-stat-box">
+
+                <span class="p2-stat-number">
+                    {{ result.hyperparam }}
+                </span>
+
+                <span class="p2-stat-label">
+                    C (regularisation)
+                </span>
+
+            </div>
+
+            {% endif %}
+
+
         </div>
+
+    </div>
+
+
+    <!-- ============================================================= -->
+    <!-- DECISION TREE VISUALIZATION                                   -->
+    <!-- ============================================================= -->
+
+    {% if result.model_type == "dt" and result.tree_image %}
+
+    <div class="p2-card">
+
+        <h2>
+            🌳 Decision Tree Visualization
+        </h2>
+
+
+        <p class="p2-muted">
+
+            The visualization shows how the selected tree
+            separates penguins into different species.
+
+            Each internal node contains a decision rule,
+            while each leaf represents a final prediction region.
+
+        </p>
+
+
+        <div class="p2-tree-wrapper">
+
+            <img
+                src="data:image/png;base64,{{ result.tree_image }}"
+                alt="Decision tree visualization"
+                class="p2-tree-image"
+            >
+
+        </div>
+
+    </div>
+
     {% endif %}
 
-    <!-- Candidate comparison table -->
+
+    <!-- ============================================================= -->
+    <!-- CANDIDATE MODELS                                              -->
+    <!-- ============================================================= -->
+
     <div class="p2-card">
-        <h2>📊 All Candidate Models</h2>
+
+        <h2>
+            📊 All Candidate Models
+        </h2>
+
+
         <p class="p2-muted">
-            Each row is a model trained with a different hyperparameter.
-            The <strong>highlighted row</strong> is the selected model — it has the
-            lowest objective score for the current λ.
+
+            Each candidate is trained with a different
+            regularisation setting.
+
+            The highlighted row is the selected model because
+            it has the
+
+            <strong>
+                highest selection score
+            </strong>
+
+            for the current λ.
+
         </p>
+
+
         <div class="p2-table-scroll">
+
             <table class="p2-table">
+
                 <thead>
+
                     <tr>
-                        <th>Model</th>
-                        <th>Accuracy</th>
-                        <th>Complexity</th>
-                        <th>Norm. Complexity</th>
-                        <th>Objective</th>
+
+                        <th>
+                            Model
+                        </th>
+
+                        <th>
+                            Accuracy
+                        </th>
+
+                        <th>
+                            Complexity
+                        </th>
+
+                        <th>
+                            Selection Score
+                        </th>
+
                     </tr>
+
                 </thead>
+
+
                 <tbody>
+
                     {% for r in result.candidates %}
-                    <tr {% if r.label == result.label %}class="p2-row-best"{% endif %}>
-                        <td>{{ r.label }}</td>
-                        <td>{{ r.accuracy }}</td>
-                        <td>{{ r.complexity }}</td>
-                        <td>{{ r.norm_complexity }}</td>
-                        <td>{{ r.objective }}</td>
+
+                    <tr
+                        {% if r.label == result.label %}
+                        class="p2-row-best"
+                        {% endif %}
+                    >
+
+                        <td>
+                            {{ r.label }}
+                        </td>
+
+                        <td>
+                            {{ r.accuracy }}
+                        </td>
+
+                        <td>
+                            {{ r.complexity }}
+                        </td>
+
+                        <td>
+                            {{ r.objective }}
+                        </td>
+
                     </tr>
+
                     {% endfor %}
+
                 </tbody>
+
             </table>
+
         </div>
+
     </div>
 
-    <!-- Coefficient table (Logistic Regression only) -->
+
+    <!-- ============================================================= -->
+    <!-- LOGISTIC REGRESSION COEFFICIENTS                              -->
+    <!-- ============================================================= -->
+
     {% if result.model_type == "lr" and result.coef_table %}
+
     <div class="p2-card">
-        <h2>🔢 Coefficient Table</h2>
+
+        <h2>
+            🔢 Logistic Regression Coefficients
+        </h2>
+
+
         <p class="p2-muted">
-            Each row is one feature. Columns show the model's weight for each penguin species.
-            <strong>Green rows</strong> are features the model is actually using (non-zero weight).
-            Rows without colour are ignored by this model.
+
+            L1 regularisation can drive coefficients exactly
+            to zero.
+
+            Non-zero coefficients indicate features that the
+            selected logistic regression model is using.
+
         </p>
+
+
         <div class="p2-table-scroll">
+
             <table class="p2-table">
+
                 <thead>
+
                     <tr>
-                        <th>Feature</th>
+
+                        <th>
+                            Feature
+                        </th>
+
                         {% for cls in result.class_names %}
-                            <th>{{ cls }} coef.</th>
+
+                        <th>
+                            {{ cls }} coef.
+                        </th>
+
                         {% endfor %}
-                        <th>Used?</th>
+
+                        <th>
+                            Used?
+                        </th>
+
                     </tr>
+
                 </thead>
+
+
                 <tbody>
+
                     {% for row in result.coef_table %}
-                    <tr {% if row.nonzero %}class="p2-row-nonzero"{% endif %}>
-                        <td>{{ row.feature }}</td>
+
+                    <tr
+                        {% if row.nonzero %}
+                        class="p2-row-nonzero"
+                        {% endif %}
+                    >
+
+                        <td>
+                            {{ row.feature }}
+                        </td>
+
+
                         {% for cls in result.class_names %}
-                            <td>{{ row|get_item:cls }}</td>
+
+                        <td>
+                            {{ row|get_item:cls }}
+                        </td>
+
                         {% endfor %}
-                        <td>{% if row.nonzero %}✅ yes{% else %}—{% endif %}</td>
+
+
+                        <td>
+
+                            {% if row.nonzero %}
+
+                                ✅ Yes
+
+                            {% else %}
+
+                                —
+
+                            {% endif %}
+
+                        </td>
+
                     </tr>
+
                     {% endfor %}
+
                 </tbody>
+
             </table>
+
         </div>
+
     </div>
+
     {% endif %}
+
 
     {% else %}
-    <!-- No model trained yet — friendly hint -->
+
+
+    <!-- No model trained -->
     <div class="p2-info-box">
+
         👆 <strong>No model trained yet.</strong>
-        Choose a model type and λ value above, then press <em>Train &amp; Select Model</em>
-        to see results here.
+
+        Choose a model type and λ value above,
+        then press
+
+        <em>
+            Train &amp; Select Model
+        </em>
+
+        to see the results.
+
     </div>
+
+
     {% endif %}
 
-    <a href="{% url 'home:index' %}" class="p2-back">← Back to Project Hub</a>
+
+    <a
+        href="{% url 'home:index' %}"
+        class="p2-back"
+    >
+        ← Back to Project Hub
+    </a>
+
 
 </div>
+
 </body>
 </html>

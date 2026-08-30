@@ -1,211 +1,1038 @@
-import os
-import joblib
 from django.shortcuts import render
-from django.conf import settings
 
-from .data_utils import load_penguin_data, NUMERICAL_FEATURES
-from .model_utils import get_selected_model
-from .counterfactual_utils import generate_counterfactuals
-from .effect_plot_utils import compute_pdp, compute_ale
-from .plot_utils import plot_pdp, plot_ale
-
-# Path where the selected model result is cached so other views can reload it
-MODEL_SAVE_DIR  = os.path.join(settings.MEDIA_ROOT, "project2_models")
-MODEL_SAVE_PATH = os.path.join(MODEL_SAVE_DIR, "selected_model.pkl")
+from .services.data_utils import (
+    load_penguin_data,
+    NUMERICAL_FEATURES,
+)
 
 
-def _save_selected(result):
-    """Persist the full get_selected_model() result dict to disk."""
-    os.makedirs(MODEL_SAVE_DIR, exist_ok=True)
-    joblib.dump(result, MODEL_SAVE_PATH)
+from .services.model_utils import (
+    get_selected_model,
+)
+
+from .services.counterfactual_utils import (
+    generate_counterfactuals,
+)
+
+from .services.effect_plot_utils import (
+    compute_pdp,
+    compute_ale,
+    compute_derivative_ale,
+)
+
+from .services.plot_utils import (
+    plot_pdp,
+    plot_ale,
+    plot_ale_comparison,
+)
+
+from .services.model_comparison_utils import (
+    compare_models,
+)
+
+from .services.feature_relationship_utils import (
+    get_feature_relationship_analysis,
+)
 
 
-def _load_selected():
-    """Return the last saved result dict, or None if nothing trained yet."""
-    if os.path.exists(MODEL_SAVE_PATH):
-        return joblib.load(MODEL_SAVE_PATH)
-    return None
+from .services.ale_validation_utils import (
+    compare_ale_methods,
+    build_bin_sensitivity_analysis,
+)
 
 
-# ── Views ─────────────────────────────────────────────────────────────────────
+# ===========================================================================
+# Shared model-selection settings
+# ===========================================================================
+
+DEFAULT_MODEL_TYPE = "dt"
+DEFAULT_LAMBDA = 0.02
+MIN_LAMBDA = 0.0
+MAX_LAMBDA = 0.10
+
+
+def _get_model_settings(request):
+    """
+    Read the currently selected model type and lambda value.
+
+    GET:
+        Reuse the values stored in the Django session.
+
+    POST:
+        Read the submitted values, validate them and save them
+        back into the session.
+
+    This links the model settings across the Project 2 pages.
+    """
+
+    model_type = request.session.get(
+        "p2_model_type",
+        DEFAULT_MODEL_TYPE,
+    )
+
+    lambda_value = request.session.get(
+        "p2_lambda_value",
+        DEFAULT_LAMBDA,
+    )
+
+    if request.method == "POST":
+
+        model_type = request.POST.get(
+            "model_type",
+            model_type,
+        )
+
+        if model_type not in {"dt", "lr"}:
+            model_type = DEFAULT_MODEL_TYPE
+
+        try:
+
+            lambda_value = float(
+                request.POST.get(
+                    "lambda_value",
+                    lambda_value,
+                )
+            )
+
+        except (TypeError, ValueError):
+
+            lambda_value = DEFAULT_LAMBDA
+
+        lambda_value = max(
+            MIN_LAMBDA,
+            min(
+                MAX_LAMBDA,
+                lambda_value,
+            ),
+        )
+
+        request.session[
+            "p2_model_type"
+        ] = model_type
+
+        request.session[
+            "p2_lambda_value"
+        ] = lambda_value
+
+    return model_type, lambda_value
+
+
+# ===========================================================================
+# Home
+# ===========================================================================
 
 def index(request):
-    """Landing page — shows dataset overview."""
-    df, X, y, num_feats, cat_feats, class_names = load_penguin_data()
+    """
+    Project 2 landing page.
+    """
+
+    (
+        df,
+        X,
+        y,
+        num_feats,
+        cat_feats,
+        class_names,
+    ) = load_penguin_data()
 
     context = {
-        "page_title":           "Project 2: Explainability",
-        "num_rows":             len(df),
-        "numerical_features":   num_feats,
-        "categorical_features": cat_feats,
-        "all_features":         num_feats + cat_feats,
-        "target_name":          "species",
-        "class_names":          class_names,
-        "preview_table":        df.head().to_html(
-                                    classes="p2-table", index=False, border=0
-                                ),
-    }
-    return render(request, "project2/index.html", context)
+        "page_title": "Project 2: Explainability",
 
+        "num_rows": len(df),
+
+        "numerical_features": num_feats,
+
+        "categorical_features": cat_feats,
+
+        "all_features": (
+            num_feats
+            + cat_feats
+        ),
+
+        "target_name": "species",
+
+        "class_names": class_names,
+
+        "preview_table": (
+            df.head().to_html(
+                classes="p2-table",
+                index=False,
+                border=0,
+            )
+        ),
+    }
+
+    return render(
+        request,
+        "project2/index.html",
+        context,
+    )
+
+
+# ===========================================================================
+# Train
+# ===========================================================================
 
 def train(request):
     """
-    Train page — user picks model type + lambda, then sees the best model and
-    a full candidate comparison table.
+    Train candidate models and select the model maximising:
 
-    All training logic lives in get_selected_model(); this view only handles
-    HTTP and template rendering.
+        test_accuracy - lambda * complexity
+
+    Decision Tree complexity:
+        number of leaves
+
+    Logistic Regression complexity:
+        number of non-zero coefficients
     """
-    model_type   = "dt"
-    lambda_value = 0.5
-    result       = None
+
+    (
+        model_type,
+        lambda_value,
+    ) = _get_model_settings(
+        request
+    )
+
+    result = None
 
     if request.method == "POST":
-        model_type = request.POST.get("model_type", "dt")
-        try:
-            lambda_value = float(request.POST.get("lambda_value", 0.5))
-            lambda_value = max(0.0, min(1.0, lambda_value))
-        except ValueError:
-            lambda_value = 0.5
 
-        # Single call — trains, evaluates, selects, returns everything
-        result = get_selected_model(model_type, lambda_value)
-
-        # Persist so counterfactual / PDP / ALE views can reload without re-training
-        _save_selected(result)
+        result = get_selected_model(
+            model_type,
+            lambda_value,
+        )
 
     context = {
-        "page_title":   "Train Model — Project 2",
-        "model_type":   model_type,
-        "lambda_value": lambda_value,
-        "result":       result,
-    }
-    return render(request, "project2/train.html", context)
+        "page_title": (
+            "Train Model — Project 2"
+        ),
 
+        "model_type": model_type,
+
+        "lambda_value": lambda_value,
+
+        "result": result,
+    }
+
+    return render(
+        request,
+        "project2/train.html",
+        context,
+    )
+
+
+# ===========================================================================
+# Counterfactuals
+# ===========================================================================
 
 def counterfactual(request):
     """
-    Counterfactual page — user picks model settings, a penguin row, and a
-    desired target species, then sees the closest counterfactual examples.
+    Generate counterfactual explanations using the same model family
+    and lambda value selected elsewhere in Project 2.
+
+    Counterfactuals can be ranked by:
+
+        distance
+            MAD-weighted L1 distance
+
+        sparsity
+            number of changed features
     """
-    from .data_utils import load_penguin_data
 
-    df, X, y, num_feats, cat_feats, class_names = load_penguin_data()
+    (
+        df,
+        X,
+        y,
+        num_feats,
+        cat_feats,
+        class_names,
+    ) = load_penguin_data()
 
-    # Form state defaults
-    model_type   = "dt"
-    lambda_value = 0.5
-    row_index    = 0
-    target_class = class_names[0]
-    cf_result    = None
-    error        = None
+    (
+        model_type,
+        lambda_value,
+    ) = _get_model_settings(
+        request
+    )
 
-    # Build a sample list for the dropdown: "Row 0 — Adelie"
+    row_index = 0
+
+    target_class = (
+        class_names[0]
+    )
+
+    sort_by = "distance"
+
+    cf_result = None
+
+    error = None
+
     sample_options = [
-        {"index": i, "label": f"Row {i} — {row['species']}"}
-        for i, row in df.iterrows()
+        {
+            "index": i,
+
+            "label": (
+                f"Row {i} — "
+                f"{row['species']}"
+            ),
+        }
+
+        for i, row
+        in df.iterrows()
     ]
 
     if request.method == "POST":
-        model_type = request.POST.get("model_type", "dt")
-        try:
-            lambda_value = float(request.POST.get("lambda_value", 0.5))
-            lambda_value = max(0.0, min(1.0, lambda_value))
-        except ValueError:
-            lambda_value = 0.5
+
+        # ------------------------------------------------------------------
+        # Observation
+        # ------------------------------------------------------------------
 
         try:
-            row_index = int(request.POST.get("row_index", 0))
-        except ValueError:
+
+            row_index = int(
+                request.POST.get(
+                    "row_index",
+                    0,
+                )
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+
             row_index = 0
 
-        target_class = request.POST.get("target_class", class_names[0])
+        if (
+            row_index < 0
+            or
+            row_index >= len(df)
+        ):
 
-        # Train / select model fresh for the chosen settings
-        selected = get_selected_model(model_type, lambda_value)
-        _save_selected(selected)
+            row_index = 0
+
+        # ------------------------------------------------------------------
+        # Desired class
+        # ------------------------------------------------------------------
+
+        target_class = request.POST.get(
+            "target_class",
+            class_names[0],
+        )
+
+        if target_class not in class_names:
+
+            target_class = (
+                class_names[0]
+            )
+
+        # ------------------------------------------------------------------
+        # Ranking strategy
+        # ------------------------------------------------------------------
+
+        sort_by = request.POST.get(
+            "sort_by",
+            "distance",
+        )
+
+        if sort_by not in {
+            "distance",
+            "sparsity",
+        }:
+
+            sort_by = "distance"
+
+        # ------------------------------------------------------------------
+        # Generate counterfactuals
+        # ------------------------------------------------------------------
 
         try:
+
+            selected = get_selected_model(
+                model_type,
+                lambda_value,
+            )
+
             cf_result = generate_counterfactuals(
                 selected_model_info=selected,
+
                 row_index=row_index,
+
                 target_class_name=target_class,
+
+                sort_by=sort_by,
             )
+
         except Exception as exc:
-            error = f"Counterfactual generation failed: {exc}"
+
+            error = str(exc)
 
     context = {
-        "page_title":     "Counterfactuals — Project 2",
-        "model_type":     model_type,
-        "lambda_value":   lambda_value,
-        "class_names":    class_names,
-        "sample_options": sample_options,
-        "row_index":      row_index,
-        "target_class":   target_class,
-        "cf_result":      cf_result,
-        "error":          error,
-        "num_features":   num_feats,
-        "cat_features":   cat_feats,
-        "all_features":   num_feats + cat_feats,
-    }
-    return render(request, "project2/counterfactual.html", context)
+        "page_title": (
+            "Counterfactuals — Project 2"
+        ),
 
+        "model_type": model_type,
+
+        "lambda_value": lambda_value,
+
+        "class_names": class_names,
+
+        "sample_options": sample_options,
+
+        "row_index": row_index,
+
+        "target_class": target_class,
+
+        "sort_by": sort_by,
+
+        "cf_result": cf_result,
+
+        "error": error,
+
+        "num_features": num_feats,
+
+        "cat_features": cat_feats,
+
+        "all_features": (
+            num_feats
+            + cat_feats
+        ),
+    }
+
+    return render(
+        request,
+        "project2/counterfactual.html",
+        context,
+    )
+
+
+# ===========================================================================
+# PDP / ALE
+# ===========================================================================
 
 def pdp_ale(request):
     """
-    Feature Effect Plots page — shows a PDP for the selected numerical feature
-    and the selected model. ALE will be added in the next step.
+    Generate the assignment-required feature-effect explanations:
+
+        - Partial Dependence Plot
+        - standard bin-based ALE
+
+    The advanced derivative-based ALE calculation is intentionally NOT
+    performed here.
+
+    Logistic Regression users can open the separate ALE Method Validation
+    page to compare standard ALE with derivative-based ALE.
     """
-    model_type    = "dt"
-    lambda_value  = 0.5
-    feature_name  = NUMERICAL_FEATURES[0]
-    pdp_plot_url  = None
-    ale_plot_url  = None
-    error         = None
+
+    (
+        model_type,
+        lambda_value,
+    ) = _get_model_settings(
+        request
+    )
+
+    # ----------------------------------------------------------------------
+    # Previously selected numerical feature
+    # ----------------------------------------------------------------------
+
+    feature_name = request.session.get(
+        "p2_feature_name",
+        NUMERICAL_FEATURES[0],
+    )
+
+    if feature_name not in NUMERICAL_FEATURES:
+
+        feature_name = (
+            NUMERICAL_FEATURES[0]
+        )
+
+    pdp_plot_url = None
+
+    ale_plot_url = None
+
+    selected_model_label = None
+
+    error = None
+
+    # ----------------------------------------------------------------------
+    # Generate PDP / ALE
+    # ----------------------------------------------------------------------
 
     if request.method == "POST":
-        model_type = request.POST.get("model_type", "dt")
-        try:
-            lambda_value = float(request.POST.get("lambda_value", 0.5))
-            lambda_value = max(0.0, min(1.0, lambda_value))
-        except ValueError:
-            lambda_value = 0.5
 
-        feature_name = request.POST.get("feature_name", NUMERICAL_FEATURES[0])
+        feature_name = request.POST.get(
+            "feature_name",
+            NUMERICAL_FEATURES[0],
+        )
+
         if feature_name not in NUMERICAL_FEATURES:
-            feature_name = NUMERICAL_FEATURES[0]
+
+            feature_name = (
+                NUMERICAL_FEATURES[0]
+            )
+
+        # Remember feature for:
+        #
+        # - Feature Relationships
+        # - ALE Method Validation
+
+        request.session[
+            "p2_feature_name"
+        ] = feature_name
 
         try:
-            selected = get_selected_model(model_type, lambda_value)
-            _save_selected(selected)
 
-            pdp_result  = compute_pdp(
-                pipeline     = selected["pipeline"],
-                X            = selected["X"],
-                feature_name = feature_name,
-                class_names  = selected["class_names"],
+            selected = get_selected_model(
+                model_type,
+                lambda_value,
             )
-            pdp_plot_url = plot_pdp(pdp_result, feature_name, selected["label"])
 
-            ale_result  = compute_ale(
-                pipeline     = selected["pipeline"],
-                X            = selected["X"],
-                feature_name = feature_name,
-                class_names  = selected["class_names"],
+            selected_model_label = (
+                selected["label"]
             )
-            ale_plot_url = plot_ale(ale_result, feature_name, selected["label"])
+
+            # ==============================================================
+            # PDP
+            # ==============================================================
+
+            pdp_result = compute_pdp(
+                pipeline=selected["pipeline"],
+
+                X=selected["X"],
+
+                feature_name=feature_name,
+
+                class_names=selected[
+                    "class_names"
+                ],
+            )
+
+            pdp_plot_url = plot_pdp(
+                pdp_result,
+
+                feature_name,
+
+                selected_model_label,
+            )
+
+            # ==============================================================
+            # STANDARD ALE
+            # ==============================================================
+
+            ale_result = compute_ale(
+                pipeline=selected["pipeline"],
+
+                X=selected["X"],
+
+                feature_name=feature_name,
+
+                class_names=selected[
+                    "class_names"
+                ],
+            )
+
+            ale_plot_url = plot_ale(
+                ale_result,
+
+                feature_name,
+
+                selected_model_label,
+            )
 
         except Exception as exc:
-            error = f"Plot generation failed: {exc}"
+
+            error = str(exc)
 
     context = {
-        "page_title":         "Feature Effect Plots — Project 2",
-        "model_type":         model_type,
-        "lambda_value":       lambda_value,
-        "feature_name":       feature_name,
-        "numerical_features": NUMERICAL_FEATURES,
-        "pdp_plot_url":       pdp_plot_url,
-        "ale_plot_url":       ale_plot_url,
-        "error":              error,
+        "page_title": (
+            "Feature Effect Plots — Project 2"
+        ),
+
+        "model_type": model_type,
+
+        "lambda_value": lambda_value,
+
+        "feature_name": feature_name,
+
+        "numerical_features": (
+            NUMERICAL_FEATURES
+        ),
+
+        "selected_model_label": (
+            selected_model_label
+        ),
+
+        "pdp_plot_url": pdp_plot_url,
+
+        "ale_plot_url": ale_plot_url,
+
+        "error": error,
     }
-    return render(request, "project2/pdp_ale.html", context)
+
+    return render(
+        request,
+        "project2/pdp_ale.html",
+        context,
+    )
+
+
+# ===========================================================================
+# Model Comparison
+# ===========================================================================
+
+def model_comparison(request):
+    """
+    Compare Decision Tree and Logistic Regression predictions for
+    the same observation and lambda value.
+    """
+
+    (
+        df,
+        X,
+        y,
+        num_feats,
+        cat_feats,
+        class_names,
+    ) = load_penguin_data()
+
+    (
+        model_type,
+        lambda_value,
+    ) = _get_model_settings(
+        request
+    )
+
+    row_index = 0
+
+    comparison = None
+
+    error = None
+
+    sample_options = [
+        {
+            "index": i,
+
+            "label": (
+                f"Row {i} — "
+                f"{row['species']}"
+            ),
+        }
+
+        for i, row
+        in df.iterrows()
+    ]
+
+    if request.method == "POST":
+
+        try:
+
+            row_index = int(
+                request.POST.get(
+                    "row_index",
+                    0,
+                )
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+
+            row_index = 0
+
+        if (
+            row_index < 0
+            or
+            row_index >= len(df)
+        ):
+
+            row_index = 0
+
+        try:
+
+            comparison = compare_models(
+                row_index=row_index,
+
+                lambda_value=lambda_value,
+            )
+
+        except Exception as exc:
+
+            error = str(exc)
+
+    context = {
+        "page_title": (
+            "Model Comparison — Project 2"
+        ),
+
+        "lambda_value": lambda_value,
+
+        "row_index": row_index,
+
+        "sample_options": sample_options,
+
+        "comparison": comparison,
+
+        "error": error,
+
+        "all_features": (
+            num_feats
+            + cat_feats
+        ),
+
+        "class_names": class_names,
+    }
+
+    return render(
+        request,
+        "project2/model_comparison.html",
+        context,
+    )
+
+
+# ===========================================================================
+# Feature Relationships
+# ===========================================================================
+
+def feature_relationships(request):
+    """
+    Analyse relationships between the numerical feature selected on
+    the PDP/ALE page and the other numerical features.
+
+    This helps users understand when correlated features may make
+    PDP harder to interpret and why ALE may be preferable.
+    """
+
+    (
+        model_type,
+        lambda_value,
+    ) = _get_model_settings(
+        request
+    )
+
+    feature_name = request.session.get(
+        "p2_feature_name",
+        NUMERICAL_FEATURES[0],
+    )
+
+    if feature_name not in NUMERICAL_FEATURES:
+
+        feature_name = (
+            NUMERICAL_FEATURES[0]
+        )
+
+    relationship_analysis = None
+
+    pdp_plot_url = None
+
+    ale_plot_url = None
+
+    selected_model_label = None
+
+    error = None
+
+    try:
+
+        selected = get_selected_model(
+            model_type,
+            lambda_value,
+        )
+
+        selected_model_label = (
+            selected["label"]
+        )
+
+        # ------------------------------------------------------------------
+        # Correlation / relationship analysis
+        # ------------------------------------------------------------------
+
+        relationship_analysis = (
+            get_feature_relationship_analysis(
+                X=selected["X"],
+
+                feature_name=feature_name,
+
+                numerical_features=(
+                    NUMERICAL_FEATURES
+                ),
+            )
+        )
+
+        # ------------------------------------------------------------------
+        # PDP
+        # ------------------------------------------------------------------
+
+        pdp_result = compute_pdp(
+            pipeline=selected["pipeline"],
+
+            X=selected["X"],
+
+            feature_name=feature_name,
+
+            class_names=selected[
+                "class_names"
+            ],
+        )
+
+        pdp_plot_url = plot_pdp(
+            pdp_result,
+
+            feature_name,
+
+            selected_model_label,
+        )
+
+        # ------------------------------------------------------------------
+        # ALE
+        # ------------------------------------------------------------------
+
+        ale_result = compute_ale(
+            pipeline=selected["pipeline"],
+
+            X=selected["X"],
+
+            feature_name=feature_name,
+
+            class_names=selected[
+                "class_names"
+            ],
+        )
+
+        ale_plot_url = plot_ale(
+            ale_result,
+
+            feature_name,
+
+            selected_model_label,
+        )
+
+    except Exception as exc:
+
+        error = str(exc)
+
+    context = {
+        "page_title": (
+            "Feature Relationships — Project 2"
+        ),
+
+        "model_type": model_type,
+
+        "lambda_value": lambda_value,
+
+        "feature_name": feature_name,
+
+        "selected_model_label": (
+            selected_model_label
+        ),
+
+        "relationship_analysis": (
+            relationship_analysis
+        ),
+
+        "pdp_plot_url": pdp_plot_url,
+
+        "ale_plot_url": ale_plot_url,
+
+        "error": error,
+    }
+
+    return render(
+        request,
+        "project2/feature_relationships.html",
+        context,
+    )
+
+
+# ===========================================================================
+# ALE Method Validation
+# ===========================================================================
+
+def ale_validation(request):
+    """
+    Validate standard finite-difference ALE against derivative-based ALE.
+
+    Validation always uses Logistic Regression because the analytical
+    derivative calculation depends on a differentiable probability model.
+
+    The page includes:
+        1. Overlaid ALE comparison
+        2. Residual analysis
+        3. Per-class numerical agreement
+        4. Overall agreement
+        5. Bin sensitivity analysis
+    """
+
+    # ------------------------------------------------------------------
+    # Preserve currently selected Project 2 settings
+    # ------------------------------------------------------------------
+
+    (
+        current_model_type,
+        lambda_value,
+    ) = _get_model_settings(
+        request
+    )
+
+    # ------------------------------------------------------------------
+    # Validation specifically uses Logistic Regression.
+    #
+    # Do not overwrite the user's shared model selection.
+    # ------------------------------------------------------------------
+
+    validation_model_type = "lr"
+
+    # ------------------------------------------------------------------
+    # Use feature selected on PDP / ALE page
+    # ------------------------------------------------------------------
+
+    feature_name = request.session.get(
+        "p2_feature_name",
+        NUMERICAL_FEATURES[0],
+    )
+
+    if feature_name not in NUMERICAL_FEATURES:
+        feature_name = (
+            NUMERICAL_FEATURES[0]
+        )
+
+    comparison_plot_url = None
+    validation_result = None
+    sensitivity_result = None
+    selected_model_label = None
+    error = None
+
+    try:
+
+        # ==============================================================
+        # Select Logistic Regression
+        # ==============================================================
+
+        selected = get_selected_model(
+            validation_model_type,
+            lambda_value,
+        )
+
+        selected_model_label = (
+            selected["label"]
+        )
+
+        pipeline = selected["pipeline"]
+        X = selected["X"]
+        class_names = selected["class_names"]
+
+        # ==============================================================
+        # Main validation uses 10 bins
+        # ==============================================================
+
+        validation_bins = 10
+
+        standard_ale = compute_ale(
+            pipeline=pipeline,
+            X=X,
+            feature_name=feature_name,
+            class_names=class_names,
+            n_bins=validation_bins,
+        )
+
+        derivative_ale = compute_derivative_ale(
+            pipeline=pipeline,
+            X=X,
+            feature_name=feature_name,
+            class_names=class_names,
+            n_bins=validation_bins,
+        )
+
+        # ==============================================================
+        # Numerical comparison
+        # ==============================================================
+
+        validation_result = compare_ale_methods(
+            standard_ale=standard_ale,
+            derivative_ale=derivative_ale,
+            class_names=class_names,
+        )
+
+        # ==============================================================
+        # ALE + residual comparison plot
+        # ==============================================================
+
+        comparison_plot_url = (
+            plot_ale_comparison(
+                standard_ale=standard_ale,
+                derivative_ale=derivative_ale,
+                feature_name=feature_name,
+                model_label=selected_model_label,
+            )
+        )
+
+        # ==============================================================
+        # Bin sensitivity analysis
+        #
+        # 5 / 10 / 20 bins
+        # ==============================================================
+
+        sensitivity_result = (
+            build_bin_sensitivity_analysis(
+                pipeline=pipeline,
+                X=X,
+                feature_name=feature_name,
+                class_names=class_names,
+
+                compute_ale_function=(
+                    compute_ale
+                ),
+
+                compute_derivative_ale_function=(
+                    compute_derivative_ale
+                ),
+
+                bin_options=(
+                    5,
+                    10,
+                    20,
+                ),
+            )
+        )
+
+    except Exception as exc:
+
+        error = str(exc)
+
+    context = {
+        "page_title": (
+            "ALE Method Validation — Project 2"
+        ),
+
+        "feature_name": feature_name,
+
+        "lambda_value": lambda_value,
+
+        "current_model_type": (
+            current_model_type
+        ),
+
+        "selected_model_label": (
+            selected_model_label
+        ),
+
+        "comparison_plot_url": (
+            comparison_plot_url
+        ),
+
+        "validation_result": (
+            validation_result
+        ),
+
+        "sensitivity_result": (
+            sensitivity_result
+        ),
+
+        "error": error,
+    }
+
+    return render(
+        request,
+        "project2/ale_validation.html",
+        context,
+    )

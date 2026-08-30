@@ -1,0 +1,623 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>{{ page_title }}</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'project2/style.css' %}?v=3"
+    >
+</head>
+
+
+<body class="p2-page">
+
+<div class="p2-container">
+
+
+    <!-- ========================================================= -->
+    <!-- HEADER                                                    -->
+    <!-- ========================================================= -->
+
+    <div class="p2-header">
+
+        <h1>
+            Feature Relationship Analysis
+        </h1>
+
+        <p>
+            Examine whether relationships between numerical features
+            may influence how PDP and ALE explanations are interpreted.
+        </p>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- NAVIGATION                                                -->
+    <!-- ========================================================= -->
+
+    <nav class="p2-nav">
+
+        <a href="{% url 'project2:index' %}">
+            Home
+        </a>
+
+        <a href="{% url 'project2:train' %}">
+            Train
+        </a>
+
+        <a href="{% url 'project2:counterfactual' %}">
+            Counterfactuals
+        </a>
+
+        <a href="{% url 'project2:pdp_ale' %}">
+            PDP / ALE
+        </a>
+
+        <a href="{% url 'project2:model_comparison' %}">
+            Model Comparison
+        </a>
+
+    </nav>
+
+
+    <!-- ========================================================= -->
+    <!-- CURRENT ANALYSIS                                          -->
+    <!-- ========================================================= -->
+
+    <div class="p2-card">
+
+        <h2>
+            Current Analysis
+        </h2>
+
+
+        <div class="p2-context-grid">
+
+            <div class="p2-context-box">
+
+                <span class="p2-context-label">
+                    Selected Feature
+                </span>
+
+                <span class="p2-context-value">
+                    {{ feature_name }}
+                </span>
+
+            </div>
+
+
+            <div class="p2-context-box">
+
+                <span class="p2-context-label">
+                    Model Type
+                </span>
+
+                <span class="p2-context-value">
+
+                    {% if model_type == "dt" %}
+                        Decision Tree
+                    {% else %}
+                        Logistic Regression
+                    {% endif %}
+
+                </span>
+
+            </div>
+
+
+            <div class="p2-context-box">
+
+                <span class="p2-context-label">
+                    λ
+                </span>
+
+                <span class="p2-context-value">
+                    {{ lambda_value }}
+                </span>
+
+            </div>
+
+
+            {% if selected_model_label %}
+
+            <div class="p2-context-box">
+
+                <span class="p2-context-label">
+                    Selected Model
+                </span>
+
+                <span class="p2-context-value">
+                    {{ selected_model_label }}
+                </span>
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+
+        <p class="p2-muted">
+            These settings were carried over from the PDP / ALE page.
+        </p>
+
+
+        <a
+            href="{% url 'project2:pdp_ale' %}"
+            class="p2-back"
+        >
+            ← Change Feature or Model
+        </a>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- ERROR                                                     -->
+    <!-- ========================================================= -->
+
+    {% if error %}
+
+    <div class="p2-error-card">
+
+        <strong>
+            Relationship analysis failed:
+        </strong>
+
+        {{ error }}
+
+    </div>
+
+    {% endif %}
+
+
+    {% if relationship_analysis %}
+
+
+    <!-- ========================================================= -->
+    <!-- STRONGEST RELATIONSHIP                                    -->
+    <!-- ========================================================= -->
+
+    <div class="p2-card">
+
+        <h2>
+            Strongest Numerical Relationship
+        </h2>
+
+
+        <div class="p2-context-grid">
+
+            <div class="p2-context-box">
+
+                <span class="p2-context-label">
+                    Selected Feature
+                </span>
+
+                <span class="p2-context-value">
+                    {{ relationship_analysis.selected_feature }}
+                </span>
+
+            </div>
+
+
+            <div class="p2-context-box">
+
+                <span class="p2-context-label">
+                    Related Feature
+                </span>
+
+                <span class="p2-context-value">
+                    {{ relationship_analysis.strongest_feature }}
+                </span>
+
+            </div>
+
+
+            <div class="p2-context-box">
+
+                <span class="p2-context-label">
+                    Pearson r
+                </span>
+
+                <span class="p2-context-value">
+                    {{ relationship_analysis.strongest_correlation }}
+                </span>
+
+            </div>
+
+
+            <div class="p2-context-box">
+
+                <span class="p2-context-label">
+                    Relationship
+                </span>
+
+                <span class="p2-context-value">
+                    {{ relationship_analysis.strength }}
+                    {{ relationship_analysis.direction }}
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- INTERPRETATION                                            -->
+    <!-- ========================================================= -->
+
+    <div class="p2-card">
+
+        <h2>
+            Relationship Interpretation
+        </h2>
+
+
+        {% if relationship_analysis.warning_level == "high" %}
+
+        <div class="p2-warning-box">
+
+            <strong>
+                Strong feature relationship detected
+            </strong>
+
+            <br><br>
+
+            {{ relationship_analysis.interpretation }}
+
+        </div>
+
+
+        {% elif relationship_analysis.warning_level == "medium" %}
+
+        <div class="p2-info-box">
+
+            <strong>
+                Moderate feature relationship detected
+            </strong>
+
+            <br><br>
+
+            {{ relationship_analysis.interpretation }}
+
+        </div>
+
+
+        {% else %}
+
+        <div class="p2-success-box">
+
+            <strong>
+                No strong numerical relationship detected
+            </strong>
+
+            <br><br>
+
+            {{ relationship_analysis.interpretation }}
+
+        </div>
+
+        {% endif %}
+
+
+        <p class="p2-muted">
+            Correlation describes association within this dataset
+            and does not imply causation.
+        </p>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- ALL RELATIONSHIPS                                         -->
+    <!-- ========================================================= -->
+
+    <div class="p2-card">
+
+        <h2>
+            Relationships with {{ feature_name }}
+        </h2>
+
+
+        <div class="p2-table-scroll">
+
+            <table class="p2-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Feature
+                        </th>
+
+                        <th>
+                            Pearson r
+                        </th>
+
+                        <th>
+                            Direction
+                        </th>
+
+                        <th>
+                            Strength
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for item in relationship_analysis.relationships %}
+
+                    <tr>
+
+                        <td>
+                            {{ item.feature }}
+                        </td>
+
+                        <td>
+                            {{ item.correlation }}
+                        </td>
+
+                        <td>
+                            {{ item.direction }}
+                        </td>
+
+                        <td>
+
+                            {% if item.strength == "Strong" %}
+
+                                <strong>
+                                    {{ item.strength }}
+                                </strong>
+
+                            {% else %}
+
+                                {{ item.strength }}
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- PDP VS ALE                                                -->
+    <!-- ========================================================= -->
+
+    <div class="p2-card">
+
+        <h2>
+            PDP vs ALE
+        </h2>
+
+
+        <p class="p2-muted">
+
+            PDP shows the overall effect of changing the selected
+            feature, while ALE focuses on local changes where
+            observations occur. When features are related, ALE is
+            generally less affected by uncommon feature combinations.
+
+        </p>
+
+
+        <div class="p2-effect-grid">
+
+
+            <!-- PDP -->
+
+            <div class="p2-card p2-effect-card">
+
+                <h3>
+                    PDP — {{ feature_name }}
+                </h3>
+
+
+                {% if pdp_plot_url %}
+
+                <div class="p2-plot-wrapper">
+
+                    <img
+                        src="{{ pdp_plot_url }}"
+                        alt="PDP plot for {{ feature_name }}"
+                        class="p2-plot-img"
+                    >
+
+                </div>
+
+                {% else %}
+
+                <div class="p2-warning-box">
+                    PDP could not be generated.
+                </div>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- ALE -->
+
+            <div class="p2-card p2-effect-card">
+
+                <h3>
+                    ALE — {{ feature_name }}
+                </h3>
+
+
+                {% if ale_plot_url %}
+
+                <div class="p2-plot-wrapper">
+
+                    <img
+                        src="{{ ale_plot_url }}"
+                        alt="ALE plot for {{ feature_name }}"
+                        class="p2-plot-img"
+                    >
+
+                </div>
+
+                {% else %}
+
+                <div class="p2-warning-box">
+                    ALE could not be generated.
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- CORRELATION MATRIX                                        -->
+    <!-- ========================================================= -->
+
+    <div class="p2-card">
+
+        <h2>
+            Numerical Feature Correlation Matrix
+        </h2>
+
+
+        <p class="p2-muted">
+
+            Values closer to +1 or −1 indicate stronger linear
+            relationships. Values near 0 indicate weaker linear
+            relationships.
+
+        </p>
+
+
+        <div class="p2-table-scroll">
+
+            <table class="p2-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Feature
+                        </th>
+
+                        {% for feature in relationship_analysis.matrix_features %}
+
+                        <th>
+                            {{ feature }}
+                        </th>
+
+                        {% endfor %}
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for row in relationship_analysis.matrix_rows %}
+
+                    <tr>
+
+                        <th>
+                            {{ row.feature }}
+                        </th>
+
+
+                        {% for cell in row.values %}
+
+                        <td>
+
+                            {% if cell.feature == row.feature %}
+
+                                <strong>
+                                    {{ cell.value }}
+                                </strong>
+
+                            {% else %}
+
+                                {{ cell.value }}
+
+                            {% endif %}
+
+                        </td>
+
+                        {% endfor %}
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+
+
+    {% endif %}
+
+
+    <!-- ========================================================= -->
+    <!-- BACK                                                      -->
+    <!-- ========================================================= -->
+
+    <a
+        href="{% url 'project2:pdp_ale' %}"
+        class="p2-btn"
+    >
+        ← Back to PDP / ALE
+    </a>
+
+
+    <br><br>
+
+
+    <a
+        href="{% url 'home:index' %}"
+        class="p2-back"
+    >
+        ← Back to Project Hub
+    </a>
+
+
+</div>
+
+</body>
+</html>

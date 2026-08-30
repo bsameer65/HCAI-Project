@@ -1,170 +1,607 @@
 {% load static %}
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ page_title }}</title>
-    <link rel="stylesheet" href="{% static 'project2/style.css' %}">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {{ page_title }}
+    </title>
+
+
+    <link
+        rel="stylesheet"
+        href="{% static 'project2/style.css' %}?v=5"
+    >
+
 </head>
+
+
 <body class="p2-page">
+
+
 <div class="p2-container">
 
+
+    <!-- ============================================================= -->
+    <!-- HEADER                                                        -->
+    <!-- ============================================================= -->
+
     <div class="p2-header">
-        <h1>Feature Effect Plots</h1>
+
+        <h1>
+            Feature Effect Plots
+        </h1>
+
         <p>
-            Explore how each numerical feature influences the model's predictions
-            using PDP and ALE — two complementary explanation methods.
+            Compare global and local feature effects using
+            Partial Dependence Plots and Accumulated Local Effects.
         </p>
+
     </div>
 
+
+    <!-- ============================================================= -->
+    <!-- NAVIGATION                                                    -->
+    <!-- ============================================================= -->
+
     <nav class="p2-nav">
-        <a href="{% url 'project2:index' %}">Home</a>
-        <a href="{% url 'project2:train' %}">Train</a>
-        <a href="{% url 'project2:counterfactual' %}">Counterfactuals</a>
-        <a href="{% url 'project2:pdp_ale' %}" class="active">PDP / ALE</a>
+
+        <a href="{% url 'project2:index' %}">
+            Home
+        </a>
+
+        <a href="{% url 'project2:train' %}">
+            Train
+        </a>
+
+        <a href="{% url 'project2:counterfactual' %}">
+            Counterfactuals
+        </a>
+
+        <a
+            href="{% url 'project2:pdp_ale' %}"
+            class="active"
+        >
+            PDP / ALE
+        </a>
+
+        <a href="{% url 'project2:model_comparison' %}">
+            Model Comparison
+        </a>
+
     </nav>
 
 
-    <!-- ── Control form ───────────────────────────────────────────────────── -->
+    <!-- ============================================================= -->
+    <!-- SETTINGS                                                      -->
+    <!-- ============================================================= -->
+
     <div class="p2-card">
-        <h2>⚙️ Settings</h2>
-        <form method="POST" action="{% url 'project2:pdp_ale' %}">
+
+        <h2>
+            Settings
+        </h2>
+
+
+        <form
+            method="POST"
+            action="{% url 'project2:pdp_ale' %}"
+        >
+
             {% csrf_token %}
 
+
+            <!-- ===================================================== -->
+            <!-- MODEL TYPE                                            -->
+            <!-- ===================================================== -->
+
             <div class="p2-form-row">
+
                 <label class="p2-label">
+
                     Model Type
-                    <span class="p2-label-help">PDP and ALE are computed for the selected model</span>
+
+                    <span class="p2-label-help">
+                        Select the model used for the explanations
+                    </span>
+
                 </label>
+
+
                 <div class="p2-radio-group">
+
+
                     <label class="p2-radio-label">
-                        <input type="radio" name="model_type" value="dt"
-                               {% if model_type == "dt" %}checked{% endif %}>
+
+                        <input
+                            type="radio"
+                            name="model_type"
+                            value="dt"
+
+                            {% if model_type == "dt" %}
+                            checked
+                            {% endif %}
+                        >
+
                         Decision Tree
+
                     </label>
+
+
                     <label class="p2-radio-label">
-                        <input type="radio" name="model_type" value="lr"
-                               {% if model_type == "lr" %}checked{% endif %}>
+
+                        <input
+                            type="radio"
+                            name="model_type"
+                            value="lr"
+
+                            {% if model_type == "lr" %}
+                            checked
+                            {% endif %}
+                        >
+
                         Logistic Regression
+
                     </label>
+
+
                 </div>
+
             </div>
 
+
+            <!-- ===================================================== -->
+            <!-- LAMBDA                                                -->
+            <!-- ===================================================== -->
+
             <div class="p2-form-row">
-                <label class="p2-label" for="pdp_lambda">
-                    λ = <span id="pdp_lambda_display">{{ lambda_value }}</span>
-                    <span class="p2-label-help">Changing λ changes which model is used for the plots</span>
+
+                <label
+                    class="p2-label"
+                    for="pdp_lambda"
+                >
+
+                    λ =
+
+                    <span id="pdp_lambda_display">
+                        {{ lambda_value }}
+                    </span>
+
+
+                    <span class="p2-label-help">
+
+                        Higher values favour simpler models
+
+                    </span>
+
                 </label>
+
+
                 <div class="p2-slider-row">
-                    <span class="p2-slider-hint">← Simpler</span>
-                    <input type="range" id="pdp_lambda" name="lambda_value"
-                           min="0" max="1" step="0.01" value="{{ lambda_value }}"
-                           oninput="document.getElementById('pdp_lambda_display').textContent = parseFloat(this.value).toFixed(2)"
-                           class="p2-slider">
-                    <span class="p2-slider-hint">More accurate →</span>
+
+                    <span class="p2-slider-hint">
+                        ← Accuracy
+                    </span>
+
+
+                    <input
+                        type="range"
+                        id="pdp_lambda"
+                        name="lambda_value"
+
+                        min="0"
+                        max="0.1"
+                        step="0.005"
+
+                        value="{{ lambda_value }}"
+
+                        class="p2-slider"
+
+                        oninput="
+                            document.getElementById(
+                                'pdp_lambda_display'
+                            ).textContent =
+                            parseFloat(
+                                this.value
+                            ).toFixed(3)
+                        "
+                    >
+
+
+                    <span class="p2-slider-hint">
+                        Simplicity →
+                    </span>
+
                 </div>
+
             </div>
+
+
+            <!-- ===================================================== -->
+            <!-- FEATURE                                               -->
+            <!-- ===================================================== -->
 
             <div class="p2-form-row">
-                <label class="p2-label" for="feature_name">
+
+                <label
+                    class="p2-label"
+                    for="feature_name"
+                >
+
                     Numerical Feature
-                    <span class="p2-label-help">Select which feature to plot</span>
+
+
+                    <span class="p2-label-help">
+
+                        Feature whose effect should be analysed
+
+                    </span>
+
                 </label>
-                <select name="feature_name" id="feature_name" class="p2-select">
+
+
+                <select
+                    name="feature_name"
+                    id="feature_name"
+                    class="p2-select"
+                >
+
                     {% for feat in numerical_features %}
-                        <option value="{{ feat }}"
-                            {% if feat == feature_name %}selected{% endif %}>
-                            {{ feat }}
-                        </option>
+
+
+                    <option
+                        value="{{ feat }}"
+
+                        {% if feat == feature_name %}
+                        selected
+                        {% endif %}
+                    >
+
+                        {{ feat }}
+
+                    </option>
+
+
                     {% endfor %}
+
                 </select>
+
             </div>
 
-            <button type="submit" class="p2-btn">Generate PDP &amp; ALE</button>
+
+            <!-- ===================================================== -->
+            <!-- GENERATE                                              -->
+            <!-- ===================================================== -->
+
+            <button
+                type="submit"
+                class="p2-btn"
+            >
+
+                Generate PDP &amp; ALE
+
+            </button>
+
+
         </form>
+
     </div>
 
-    <!-- ── Error ─────────────────────────────────────────────────────────── -->
+
+    <!-- ============================================================= -->
+    <!-- ERROR                                                         -->
+    <!-- ============================================================= -->
+
     {% if error %}
+
+
     <div class="p2-error-card">
-        <strong>⚠ Plot generation failed:</strong> {{ error }}<br>
-        <em>Try selecting a different feature or model type.</em>
+
+        <strong>
+            Plot generation failed:
+        </strong>
+
+        {{ error }}
+
     </div>
+
+
     {% endif %}
 
-    <!-- ── Results ────────────────────────────────────────────────────────── -->
+
+    <!-- ============================================================= -->
+    <!-- RESULTS                                                       -->
+    <!-- ============================================================= -->
+
     {% if pdp_plot_url or ale_plot_url %}
 
-    <!-- PDP -->
-    {% if pdp_plot_url %}
-    <div class="p2-card">
-        <h2>📈 PDP — {{ feature_name }}</h2>
-        <p class="p2-muted">
-            Each line shows the <strong>average predicted probability</strong>
-            for one species as <strong>{{ feature_name }}</strong> is forced to values
-            across its full range. All other features keep their real observed values.
-        </p>
-        <div class="p2-plot-wrapper">
-            <img src="{{ pdp_plot_url }}" alt="PDP plot for {{ feature_name }}"
-                 class="p2-plot-img">
-        </div>
-        <div class="p2-info-box" style="margin-top:14px;">
-            <strong>How to read the PDP:</strong><br>
-            • A <strong>rising curve</strong> → larger <em>{{ feature_name }}</em>
-              values push the model toward predicting that species.<br>
-            • A <strong>falling curve</strong> → larger values make the model
-              less likely to predict that species.<br>
-            • A <strong>flat curve</strong> → the feature has little effect on
-              that species' probability.
-        </div>
-    </div>
-    {% endif %}
 
-    <!-- ALE -->
-    {% if ale_plot_url %}
-    <div class="p2-card">
-        <h2>📉 ALE — {{ feature_name }}</h2>
-        <p class="p2-muted">
-            Each point shows the <strong>local change</strong> in predicted probability
-            within the bin around that feature value. Values are centred around zero —
-            positive means the model predicts that species <em>more</em> than average,
-            negative means <em>less</em> than average.
-        </p>
-        <div class="p2-plot-wrapper">
-            <img src="{{ ale_plot_url }}" alt="ALE plot for {{ feature_name }}"
-                 class="p2-plot-img">
-        </div>
-        <div class="p2-info-box" style="margin-top:14px;">
-            <strong>How to read the ALE:</strong><br>
-            • <strong>Above zero</strong> → at this feature value, the model predicts
-              that species more often than average.<br>
-            • <strong>Below zero</strong> → the model predicts it less often than average.<br>
-            • The dashed grey line at zero is the reference. A completely flat ALE
-              means the feature has no local effect at any value.
-        </div>
-    </div>
-    {% else %}
-    <div class="p2-card">
-        <h2>📉 ALE — {{ feature_name }}</h2>
-        <div class="p2-warning-box">
-            Not enough data in bins to generate an ALE plot for this feature.
-            Try a different feature or a different model.
-        </div>
-    </div>
-    {% endif %}
+    <!-- ============================================================= -->
+    <!-- SELECTED MODEL                                                -->
+    <!-- ============================================================= -->
 
-    {% else %}
-    <!-- Nothing submitted yet -->
+    {% if selected_model_label %}
+
+
     <div class="p2-info-box">
-        👆 <strong>No plots generated yet.</strong>
-        Choose a model type, λ, and feature above, then press <em>Generate PDP &amp; ALE</em>
-        to see results here.
+
+        <strong>
+            Selected Model:
+        </strong>
+
+        {{ selected_model_label }}
+
     </div>
+
+
     {% endif %}
 
-    <a href="{% url 'home:index' %}" class="p2-back">← Back to Project Hub</a>
+
+    <!-- ============================================================= -->
+    <!-- PDP + ALE GRID                                                -->
+    <!-- ============================================================= -->
+
+    <div class="p2-effect-grid">
+
+
+        <!-- ========================================================= -->
+        <!-- PDP                                                       -->
+        <!-- ========================================================= -->
+
+        <div class="p2-card p2-effect-card">
+
+            <h2>
+
+                PDP — {{ feature_name }}
+
+
+                <span
+                    class="p2-effect-help"
+                    title="Partial Dependence Plot: shows the average model prediction when the selected feature is varied across its range."
+                >
+                    i
+                </span>
+
+            </h2>
+
+
+            {% if pdp_plot_url %}
+
+
+            <div class="p2-plot-wrapper">
+
+                <img
+                    src="{{ pdp_plot_url }}"
+                    alt="PDP plot for {{ feature_name }}"
+                    class="p2-plot-img"
+                >
+
+            </div>
+
+
+            <p class="p2-muted p2-effect-description">
+
+                Average predicted probability as
+
+                <strong>
+                    {{ feature_name }}
+                </strong>
+
+                is varied across the complete dataset.
+
+            </p>
+
+
+            {% else %}
+
+
+            <div class="p2-warning-box">
+
+                PDP could not be generated.
+
+            </div>
+
+
+            {% endif %}
+
+        </div>
+
+
+        <!-- ========================================================= -->
+        <!-- ALE                                                       -->
+        <!-- ========================================================= -->
+
+        <div class="p2-card p2-effect-card">
+
+            <h2>
+
+                ALE — {{ feature_name }}
+
+
+                <span
+                    class="p2-effect-help"
+                    title="Accumulated Local Effects estimates local prediction changes using observations occurring inside feature intervals."
+                >
+                    i
+                </span>
+
+            </h2>
+
+
+            {% if ale_plot_url %}
+
+
+            <div class="p2-plot-wrapper">
+
+                <img
+                    src="{{ ale_plot_url }}"
+                    alt="ALE plot for {{ feature_name }}"
+                    class="p2-plot-img"
+                >
+
+            </div>
+
+
+            <p class="p2-muted p2-effect-description">
+
+                Accumulated local prediction effect of
+
+                <strong>
+                    {{ feature_name }}
+                </strong>
+
+                around feature values that occur in the data.
+
+            </p>
+
+
+            {% else %}
+
+
+            <div class="p2-warning-box">
+
+                ALE could not be generated for the selected
+                feature and model.
+
+            </div>
+
+
+            {% endif %}
+
+        </div>
+
+
+    </div>
+
+
+    <!-- ============================================================= -->
+    <!-- ALE VALIDATION — LOGISTIC REGRESSION ONLY                     -->
+    <!-- ============================================================= -->
+
+    {% if model_type == "lr" and ale_plot_url %}
+
+
+    <div class="p2-card">
+
+        <div class="p2-relationship-action">
+
+
+            <p>
+
+                <strong>
+                    Want to validate this ALE explanation?
+                </strong>
+
+                <br>
+
+                Compare the standard finite-difference ALE with a
+                derivative-based calculation available for
+                Logistic Regression.
+
+            </p>
+
+
+            <a
+                href="{% url 'project2:ale_validation' %}"
+                class="p2-btn"
+            >
+
+                Validate ALE Method →
+
+            </a>
+
+
+        </div>
+
+    </div>
+
+
+    {% endif %}
+
+
+    <!-- ============================================================= -->
+    <!-- FEATURE RELATIONSHIPS                                         -->
+    <!-- ============================================================= -->
+
+    <div class="p2-card">
+
+        <div class="p2-relationship-action">
+
+
+            <p>
+
+                <strong>
+                    Want to inspect possible feature dependencies?
+                </strong>
+
+                <br>
+
+                Analyze whether relationships with other numerical
+                features may affect how these explanation plots
+                should be interpreted.
+
+            </p>
+
+
+            <a
+                href="{% url 'project2:feature_relationships' %}"
+                class="p2-btn"
+            >
+
+                Analyze Feature Relationships →
+
+            </a>
+
+
+        </div>
+
+    </div>
+
+
+    {% else %}
+
+
+    <!-- ============================================================= -->
+    <!-- NO RESULTS                                                    -->
+    <!-- ============================================================= -->
+
+    <div class="p2-info-box">
+
+        Select a model, λ value and numerical feature,
+        then generate PDP and ALE.
+
+    </div>
+
+
+    {% endif %}
+
+
+    <!-- ============================================================= -->
+    <!-- BACK                                                          -->
+    <!-- ============================================================= -->
+
+    <a
+        href="{% url 'home:index' %}"
+        class="p2-back"
+    >
+
+        ← Back to Project Hub
+
+    </a>
+
 
 </div>
+
+
 </body>
+
 </html>
