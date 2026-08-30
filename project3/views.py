@@ -37,6 +37,11 @@ from .services.human_expert import (
     select_human_query_indices,
 )
 
+from .services.advanced_analysis import (
+    load_advanced_analysis,
+    run_advanced_analysis,
+)
+
 def index(request):
     return render(request, "project3/index.html")
 
@@ -573,5 +578,49 @@ def human_expert(request):
                 (2, "Business"),
                 (3, "Sci/Tech"),
             ],
+        },
+    )
+
+def advanced_analysis(request):
+
+    if request.method == "POST":
+
+        try:
+            run_advanced_analysis()
+
+            messages.success(
+                request,
+                (
+                    "Advanced human-AI analysis "
+                    "completed successfully."
+                ),
+            )
+
+        except Exception as exc:
+
+            messages.error(
+                request,
+                (
+                    "Advanced analysis failed: "
+                    f"{exc}"
+                ),
+            )
+
+        return redirect(
+            "project3:advanced_analysis"
+        )
+
+    result = (
+        load_advanced_analysis()
+    )
+
+    return render(
+        request,
+        "project3/advanced_analysis.html",
+        {
+            "result": result,
+            "results_available": (
+                result is not None
+            ),
         },
     )
