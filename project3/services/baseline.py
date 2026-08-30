@@ -135,3 +135,15 @@ def load_baseline_results() -> dict | None:
 
     with METRICS_PATH.open("r", encoding="utf-8") as file:
         return json.load(file)
+    
+def load_baseline_model() -> Pipeline | None:
+    """
+    Load the previously trained baseline classifier.
+
+    Returns None when the baseline experiment has not been run yet.
+    """
+
+    if not MODEL_PATH.exists():
+        return None
+
+    return joblib.load(MODEL_PATH)

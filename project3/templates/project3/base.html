@@ -78,10 +78,10 @@
             </a>
 
             <a
-                href="{% url 'project3:human_expert' %}"
+                href="{% url 'project3:human_expert' %}?new=1"
                 class="{% if request.resolver_match.url_name == 'human_expert' %}active{% endif %}"
             >
-                Human Expert Demo
+                Human Expert
             </a>
         </nav>
 
