@@ -1,11 +1,9 @@
 """
 effect_plot_utils.py — Manual PDP, ALE, and derivative-based ALE
-computation for project2.
+computation.
 
 No external explainability library is used.
 
-PDP and standard ALE use only:
-    pipeline.predict_proba(...)
 
 Derivative-based ALE additionally uses the fitted Logistic Regression
 coefficients and the StandardScaler parameters so that the analytical
@@ -652,89 +650,6 @@ def compute_derivative_ale(
 
     It does NOT replace the standard bin-based ALE implementation.
 
-    ------------------------------------------------------------------------
-    Mathematical idea
-    ------------------------------------------------------------------------
-
-    For multiclass Logistic Regression:
-
-        p_k(x) = softmax_k(x)
-
-    and for transformed feature z_j:
-
-        d p_k / d z_j
-        =
-        p_k *
-        (
-            beta_kj
-            -
-            sum_l p_l * beta_lj
-        )
-
-    Numerical features in this project are standardized:
-
-        z_j = (x_j - mean_j) / scale_j
-
-    therefore:
-
-        d p_k / d x_j
-        =
-        (1 / scale_j)
-        *
-        d p_k / d z_j
-
-    This function evaluates that analytical derivative at the actual
-    observations occurring within each ALE interval.
-
-    The average derivative inside an interval is multiplied by the interval
-    width to approximate the accumulated change:
-
-        local_effect
-        ≈
-        mean(derivative) * interval_width
-
-    The local effects are then accumulated and centred, just like standard ALE.
-
-    Important terminology
-    ---------------------
-    The Logistic Regression probability derivative itself is analytical.
-
-    However, the ALE expectation and integration are still estimated from
-    empirical observations and finite bins. Therefore this should be called:
-
-        "Derivative-based ALE"
-
-    rather than:
-
-        "Exact ALE"
-
-    Parameters
-    ----------
-    pipeline : fitted sklearn Pipeline
-        Must end with LogisticRegression or another compatible linear
-        probabilistic classifier exposing coef_.
-
-    X : pd.DataFrame
-        Original unencoded observations.
-
-    feature_name : str
-        Numerical feature to analyse.
-
-    class_names : list[str]
-        Names corresponding to predict_proba columns.
-
-    n_bins : int
-        Number of quantile ALE intervals.
-
-    Returns
-    -------
-    dict
-        {
-            "bin_centres": [...],
-            "ale_values": {...},
-            "n_bins_used": int,
-            "method": "derivative"
-        }
     """
 
     classifier = _get_classifier_from_pipeline(

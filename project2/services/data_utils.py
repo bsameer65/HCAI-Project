@@ -1,9 +1,4 @@
-"""
-data_utils.py — Palmer Penguins data loading and preprocessing for project2.
 
-Install requirement (if missing):
-    pip install palmerpenguins
-"""
 
 import pandas as pd
 from palmerpenguins import load_penguins
