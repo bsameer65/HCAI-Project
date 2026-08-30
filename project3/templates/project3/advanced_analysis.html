@@ -1,0 +1,647 @@
+{% extends "project3/base.html" %}
+{% load static %}
+
+{% block title %}
+    Advanced Analysis
+{% endblock %}
+
+{% block content %}
+
+
+<section class="p3-card">
+    <h2>Advanced Human–AI Analysis</h2>
+
+    <p>
+        This section investigates why the human–AI system behaves as observed,
+        rather than only comparing final model scores.
+    </p>
+
+    <div class="p3-info-box">
+        The analyses focus on human–AI complementarity, expert workload,
+        confidence reliability, active-learning efficiency, and robustness of
+        the collaboration results.
+    </div>
+</section>
+
+
+<section class="p3-card">
+    <h2>Run Advanced Analysis</h2>
+
+    {% if results_available %}
+
+        <div class="p3-success-box">
+            Saved advanced-analysis results are available.
+        </div>
+
+    {% else %}
+
+        <div class="p3-warning-box">
+            Advanced analysis has not been generated yet. Complete the
+            previous experiments first.
+        </div>
+
+    {% endif %}
+
+    <form
+        id="advanced-analysis-form"
+        method="post"
+    >
+        {% csrf_token %}
+
+        <button
+            id="advanced-analysis-button"
+            class="p3-btn"
+            type="submit"
+        >
+            {% if results_available %}
+                Re-run Advanced Analysis
+            {% else %}
+                Run Advanced Analysis
+            {% endif %}
+        </button>
+    </form>
+
+</section>
+
+
+{% if results_available %}
+
+
+<section class="p3-card">
+    <h2>Classifier Calibration</h2>
+
+    <p>
+        Deferral decisions often rely on classifier confidence. A reliability
+        diagram checks whether predicted confidence corresponds to observed
+        correctness.
+    </p>
+
+    <div class="p3-stat-row">
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ result.classifier.calibration.ece|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Expected Calibration Error
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ result.classifier.calibration.brier_score|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Confidence Brier Score
+            </span>
+        </div>
+
+    </div>
+
+    <div class="p3-plot-wrapper">
+        <img
+            class="p3-plot-img"
+            src="{% static result.classifier.calibration_figure %}"
+            alt="Classifier reliability diagram"
+        >
+    </div>
+
+    <div class="p3-info-box">
+        Better calibration makes confidence-threshold deferral more
+        trustworthy because classifier confidence then has a clearer
+        interpretation as expected correctness.
+    </div>
+
+</section>
+
+
+{% for expert_key, expert in result.experts.items %}
+
+<section class="p3-card">
+
+    <h2>
+        Complementarity — {{ expert.name }}
+    </h2>
+
+    <div class="p3-stat-row">
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.complementarity.expert_only_correct }}
+            </span>
+
+            <span class="p3-stat-label">
+                Expert-only correct cases
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.complementarity.ai_only_correct }}
+            </span>
+
+            <span class="p3-stat-label">
+                AI-only correct cases
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.complementarity.both_wrong }}
+            </span>
+
+            <span class="p3-stat-label">
+                Both wrong
+            </span>
+        </div>
+
+    </div>
+
+    <div class="p3-plot-wrapper">
+        <img
+            class="p3-plot-img"
+            src="{% static expert.figures.complementarity %}"
+            alt="Human-AI complementarity plot"
+        >
+    </div>
+
+    <div class="p3-info-box">
+        <strong>Complementary opportunity:</strong>
+        {{ expert.complementarity.expert_only_correct }}
+        test articles are cases where the autonomous AI fails but this expert
+        succeeds. These are the cases an ideal deferral policy should discover.
+    </div>
+
+</section>
+
+
+<section class="p3-card">
+
+    <h2>
+        Collaboration Headroom — {{ expert.name }}
+    </h2>
+
+    <div class="p3-stat-row">
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.oracle_gap.classifier_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                AI accuracy
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.oracle_gap.team_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Team accuracy
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.oracle_gap.oracle_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Oracle accuracy
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {% widthratio expert.oracle_gap.gain_capture_ratio 1 100 %}%
+            </span>
+
+            <span class="p3-stat-label">
+                Available gain captured
+            </span>
+        </div>
+
+    </div>
+
+    <div class="p3-info-box">
+        Oracle accuracy represents the theoretical result if the system always
+        knew whether the AI or the expert would be correct. The difference
+        between current team performance and oracle performance measures
+        remaining collaboration headroom.
+    </div>
+
+</section>
+
+
+<section class="p3-card">
+
+    <h2>
+        Coverage–Accuracy Trade-off — {{ expert.name }}
+    </h2>
+
+    <p>
+        The curve shows how final accuracy changes as increasingly many
+        decisions are handed from the AI to the expert.
+    </p>
+
+    <div class="p3-plot-wrapper">
+        <img
+            class="p3-plot-img"
+            src="{% static expert.figures.coverage_accuracy %}"
+            alt="Coverage accuracy tradeoff"
+        >
+    </div>
+
+    <div class="p3-stat-row">
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.best_tradeoff.threshold|floatformat:3 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Best threshold
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.best_tradeoff.deferral_percent|floatformat:1 }}%
+            </span>
+
+            <span class="p3-stat-label">
+                Expert workload
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.best_tradeoff.team_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Best team accuracy
+            </span>
+        </div>
+
+    </div>
+
+</section>
+
+
+<section class="p3-card">
+
+    <h2>
+        Stability — {{ expert.name }}
+    </h2>
+
+    <p>
+        The same collaboration policy is evaluated across several random
+        expert simulations to determine whether the result depends heavily on
+        one random seed.
+    </p>
+
+    <div class="p3-stat-row">
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.stability.mean_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Mean accuracy
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.stability.std_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Standard deviation
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.stability.min_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Minimum
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.stability.max_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Maximum
+            </span>
+        </div>
+
+    </div>
+
+</section>
+
+{% endfor %}
+
+
+<section class="p3-card">
+
+    <h2>Competence-Model Ablation</h2>
+
+    <p>
+        The ablation study removes different information sources from the
+        learned deferral model to determine which features contribute to
+        useful human–AI collaboration.
+    </p>
+
+    <div class="p3-plot-wrapper">
+        <img
+            class="p3-plot-img"
+            src="{% static result.ablation.figure %}"
+            alt="Competence model ablation"
+        >
+    </div>
+
+    <div class="p3-table-scroll">
+
+        <table class="p3-table">
+
+            <thead>
+                <tr>
+                    <th>Configuration</th>
+                    <th>Team Accuracy</th>
+                    <th>Deferral Rate</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for row in result.ablation.results %}
+
+                <tr>
+                    <td>
+                        {{ row.name }}
+                    </td>
+
+                    <td>
+                        {{ row.team_accuracy|floatformat:4 }}
+                    </td>
+
+                    <td>
+                        {% widthratio row.deferral_rate 1 100 %}%
+                    </td>
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<section class="p3-card">
+
+    <h2>Active-Learning Curves</h2>
+
+    <p>
+        These curves measure whether active querying discovers useful expert
+        competence using fewer human annotations.
+    </p>
+
+    {% for expert_key, figures in result.active_learning_figures.items %}
+
+        <h3 class="p3-sub-heading">
+            {% if expert_key == "sports_business" %}
+                Sports and Business Specialist
+            {% else %}
+                Technology and World Affairs Specialist
+            {% endif %}
+        </h3>
+
+        <div class="p3-two-col">
+
+            <div class="p3-plot-wrapper">
+                <img
+                    class="p3-plot-img"
+                    src="{% static figures.team_accuracy %}"
+                    alt="Active learning team accuracy curve"
+                >
+            </div>
+
+            <div class="p3-plot-wrapper">
+                <img
+                    class="p3-plot-img"
+                    src="{% static figures.competence_auroc %}"
+                    alt="Active learning competence AUROC curve"
+                >
+            </div>
+
+        </div>
+
+    {% endfor %}
+
+</section>
+
+
+<section class="p3-card">
+
+    <h2>What These Analyses Add</h2>
+
+    <div class="p3-finding-grid">
+
+        <article class="p3-finding-card">
+            <strong>Complementarity</strong>
+
+            <p>
+                Measures whether the human knows things the AI does not,
+                rather than only comparing individual accuracy.
+            </p>
+        </article>
+
+        <article class="p3-finding-card">
+            <strong>Human workload</strong>
+
+            <p>
+                Coverage–accuracy analysis quantifies how much human effort is
+                required to achieve a particular team performance.
+            </p>
+        </article>
+
+        <article class="p3-finding-card">
+            <strong>Trustworthy confidence</strong>
+
+            <p>
+                Calibration tests whether model confidence is meaningful
+                enough to support human-handoff decisions.
+            </p>
+        </article>
+
+        <article class="p3-finding-card">
+            <strong>Robustness</strong>
+
+            <p>
+                Stability analysis distinguishes genuine effects from results
+                that occur only under one random simulation.
+            </p>
+        </article>
+
+        <article class="p3-finding-card">
+            <strong>Explanation through ablation</strong>
+
+            <p>
+                Removing information from the competence model shows which
+                signals are actually useful for deciding when humans should
+                intervene.
+            </p>
+        </article>
+
+        <article class="p3-finding-card">
+            <strong>Label efficiency</strong>
+
+            <p>
+                Active-learning curves expose how quickly different strategies
+                learn useful information as human queries increase.
+            </p>
+        </article>
+
+    </div>
+
+</section>
+
+
+{% endif %}
+
+
+<div
+    id="advanced-analysis-overlay"
+    class="p3-training-overlay"
+    aria-hidden="true"
+>
+
+    <div class="p3-training-dialog">
+
+        <div class="p3-spinner"></div>
+
+        <h2>
+            Running advanced analysis
+        </h2>
+
+        <p id="advanced-status">
+            Preparing experiment results...
+        </p>
+
+        <div class="p3-progress-track">
+            <div class="p3-progress-bar"></div>
+        </div>
+
+        <p class="p3-muted">
+            Calibration, complementarity, robustness, ablation, and learning
+            curves are being generated.
+        </p>
+
+    </div>
+
+</div>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const form =
+        document.getElementById("advanced-analysis-form");
+
+    const button =
+        document.getElementById("advanced-analysis-button");
+
+    const overlay =
+        document.getElementById("advanced-analysis-overlay");
+
+    const status =
+        document.getElementById("advanced-status");
+
+    let timer = null;
+
+
+    function hideOverlay() {
+
+        if (overlay) {
+            overlay.classList.remove("is-visible");
+            overlay.setAttribute("aria-hidden", "true");
+        }
+
+        if (button) {
+            button.disabled = false;
+        }
+
+        if (timer !== null) {
+            clearInterval(timer);
+            timer = null;
+        }
+    }
+
+
+    hideOverlay();
+
+
+    if (!form || !button || !overlay || !status) {
+        return;
+    }
+
+
+    form.addEventListener("submit", function () {
+
+        button.disabled = true;
+        button.textContent = "Running analysis...";
+
+        overlay.classList.add("is-visible");
+        overlay.setAttribute("aria-hidden", "false");
+
+        const messages = [
+            "Checking classifier calibration...",
+            "Measuring human-AI complementarity...",
+            "Calculating collaboration headroom...",
+            "Sweeping deferral thresholds...",
+            "Evaluating random-seed stability...",
+            "Running competence-model ablations...",
+            "Generating active-learning curves...",
+            "Saving figures and results..."
+        ];
+
+        let index = 0;
+
+        timer = setInterval(function () {
+
+            index =
+                (index + 1)
+                % messages.length;
+
+            status.textContent =
+                messages[index];
+
+        }, 3500);
+    });
+
+
+    window.addEventListener(
+        "pageshow",
+        hideOverlay
+    );
+
+});
+</script>
+
+{% endblock %}
