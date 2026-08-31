@@ -1,3 +1,24 @@
+"""
+Advanced Human-AI analysis for Project 3.
+
+This module reuses saved experiment artifacts wherever possible instead of
+retraining the baseline, learning-to-defer, or active-learning experiments.
+
+Analyses:
+1. Human-AI complementarity
+2. Collaboration headroom / oracle gap
+3. Coverage-accuracy trade-off
+4. Classifier confidence calibration
+5. Active-learning efficiency curves
+6. Multi-seed expert stability
+
+The output is persisted as JSON and figures so the same results can later
+be reused in the final report.
+
+The module also records modification timestamps of all source experiment
+artifacts. This allows the interface to detect when an already-generated
+Advanced Analysis has become stale because an upstream experiment was rerun.
+"""
 
 from __future__ import annotations
 
@@ -5,39 +26,34 @@ from dataclasses import replace
 import json
 from pathlib import Path
 
-import joblib
 import matplotlib
 
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
-from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
-    accuracy_score,
-    brier_score_loss,
-)
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import accuracy_score
 
 from .active_learning import (
+    ACTIVE_LEARNING_METRICS_PATH,
     load_active_learning_results,
 )
-from .baseline import MODEL_PATH
+from .baseline import (
+    METRICS_PATH as BASELINE_METRICS_PATH,
+    load_baseline_model,
+    load_baseline_results,
+)
 from .data_loader import load_ag_news
 from .learning_to_defer import (
+    DEFER_METRICS_PATH,
     calculate_confidence,
-    calculate_entropy,
-    calculate_margin,
+    load_learning_to_defer_results,
 )
 from .simulated_expert import (
-    CLASS_NAMES,
+    EXPERT_METRICS_PATH,
     EXPERT_PROFILES,
-    ExpertProfile,
+    load_expert_results,
     simulate_expert_predictions,
 )
 
@@ -46,15 +62,25 @@ from .simulated_expert import (
 # Paths
 # ---------------------------------------------------------------------------
 
-PROJECT3_DIR = Path(__file__).resolve().parent.parent
-
-ANALYSIS_DIR = (
-    PROJECT3_DIR
-    / "artifacts"
-    / "analysis"
+PROJECT3_DIR = (
+    Path(__file__)
+    .resolve()
+    .parent
+    .parent
 )
 
-ANALYSIS_FIGURE_DIR = (
+METRICS_DIR = (
+    PROJECT3_DIR
+    / "artifacts"
+    / "metrics"
+)
+
+ADVANCED_METRICS_PATH = (
+    METRICS_DIR
+    / "advanced_analysis_metrics.json"
+)
+
+FIGURE_DIR = (
     PROJECT3_DIR
     / "static"
     / "project3"
@@ -62,23 +88,12 @@ ANALYSIS_FIGURE_DIR = (
     / "advanced"
 )
 
-ANALYSIS_RESULT_PATH = (
-    ANALYSIS_DIR
-    / "advanced_analysis.json"
-)
-
 
 # ---------------------------------------------------------------------------
-# Constants
+# Configuration
 # ---------------------------------------------------------------------------
 
 RANDOM_STATE = 42
-
-CONFIDENCE_THRESHOLDS = np.arange(
-    0.30,
-    0.96,
-    0.025,
-)
 
 CALIBRATION_BINS = 10
 
@@ -95,58 +110,274 @@ STABILITY_SEEDS = [
 # General helpers
 # ---------------------------------------------------------------------------
 
-def _ensure_directories() -> None:
-    ANALYSIS_DIR.mkdir(
+def _ensure_output_directories():
+    """
+    Create result and figure directories when missing.
+    """
+
+    METRICS_DIR.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    ANALYSIS_FIGURE_DIR.mkdir(
+    FIGURE_DIR.mkdir(
         parents=True,
         exist_ok=True,
     )
 
 
-def _load_baseline_model():
-    if not MODEL_PATH.exists():
-        raise FileNotFoundError(
-            "The trained baseline model could not be found. "
-            "Run the Baseline experiment first."
-        )
-
-    return joblib.load(
-        MODEL_PATH
-    )
-
-
-def _figure_url(
+def _figure_static_path(
     filename: str,
 ) -> str:
     """
-    Return path relative to Django static/project3.
+    Return a path suitable for Django's {% static %} tag.
     """
 
     return (
-        "project3/figures/advanced/"
-        + filename
+        "project3/"
+        "figures/"
+        "advanced/"
+        f"{filename}"
     )
 
 
 # ---------------------------------------------------------------------------
-# Expert predictions
+# Source artifact freshness
 # ---------------------------------------------------------------------------
 
-def _simulate_test_expert(
-    profile: ExpertProfile,
-    texts,
-    true_labels,
-    seed_offset: int = 900,
-):
+def get_source_artifact_timestamps() -> dict:
     """
-    Generate deterministic expert outputs for advanced analysis.
+    Return modification timestamps of all artifacts consumed by the
+    Advanced Analysis.
+
+    These timestamps are saved inside the advanced-analysis artifact.
+    On later page loads they can be compared with the current artifacts to
+    determine whether the saved analysis is still current.
     """
 
-    analysis_profile = replace(
+    paths = {
+        "baseline": (
+            BASELINE_METRICS_PATH
+        ),
+        "experts": (
+            EXPERT_METRICS_PATH
+        ),
+        "learning_to_defer": (
+            DEFER_METRICS_PATH
+        ),
+        "active_learning": (
+            ACTIVE_LEARNING_METRICS_PATH
+        ),
+    }
+
+    timestamps = {}
+
+    for key, path in paths.items():
+
+        if path.exists():
+
+            timestamps[key] = float(
+                path.stat().st_mtime
+            )
+
+        else:
+
+            timestamps[key] = None
+
+    return timestamps
+
+
+def advanced_analysis_is_stale(
+    results: dict | None,
+) -> bool:
+    """
+    Return True when an upstream experiment changed after the current
+    Advanced Analysis was generated.
+
+    Older advanced-analysis files that do not contain source_artifacts are
+    automatically considered stale.
+    """
+
+    if results is None:
+        return False
+
+    saved_sources = results.get(
+        "source_artifacts"
+    )
+
+    if not saved_sources:
+        return True
+
+    current_sources = (
+        get_source_artifact_timestamps()
+    )
+
+    for (
+        key,
+        current_timestamp,
+    ) in current_sources.items():
+
+        saved_timestamp = (
+            saved_sources.get(
+                key
+            )
+        )
+
+        if (
+            saved_timestamp
+            != current_timestamp
+        ):
+            return True
+
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Required artifact validation
+# ---------------------------------------------------------------------------
+
+def validate_required_results() -> None:
+    """
+    Ensure core experiments have already been executed.
+
+    Advanced Analysis analyses existing experiment artifacts instead of
+    silently retraining them.
+    """
+
+    missing = []
+
+    if (
+        load_baseline_results()
+        is None
+    ):
+        missing.append(
+            "Baseline"
+        )
+
+    if (
+        load_expert_results()
+        is None
+    ):
+        missing.append(
+            "Simulated Experts"
+        )
+
+    if (
+        load_learning_to_defer_results()
+        is None
+    ):
+        missing.append(
+            "Learning to Defer"
+        )
+
+    if (
+        load_active_learning_results()
+        is None
+    ):
+        missing.append(
+            "Active Learning"
+        )
+
+    if missing:
+
+        raise RuntimeError(
+            "Run these experiments before Advanced Analysis: "
+            + ", ".join(
+                missing
+            )
+        )
+
+    if (
+        load_baseline_model()
+        is None
+    ):
+
+        raise RuntimeError(
+            "The saved baseline model could not be found. "
+            "Run the Baseline experiment again."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test predictions shared across analyses
+# ---------------------------------------------------------------------------
+
+def prepare_test_predictions():
+    """
+    Load the saved baseline and calculate test predictions once.
+    """
+
+    dataset = load_ag_news()
+
+    classifier = (
+        load_baseline_model()
+    )
+
+    if classifier is None:
+
+        raise RuntimeError(
+            "Baseline model is unavailable."
+        )
+
+    y_true = (
+        dataset.test[
+            "label"
+        ].to_numpy(
+            dtype=int
+        )
+    )
+
+    predictions = (
+        classifier.predict(
+            dataset.test[
+                "text"
+            ]
+        )
+    )
+
+    probabilities = (
+        classifier.predict_proba(
+            dataset.test[
+                "text"
+            ]
+        )
+    )
+
+    return (
+        dataset,
+        y_true,
+        np.asarray(
+            predictions,
+            dtype=int,
+        ),
+        np.asarray(
+            probabilities,
+            dtype=float,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Expert simulation
+# ---------------------------------------------------------------------------
+
+def get_test_expert_predictions(
+    dataset,
+    profile,
+    seed_offset: int = 303,
+):
+    """
+    Reproduce the expert simulation used by learning-to-defer test evaluation.
+
+    learning_to_defer.py evaluates the test expert using:
+
+        profile.random_state + 303
+
+    Therefore the same seed convention is preserved here so that
+    complementarity and headroom calculations are directly comparable.
+    """
+
+    test_profile = replace(
         profile,
         random_state=(
             profile.random_state
@@ -154,374 +385,503 @@ def _simulate_test_expert(
         ),
     )
 
-    return simulate_expert_predictions(
-        texts=texts,
-        true_labels=true_labels,
-        profile=analysis_profile,
+    outputs = (
+        simulate_expert_predictions(
+            texts=dataset.test[
+                "text"
+            ],
+            true_labels=dataset.test[
+                "label"
+            ],
+            profile=test_profile,
+        )
     )
+
+    predictions = np.asarray(
+        [
+            output.prediction
+            for output in outputs
+        ],
+        dtype=int,
+    )
+
+    return predictions
 
 
 # ---------------------------------------------------------------------------
-# 1. Complementarity
+# Complementarity
 # ---------------------------------------------------------------------------
 
 def calculate_complementarity(
-    true_labels: np.ndarray,
-    classifier_predictions: np.ndarray,
-    expert_predictions: np.ndarray,
-) -> dict:
+    y_true,
+    ai_predictions,
+    expert_predictions,
+):
     """
-    Divide samples into four human-AI correctness combinations.
+    Partition examples according to AI and expert correctness.
     """
 
-    classifier_correct = (
-        classifier_predictions
-        == true_labels
+    ai_correct = (
+        ai_predictions
+        == y_true
     )
 
     expert_correct = (
         expert_predictions
-        == true_labels
+        == y_true
     )
 
     both_correct = int(
         np.sum(
-            classifier_correct
+            ai_correct
             & expert_correct
         )
     )
 
     ai_only_correct = int(
         np.sum(
-            classifier_correct
+            ai_correct
             & ~expert_correct
         )
     )
 
     expert_only_correct = int(
         np.sum(
-            ~classifier_correct
+            ~ai_correct
             & expert_correct
         )
     )
 
     both_wrong = int(
         np.sum(
-            ~classifier_correct
+            ~ai_correct
             & ~expert_correct
         )
     )
 
-    total = len(
-        true_labels
+    sample_count = int(
+        len(y_true)
     )
 
     return {
-        "both_correct": both_correct,
-        "ai_only_correct": ai_only_correct,
-        "expert_only_correct": expert_only_correct,
-        "both_wrong": both_wrong,
+        "sample_count": sample_count,
 
-        "both_correct_percent": (
-            both_correct / total * 100
+        "both_correct": (
+            both_correct
         ),
 
-        "ai_only_correct_percent": (
-            ai_only_correct / total * 100
+        "ai_only_correct": (
+            ai_only_correct
         ),
 
-        "expert_only_correct_percent": (
-            expert_only_correct / total * 100
-        ),
-
-        "both_wrong_percent": (
-            both_wrong / total * 100
-        ),
-
-        "complementary_opportunities": (
+        "expert_only_correct": (
             expert_only_correct
         ),
 
-        "sample_count": total,
+        "both_wrong": (
+            both_wrong
+        ),
+
+        "both_correct_percent": (
+            both_correct
+            / sample_count
+            * 100
+        ),
+
+        "ai_only_correct_percent": (
+            ai_only_correct
+            / sample_count
+            * 100
+        ),
+
+        "expert_only_correct_percent": (
+            expert_only_correct
+            / sample_count
+            * 100
+        ),
+
+        "both_wrong_percent": (
+            both_wrong
+            / sample_count
+            * 100
+        ),
     }
 
 
 def plot_complementarity(
-    expert_name: str,
-    metrics: dict,
-    filename: str,
-) -> None:
+    expert_name,
+    result,
+    filename,
+):
+    """
+    Generate complementarity bar chart.
+    """
+
     labels = [
         "Both correct",
-        "AI only correct",
-        "Expert only correct",
+        "AI only",
+        "Expert only",
         "Both wrong",
     ]
 
     values = [
-        metrics["both_correct"],
-        metrics["ai_only_correct"],
-        metrics["expert_only_correct"],
-        metrics["both_wrong"],
+        result[
+            "both_correct"
+        ],
+        result[
+            "ai_only_correct"
+        ],
+        result[
+            "expert_only_correct"
+        ],
+        result[
+            "both_wrong"
+        ],
     ]
 
-    fig, ax = plt.subplots(
+    figure, axis = plt.subplots(
         figsize=(8, 4.8)
     )
 
-    ax.bar(
+    bars = axis.bar(
         labels,
         values,
     )
 
-    ax.set_ylabel(
-        "Number of test articles"
+    axis.set_ylabel(
+        "Test articles"
     )
 
-    ax.set_title(
-        f"Human-AI Complementarity — {expert_name}"
+    axis.set_title(
+        "Human-AI Complementarity\n"
+        f"{expert_name}"
     )
 
-    ax.tick_params(
+    axis.tick_params(
         axis="x",
-        rotation=18,
+        rotation=12,
     )
 
-    fig.tight_layout()
+    for bar, value in zip(
+        bars,
+        values,
+    ):
 
-    fig.savefig(
-        ANALYSIS_FIGURE_DIR
+        axis.text(
+            (
+                bar.get_x()
+                + bar.get_width()
+                / 2
+            ),
+            bar.get_height(),
+            str(value),
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+
+    figure.tight_layout()
+
+    figure.savefig(
+        FIGURE_DIR
         / filename,
         dpi=160,
         bbox_inches="tight",
     )
 
-    plt.close(fig)
+    plt.close(
+        figure
+    )
 
 
 # ---------------------------------------------------------------------------
-# 2. Oracle gap / gain capture
+# Collaboration headroom
 # ---------------------------------------------------------------------------
 
-def calculate_oracle_gap(
-    true_labels: np.ndarray,
-    classifier_predictions: np.ndarray,
-    expert_predictions: np.ndarray,
-    team_predictions: np.ndarray,
-) -> dict:
-    classifier_accuracy = accuracy_score(
-        true_labels,
-        classifier_predictions,
+def calculate_collaboration_headroom(
+    y_true,
+    ai_predictions,
+    expert_predictions,
+    best_team_metrics,
+):
+    """
+    Compare achieved team gain with theoretical oracle gain.
+    """
+
+    ai_accuracy = float(
+        accuracy_score(
+            y_true,
+            ai_predictions,
+        )
     )
 
-    expert_accuracy = accuracy_score(
-        true_labels,
-        expert_predictions,
+    expert_accuracy = float(
+        accuracy_score(
+            y_true,
+            expert_predictions,
+        )
     )
 
-    team_accuracy = accuracy_score(
-        true_labels,
-        team_predictions,
-    )
-
-    classifier_correct = (
-        classifier_predictions
-        == true_labels
+    ai_correct = (
+        ai_predictions
+        == y_true
     )
 
     expert_correct = (
         expert_predictions
-        == true_labels
+        == y_true
     )
 
     oracle_accuracy = float(
         np.mean(
-            classifier_correct
+            ai_correct
             | expert_correct
         )
     )
 
-    available_gain = (
+    team_accuracy = float(
+        best_team_metrics[
+            "team_accuracy"
+        ]
+    )
+
+    possible_gain = (
         oracle_accuracy
-        - classifier_accuracy
+        - ai_accuracy
     )
 
     captured_gain = (
         team_accuracy
-        - classifier_accuracy
+        - ai_accuracy
     )
 
-    if available_gain > 0:
+    if possible_gain > 0:
+
         gain_capture_ratio = (
             captured_gain
-            / available_gain
+            / possible_gain
         )
+
     else:
+
         gain_capture_ratio = 0.0
 
     return {
-        "classifier_accuracy": float(
-            classifier_accuracy
+        "ai_accuracy": (
+            ai_accuracy
         ),
-        "expert_accuracy": float(
+
+        "expert_accuracy": (
             expert_accuracy
         ),
-        "team_accuracy": float(
+
+        "team_accuracy": (
             team_accuracy
         ),
-        "oracle_accuracy": float(
+
+        "oracle_accuracy": (
             oracle_accuracy
         ),
-        "available_gain": float(
-            available_gain
+
+        "possible_gain": float(
+            possible_gain
         ),
+
         "captured_gain": float(
             captured_gain
         ),
+
         "gain_capture_ratio": float(
             gain_capture_ratio
+        ),
+
+        "gain_capture_percent": float(
+            gain_capture_ratio
+            * 100
         ),
     }
 
 
 # ---------------------------------------------------------------------------
-# 3. Coverage-accuracy trade-off
+# Coverage-accuracy trade-off
 # ---------------------------------------------------------------------------
 
-def calculate_coverage_accuracy_curve(
-    true_labels: np.ndarray,
-    classifier_predictions: np.ndarray,
-    classifier_probabilities: np.ndarray,
-    expert_predictions: np.ndarray,
-) -> list[dict]:
-    confidence = calculate_confidence(
-        classifier_probabilities
-    )
+def prepare_coverage_accuracy(
+    defer_results,
+):
+    """
+    Reuse threshold searches stored by learning-to-defer.
+    """
 
-    points = []
+    output = {}
 
-    for threshold in CONFIDENCE_THRESHOLDS:
-        defer_mask = (
-            confidence
-            < threshold
-        )
+    for (
+        expert_key,
+        expert_result,
+    ) in defer_results[
+        "experts"
+    ].items():
 
-        team_predictions = np.where(
-            defer_mask,
-            expert_predictions,
-            classifier_predictions,
-        )
+        output[
+            expert_key
+        ] = {
+            "name": (
+                expert_result[
+                    "name"
+                ]
+            ),
 
-        points.append(
-            {
-                "threshold": float(
-                    threshold
-                ),
-                "deferral_rate": float(
-                    defer_mask.mean()
-                ),
-                "deferral_percent": float(
-                    defer_mask.mean()
-                    * 100
-                ),
-                "team_accuracy": float(
-                    accuracy_score(
-                        true_labels,
-                        team_predictions,
-                    )
-                ),
-            }
-        )
+            "confidence": (
+                expert_result[
+                    "confidence_strategy"
+                ][
+                    "threshold_search"
+                ]
+            ),
 
-    return points
+            "learned": (
+                expert_result[
+                    "learned_strategy"
+                ][
+                    "threshold_search"
+                ]
+            ),
+        }
+
+    return output
 
 
 def plot_coverage_accuracy(
-    expert_name: str,
-    points: list[dict],
-    classifier_accuracy: float,
-    filename: str,
-) -> None:
-    x = [
+    expert_name,
+    confidence_points,
+    learned_points,
+    classifier_accuracy,
+    filename,
+):
+    """
+    Plot team accuracy against expert deferral rate.
+    """
+
+    figure, axis = plt.subplots(
+        figsize=(7.8, 5)
+    )
+
+    confidence_x = [
         point[
-            "deferral_percent"
+            "deferral_rate"
         ]
-        for point in points
+        * 100
+        for point
+        in confidence_points
     ]
 
-    y = [
+    confidence_y = [
         point[
             "team_accuracy"
         ]
-        for point in points
+        for point
+        in confidence_points
     ]
 
-    fig, ax = plt.subplots(
-        figsize=(7.5, 5)
-    )
+    learned_x = [
+        point[
+            "deferral_rate"
+        ]
+        * 100
+        for point
+        in learned_points
+    ]
 
-    ax.plot(
-        x,
-        y,
+    learned_y = [
+        point[
+            "team_accuracy"
+        ]
+        for point
+        in learned_points
+    ]
+
+    axis.plot(
+        confidence_x,
+        confidence_y,
         marker="o",
-        markersize=3,
+        label=(
+            "Confidence threshold"
+        ),
     )
 
-    ax.axhline(
+    axis.plot(
+        learned_x,
+        learned_y,
+        marker="o",
+        label=(
+            "Competence-aware"
+        ),
+    )
+
+    axis.axhline(
         classifier_accuracy,
         linestyle="--",
         label="Classifier only",
     )
 
-    ax.set_xlabel(
-        "Articles deferred to expert (%)"
+    axis.set_xlabel(
+        "Deferred to expert (%)"
     )
 
-    ax.set_ylabel(
+    axis.set_ylabel(
         "Team accuracy"
     )
 
-    ax.set_title(
-        f"Coverage–Accuracy Trade-off — {expert_name}"
+    axis.set_title(
+        "Coverage-Accuracy Trade-off\n"
+        f"{expert_name}"
     )
 
-    ax.legend()
+    axis.legend()
 
-    fig.tight_layout()
+    figure.tight_layout()
 
-    fig.savefig(
-        ANALYSIS_FIGURE_DIR
+    figure.savefig(
+        FIGURE_DIR
         / filename,
         dpi=160,
         bbox_inches="tight",
     )
 
-    plt.close(fig)
+    plt.close(
+        figure
+    )
 
 
 # ---------------------------------------------------------------------------
-# 4. Calibration
+# Confidence calibration
 # ---------------------------------------------------------------------------
 
 def calculate_calibration(
-    true_labels: np.ndarray,
-    predictions: np.ndarray,
-    probabilities: np.ndarray,
-    n_bins: int = CALIBRATION_BINS,
-) -> dict:
-    confidence = calculate_confidence(
-        probabilities
+    y_true,
+    predictions,
+    probabilities,
+):
+    """
+    Reliability analysis for top-class classifier confidence.
+    """
+
+    confidence = (
+        calculate_confidence(
+            probabilities
+        )
     )
 
-    correct = (
+    correctness = (
         predictions
-        == true_labels
+        == y_true
     ).astype(float)
 
-    bin_edges = np.linspace(
+    edges = np.linspace(
         0.0,
         1.0,
-        n_bins + 1,
+        CALIBRATION_BINS
+        + 1,
     )
 
     rows = []
@@ -529,24 +889,29 @@ def calculate_calibration(
     ece = 0.0
 
     for index in range(
-        n_bins
+        CALIBRATION_BINS
     ):
-        lower = bin_edges[
+
+        lower = edges[
             index
         ]
 
-        upper = bin_edges[
+        upper = edges[
             index + 1
         ]
 
-        if index == (
-            n_bins - 1
+        if (
+            index
+            == CALIBRATION_BINS - 1
         ):
+
             mask = (
                 (confidence >= lower)
                 & (confidence <= upper)
             )
+
         else:
+
             mask = (
                 (confidence >= lower)
                 & (confidence < upper)
@@ -566,24 +931,24 @@ def calculate_calibration(
         )
 
         observed_accuracy = float(
-            correct[
+            correctness[
                 mask
             ].mean()
         )
 
-        proportion = (
+        weight = (
             count
-            / len(
-                confidence
-            )
+            / len(confidence)
+        )
+
+        absolute_gap = abs(
+            observed_accuracy
+            - mean_confidence
         )
 
         ece += (
-            proportion
-            * abs(
-                observed_accuracy
-                - mean_confidence
-            )
+            weight
+            * absolute_gap
         )
 
         rows.append(
@@ -591,48 +956,49 @@ def calculate_calibration(
                 "lower": float(
                     lower
                 ),
+
                 "upper": float(
                     upper
                 ),
-                "samples": count,
+
+                "count": count,
+
                 "mean_confidence": (
                     mean_confidence
                 ),
+
                 "observed_accuracy": (
                     observed_accuracy
                 ),
-                "gap": float(
-                    observed_accuracy
-                    - mean_confidence
+
+                "absolute_gap": float(
+                    absolute_gap
                 ),
             }
         )
 
-    brier = brier_score_loss(
-        correct,
-        confidence,
-    )
-
     return {
-        "bins": rows,
         "ece": float(
             ece
         ),
-        "brier_score": float(
-            brier
-        ),
+        "bins": rows,
     }
 
 
 def plot_calibration(
-    calibration: dict,
-    filename: str,
-) -> None:
+    calibration,
+    filename,
+):
+    """
+    Generate reliability diagram.
+    """
+
     confidence = [
         row[
             "mean_confidence"
         ]
-        for row in calibration[
+        for row
+        in calibration[
             "bins"
         ]
     ]
@@ -641,84 +1007,85 @@ def plot_calibration(
         row[
             "observed_accuracy"
         ]
-        for row in calibration[
+        for row
+        in calibration[
             "bins"
         ]
     ]
 
-    fig, ax = plt.subplots(
-        figsize=(6.5, 6)
+    figure, axis = plt.subplots(
+        figsize=(6.2, 6)
     )
 
-    ax.plot(
+    axis.plot(
         [0, 1],
         [0, 1],
         linestyle="--",
         label="Perfect calibration",
     )
 
-    ax.plot(
+    axis.plot(
         confidence,
         accuracy,
         marker="o",
-        label="Classifier",
+        label="Baseline classifier",
     )
 
-    ax.set_xlabel(
+    axis.set_xlim(
+        0,
+        1,
+    )
+
+    axis.set_ylim(
+        0,
+        1,
+    )
+
+    axis.set_xlabel(
         "Mean predicted confidence"
     )
 
-    ax.set_ylabel(
+    axis.set_ylabel(
         "Observed accuracy"
     )
 
-    ax.set_title(
+    axis.set_title(
         "Classifier Reliability Diagram"
     )
 
-    ax.set_xlim(
-        0,
-        1,
-    )
+    axis.legend()
 
-    ax.set_ylim(
-        0,
-        1,
-    )
+    figure.tight_layout()
 
-    ax.legend()
-
-    fig.tight_layout()
-
-    fig.savefig(
-        ANALYSIS_FIGURE_DIR
+    figure.savefig(
+        FIGURE_DIR
         / filename,
         dpi=160,
         bbox_inches="tight",
     )
 
-    plt.close(fig)
+    plt.close(
+        figure
+    )
 
 
 # ---------------------------------------------------------------------------
-# 5. Active-learning learning curves
+# Active-learning efficiency
 # ---------------------------------------------------------------------------
 
-def plot_active_learning_curves(
-    active_learning_results: dict,
-) -> dict:
+def generate_active_learning_figures(
+    active_results,
+):
     """
-    Generate two plots for each expert:
-        - team accuracy vs query budget
-        - competence AUROC vs query budget
+    Generate learning-curve figures from saved active-learning checkpoints.
     """
 
     figures = {}
 
     for (
         expert_key,
-        expert,
-    ) in active_learning_results[
+        expert_result,
+    ) in active_results[
         "experts"
     ].items():
 
@@ -727,99 +1094,124 @@ def plot_active_learning_curves(
         # -----------------------------------------------------------
 
         team_filename = (
-            f"active_learning_team_"
+            "active_team_"
             f"{expert_key}.png"
         )
 
-        fig, ax = plt.subplots(
+        figure, axis = plt.subplots(
             figsize=(8, 5)
         )
 
-        for strategy in expert[
-            "strategies"
-        ].values():
+        for strategy in (
+            expert_result[
+                "strategies"
+            ].values()
+        ):
+
+            points = (
+                strategy[
+                    "learning_curve"
+                ]
+            )
 
             budgets = [
                 point[
                     "query_budget"
                 ]
                 for point
-                in strategy[
-                    "learning_curve"
-                ]
+                in points
             ]
 
-            accuracy = [
+            team_accuracy = [
                 point[
                     "team_accuracy"
                 ]
                 for point
-                in strategy[
-                    "learning_curve"
-                ]
+                in points
             ]
 
-            ax.plot(
+            axis.plot(
                 budgets,
-                accuracy,
+                team_accuracy,
                 marker="o",
-                label=strategy[
-                    "name"
-                ],
+                label=(
+                    strategy[
+                        "name"
+                    ]
+                ),
             )
 
-        ax.set_xlabel(
-            "Number of expert queries"
+        axis.set_xlabel(
+            "Expert queries"
         )
 
-        ax.set_ylabel(
+        axis.set_ylabel(
             "Human-AI team accuracy"
         )
 
-        ax.set_title(
-            f"Active Learning — {expert['name']}"
+        axis.set_title(
+            "Active-Learning Team Performance\n"
+            f"{expert_result['name']}"
         )
 
-        ax.legend(
+        axis.legend(
             fontsize=8
         )
 
-        fig.tight_layout()
+        figure.tight_layout()
 
-        fig.savefig(
-            ANALYSIS_FIGURE_DIR
+        figure.savefig(
+            FIGURE_DIR
             / team_filename,
             dpi=160,
             bbox_inches="tight",
         )
 
-        plt.close(fig)
+        plt.close(
+            figure
+        )
+
 
         # -----------------------------------------------------------
-        # AUROC
+        # Competence AUROC
         # -----------------------------------------------------------
 
         auroc_filename = (
-            f"active_learning_auroc_"
+            "active_auroc_"
             f"{expert_key}.png"
         )
 
-        fig, ax = plt.subplots(
+        figure, axis = plt.subplots(
             figsize=(8, 5)
         )
 
-        for strategy in expert[
-            "strategies"
-        ].values():
+        for strategy in (
+            expert_result[
+                "strategies"
+            ].values()
+        ):
+
+            points = (
+                strategy[
+                    "learning_curve"
+                ]
+            )
+
+            usable_points = [
+                point
+                for point
+                in points
+                if point[
+                    "competence_auroc"
+                ] is not None
+            ]
 
             budgets = [
                 point[
                     "query_budget"
                 ]
                 for point
-                in strategy[
-                    "learning_curve"
-                ]
+                in usable_points
             ]
 
             auroc = [
@@ -827,63 +1219,73 @@ def plot_active_learning_curves(
                     "competence_auroc"
                 ]
                 for point
-                in strategy[
-                    "learning_curve"
-                ]
+                in usable_points
             ]
 
-            ax.plot(
+            axis.plot(
                 budgets,
                 auroc,
                 marker="o",
-                label=strategy[
-                    "name"
-                ],
+                label=(
+                    strategy[
+                        "name"
+                    ]
+                ),
             )
 
-        ax.axhline(
+        axis.axhline(
             0.5,
             linestyle="--",
             label="Random ranking",
         )
 
-        ax.set_xlabel(
-            "Number of expert queries"
+        axis.set_xlabel(
+            "Expert queries"
         )
 
-        ax.set_ylabel(
+        axis.set_ylabel(
             "Competence AUROC"
         )
 
-        ax.set_title(
-            f"Expert Competence Discovery — {expert['name']}"
+        axis.set_title(
+            "Expert-Competence Discovery\n"
+            f"{expert_result['name']}"
         )
 
-        ax.legend(
+        axis.legend(
             fontsize=8
         )
 
-        fig.tight_layout()
+        figure.tight_layout()
 
-        fig.savefig(
-            ANALYSIS_FIGURE_DIR
+        figure.savefig(
+            FIGURE_DIR
             / auroc_filename,
             dpi=160,
             bbox_inches="tight",
         )
 
-        plt.close(fig)
+        plt.close(
+            figure
+        )
 
         figures[
             expert_key
         ] = {
+            "name": (
+                expert_result[
+                    "name"
+                ]
+            ),
+
             "team_accuracy": (
-                _figure_url(
+                _figure_static_path(
                     team_filename
                 )
             ),
+
             "competence_auroc": (
-                _figure_url(
+                _figure_static_path(
                     auroc_filename
                 )
             ),
@@ -893,488 +1295,25 @@ def plot_active_learning_curves(
 
 
 # ---------------------------------------------------------------------------
-# 6. Ablation study
+# Expert simulation stability
 # ---------------------------------------------------------------------------
 
-ABLATION_FEATURE_SETS = {
-    "full": {
-        "numeric": [
-            "confidence",
-            "entropy",
-            "margin",
-            "log_text_length",
-        ],
-        "categorical": [
-            "predicted_class",
-            "expert_region",
-        ],
-    },
-
-    "no_entropy": {
-        "numeric": [
-            "confidence",
-            "margin",
-            "log_text_length",
-        ],
-        "categorical": [
-            "predicted_class",
-            "expert_region",
-        ],
-    },
-
-    "no_region": {
-        "numeric": [
-            "confidence",
-            "entropy",
-            "margin",
-            "log_text_length",
-        ],
-        "categorical": [
-            "predicted_class",
-        ],
-    },
-
-    "uncertainty_only": {
-        "numeric": [
-            "confidence",
-            "entropy",
-            "margin",
-        ],
-        "categorical": [],
-    },
-}
-
-
-def _build_ablation_features(
-    texts,
-    classifier_predictions,
-    classifier_probabilities,
-    expert_outputs,
-) -> pd.DataFrame:
-
-    confidence = calculate_confidence(
-        classifier_probabilities
-    )
-
-    entropy = calculate_entropy(
-        classifier_probabilities
-    )
-
-    margin = calculate_margin(
-        classifier_probabilities
-    )
-
-    return pd.DataFrame(
-        {
-            "confidence": confidence,
-            "entropy": entropy,
-            "margin": margin,
-
-            "log_text_length": np.log1p(
-                [
-                    len(
-                        str(text).split()
-                    )
-                    for text in texts
-                ]
-            ),
-
-            "predicted_class": [
-                CLASS_NAMES[
-                    int(value)
-                ]
-                for value
-                in classifier_predictions
-            ],
-
-            "expert_region": [
-                output.region
-                for output
-                in expert_outputs
-            ],
-        }
-    )
-
-
-def _build_ablation_model(
-    numeric_features: list[str],
-    categorical_features: list[str],
-) -> Pipeline:
-
-    transformers = []
-
-    if numeric_features:
-        transformers.append(
-            (
-                "numeric",
-                "passthrough",
-                numeric_features,
-            )
-        )
-
-    if categorical_features:
-        transformers.append(
-            (
-                "categorical",
-                OneHotEncoder(
-                    handle_unknown="ignore",
-                ),
-                categorical_features,
-            )
-        )
-
-    preprocessing = ColumnTransformer(
-        transformers=transformers
-    )
-
-    return Pipeline(
-        steps=[
-            (
-                "preprocessing",
-                preprocessing,
-            ),
-            (
-                "classifier",
-                LogisticRegression(
-                    max_iter=1000,
-                    class_weight="balanced",
-                    random_state=RANDOM_STATE,
-                    solver="liblinear",
-                ),
-            ),
-        ]
-    )
-
-
-def run_ablation_study(
+def calculate_expert_stability(
     dataset,
-    baseline_model,
-    profile: ExpertProfile,
-) -> list[dict]:
+    profile,
+):
     """
-    Evaluate which information is useful for predicting beneficial deferral.
+    Re-run only the lightweight expert simulator over several seeds.
 
-    The official test set is used only for evaluation.
-    """
-
-    train_data, validation_data = (
-        train_test_split(
-            dataset.train,
-            test_size=0.25,
-            random_state=RANDOM_STATE,
-            stratify=dataset.train[
-                "label"
-            ],
-        )
-    )
-
-    train_probabilities = (
-        baseline_model.predict_proba(
-            train_data["text"]
-        )
-    )
-
-    train_predictions = (
-        baseline_model.predict(
-            train_data["text"]
-        )
-    )
-
-    validation_probabilities = (
-        baseline_model.predict_proba(
-            validation_data[
-                "text"
-            ]
-        )
-    )
-
-    validation_predictions = (
-        baseline_model.predict(
-            validation_data[
-                "text"
-            ]
-        )
-    )
-
-    train_expert = (
-        _simulate_test_expert(
-            profile,
-            train_data[
-                "text"
-            ],
-            train_data[
-                "label"
-            ],
-            seed_offset=1100,
-        )
-    )
-
-    validation_expert = (
-        _simulate_test_expert(
-            profile,
-            validation_data[
-                "text"
-            ],
-            validation_data[
-                "label"
-            ],
-            seed_offset=1200,
-        )
-    )
-
-    train_features = (
-        _build_ablation_features(
-            train_data["text"],
-            train_predictions,
-            train_probabilities,
-            train_expert,
-        )
-    )
-
-    validation_features = (
-        _build_ablation_features(
-            validation_data[
-                "text"
-            ],
-            validation_predictions,
-            validation_probabilities,
-            validation_expert,
-        )
-    )
-
-    train_true = train_data[
-        "label"
-    ].to_numpy()
-
-    validation_true = (
-        validation_data[
-            "label"
-        ].to_numpy()
-    )
-
-    train_expert_predictions = (
-        np.asarray(
-            [
-                output.prediction
-                for output
-                in train_expert
-            ]
-        )
-    )
-
-    validation_expert_predictions = (
-        np.asarray(
-            [
-                output.prediction
-                for output
-                in validation_expert
-            ]
-        )
-    )
-
-    train_target = (
-        (
-            train_predictions
-            != train_true
-        )
-        & (
-            train_expert_predictions
-            == train_true
-        )
-    ).astype(int)
-
-    validation_target = (
-        (
-            validation_predictions
-            != validation_true
-        )
-        & (
-            validation_expert_predictions
-            == validation_true
-        )
-    ).astype(int)
-
-    results = []
-
-    for (
-        key,
-        configuration,
-    ) in ABLATION_FEATURE_SETS.items():
-
-        model = (
-            _build_ablation_model(
-                numeric_features=(
-                    configuration[
-                        "numeric"
-                    ]
-                ),
-                categorical_features=(
-                    configuration[
-                        "categorical"
-                    ]
-                ),
-            )
-        )
-
-        model.fit(
-            train_features,
-            train_target,
-        )
-
-        probability = (
-            model.predict_proba(
-                validation_features
-            )[:, 1]
-        )
-
-        # Simple 0.5 deferral probability threshold.
-        defer_mask = (
-            probability
-            >= 0.5
-        )
-
-        team_predictions = np.where(
-            defer_mask,
-            validation_expert_predictions,
-            validation_predictions,
-        )
-
-        team_accuracy = accuracy_score(
-            validation_true,
-            team_predictions,
-        )
-
-        results.append(
-            {
-                "key": key,
-                "name": (
-                    key
-                    .replace(
-                        "_",
-                        " ",
-                    )
-                    .title()
-                ),
-                "features": (
-                    configuration
-                ),
-                "team_accuracy": float(
-                    team_accuracy
-                ),
-                "deferral_rate": float(
-                    defer_mask.mean()
-                ),
-                "positive_target_rate": (
-                    float(
-                        validation_target.mean()
-                    )
-                ),
-            }
-        )
-
-    return results
-
-
-def plot_ablation(
-    results: list[dict],
-    filename: str,
-) -> None:
-
-    names = [
-        item["name"]
-        for item in results
-    ]
-
-    accuracy = [
-        item[
-            "team_accuracy"
-        ]
-        for item in results
-    ]
-
-    fig, ax = plt.subplots(
-        figsize=(8, 4.8)
-    )
-
-    ax.bar(
-        names,
-        accuracy,
-    )
-
-    ax.set_ylabel(
-        "Validation team accuracy"
-    )
-
-    ax.set_title(
-        "Competence-Aware Deferral Ablation"
-    )
-
-    ax.tick_params(
-        axis="x",
-        rotation=18,
-    )
-
-    fig.tight_layout()
-
-    fig.savefig(
-        ANALYSIS_FIGURE_DIR
-        / filename,
-        dpi=160,
-        bbox_inches="tight",
-    )
-
-    plt.close(fig)
-
-
-# ---------------------------------------------------------------------------
-# 7. Multi-seed stability
-# ---------------------------------------------------------------------------
-
-def run_seed_stability(
-    dataset,
-    model,
-    profile: ExpertProfile,
-) -> dict:
-    """
-    Repeat confidence-threshold collaboration under multiple simulated
-    expert seeds.
-
-    This tests whether the observed collaboration gain depends strongly
-    on one lucky expert simulation.
+    No classifier training occurs.
     """
 
     true_labels = (
         dataset.test[
             "label"
-        ].to_numpy()
-    )
-
-    classifier_predictions = (
-        model.predict(
-            dataset.test[
-                "text"
-            ]
+        ].to_numpy(
+            dtype=int
         )
-    )
-
-    classifier_probabilities = (
-        model.predict_proba(
-            dataset.test[
-                "text"
-            ]
-        )
-    )
-
-    confidence = calculate_confidence(
-        classifier_probabilities
-    )
-
-    # Use one fixed, interpretable threshold for stability comparison.
-    threshold = 0.50
-
-    defer_mask = (
-        confidence
-        < threshold
     )
 
     rows = []
@@ -1386,125 +1325,133 @@ def run_seed_stability(
             random_state=seed,
         )
 
-        expert_outputs = (
+        outputs = (
             simulate_expert_predictions(
                 texts=dataset.test[
                     "text"
                 ],
-                true_labels=true_labels,
+                true_labels=dataset.test[
+                    "label"
+                ],
                 profile=seeded_profile,
             )
         )
 
-        expert_predictions = np.asarray(
+        predictions = np.asarray(
             [
                 output.prediction
                 for output
-                in expert_outputs
-            ]
+                in outputs
+            ],
+            dtype=int,
         )
 
-        team_predictions = np.where(
-            defer_mask,
-            expert_predictions,
-            classifier_predictions,
+        accuracy = float(
+            accuracy_score(
+                true_labels,
+                predictions,
+            )
         )
 
         rows.append(
             {
-                "seed": seed,
-                "team_accuracy": float(
-                    accuracy_score(
-                        true_labels,
-                        team_predictions,
-                    )
+                "seed": int(
+                    seed
+                ),
+
+                "accuracy": (
+                    accuracy
                 ),
             }
         )
 
-    accuracy_values = np.asarray(
+    values = np.asarray(
         [
             row[
-                "team_accuracy"
+                "accuracy"
             ]
-            for row in rows
-        ]
+            for row
+            in rows
+        ],
+        dtype=float,
     )
 
     return {
-        "threshold": threshold,
-        "runs": rows,
-        "mean_accuracy": float(
-            accuracy_values.mean()
+        "seeds": (
+            STABILITY_SEEDS
         ),
+
+        "runs": (
+            rows
+        ),
+
+        "mean_accuracy": float(
+            values.mean()
+        ),
+
         "std_accuracy": float(
-            accuracy_values.std(
+            values.std(
                 ddof=1
             )
         ),
-        "min_accuracy": float(
-            accuracy_values.min()
+
+        "minimum_accuracy": float(
+            values.min()
         ),
-        "max_accuracy": float(
-            accuracy_values.max()
+
+        "maximum_accuracy": float(
+            values.max()
         ),
     }
 
 
 # ---------------------------------------------------------------------------
-# Full advanced analysis
+# Complete advanced analysis
 # ---------------------------------------------------------------------------
 
-def run_advanced_analysis() -> dict:
-    _ensure_directories()
+def run_advanced_analysis():
+    """
+    Generate the complete Advanced Analysis artifact.
 
-    dataset = load_ag_news()
+    Expensive base experiments are not rerun.
+    """
 
-    baseline_model = (
-        _load_baseline_model()
+    validate_required_results()
+
+    _ensure_output_directories()
+
+    baseline_results = (
+        load_baseline_results()
     )
 
-    true_labels = (
-        dataset.test[
-            "label"
-        ].to_numpy()
+    defer_results = (
+        load_learning_to_defer_results()
     )
 
-    classifier_predictions = (
-        baseline_model.predict(
-            dataset.test[
-                "text"
-            ]
-        )
+    active_results = (
+        load_active_learning_results()
     )
 
-    classifier_probabilities = (
-        baseline_model.predict_proba(
-            dataset.test[
-                "text"
-            ]
-        )
-    )
+    (
+        dataset,
+        y_true,
+        ai_predictions,
+        ai_probabilities,
+    ) = prepare_test_predictions()
 
-    classifier_accuracy = float(
-        accuracy_score(
-            true_labels,
-            classifier_predictions,
-        )
-    )
 
-    # ---------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Calibration
-    # ---------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     calibration = (
         calculate_calibration(
-            true_labels=true_labels,
+            y_true=y_true,
             predictions=(
-                classifier_predictions
+                ai_predictions
             ),
             probabilities=(
-                classifier_probabilities
+                ai_probabilities
             ),
         )
     )
@@ -1514,44 +1461,52 @@ def run_advanced_analysis() -> dict:
     )
 
     plot_calibration(
-        calibration,
-        calibration_filename,
+        calibration=calibration,
+        filename=(
+            calibration_filename
+        ),
     )
 
-    # ---------------------------------------------------------------
-    # Expert-specific analyses
-    # ---------------------------------------------------------------
 
-    expert_results = {}
+    # ------------------------------------------------------------------
+    # Coverage-accuracy
+    # ------------------------------------------------------------------
+
+    coverage_data = (
+        prepare_coverage_accuracy(
+            defer_results
+        )
+    )
+
+
+    # ------------------------------------------------------------------
+    # Expert-specific analyses
+    # ------------------------------------------------------------------
+
+    experts = {}
 
     for (
         expert_key,
         profile,
     ) in EXPERT_PROFILES.items():
 
-        expert_outputs = (
-            _simulate_test_expert(
+        expert_predictions = (
+            get_test_expert_predictions(
+                dataset=dataset,
                 profile=profile,
-                texts=dataset.test[
-                    "text"
-                ],
-                true_labels=true_labels,
             )
         )
 
-        expert_predictions = np.asarray(
-            [
-                output.prediction
-                for output
-                in expert_outputs
-            ]
-        )
+
+        # --------------------------------------------------------------
+        # Complementarity
+        # --------------------------------------------------------------
 
         complementarity = (
             calculate_complementarity(
-                true_labels=true_labels,
-                classifier_predictions=(
-                    classifier_predictions
+                y_true=y_true,
+                ai_predictions=(
+                    ai_predictions
                 ),
                 expert_predictions=(
                     expert_predictions
@@ -1560,124 +1515,229 @@ def run_advanced_analysis() -> dict:
         )
 
         complementarity_filename = (
-            f"complementarity_"
+            "complementarity_"
             f"{expert_key}.png"
         )
 
         plot_complementarity(
-            expert_name=profile.name,
-            metrics=complementarity,
+            expert_name=(
+                profile.name
+            ),
+            result=(
+                complementarity
+            ),
             filename=(
                 complementarity_filename
             ),
         )
 
-        curve = (
-            calculate_coverage_accuracy_curve(
-                true_labels=(
-                    true_labels
-                ),
-                classifier_predictions=(
-                    classifier_predictions
-                ),
-                classifier_probabilities=(
-                    classifier_probabilities
+
+        # --------------------------------------------------------------
+        # Best existing deferral policy
+        # --------------------------------------------------------------
+
+        defer_expert = (
+            defer_results[
+                "experts"
+            ][
+                expert_key
+            ]
+        )
+
+        confidence_metrics = (
+            defer_expert[
+                "confidence_strategy"
+            ][
+                "metrics"
+            ]
+        )
+
+        learned_metrics = (
+            defer_expert[
+                "learned_strategy"
+            ][
+                "metrics"
+            ]
+        )
+
+        confidence_accuracy = (
+            confidence_metrics[
+                "team_accuracy"
+            ]
+        )
+
+        learned_accuracy = (
+            learned_metrics[
+                "team_accuracy"
+            ]
+        )
+
+        if (
+            learned_accuracy
+            > confidence_accuracy
+        ):
+
+            best_team_metrics = (
+                learned_metrics
+            )
+
+            best_strategy_name = (
+                defer_expert[
+                    "learned_strategy"
+                ][
+                    "name"
+                ]
+            )
+
+        elif (
+            confidence_accuracy
+            > learned_accuracy
+        ):
+
+            best_team_metrics = (
+                confidence_metrics
+            )
+
+            best_strategy_name = (
+                defer_expert[
+                    "confidence_strategy"
+                ][
+                    "name"
+                ]
+            )
+
+        else:
+
+            # Same tie-break rule as learning_to_defer.py:
+            # prefer lower expert workload.
+            if (
+                learned_metrics[
+                    "deferral_rate"
+                ]
+                <
+                confidence_metrics[
+                    "deferral_rate"
+                ]
+            ):
+
+                best_team_metrics = (
+                    learned_metrics
+                )
+
+                best_strategy_name = (
+                    defer_expert[
+                        "learned_strategy"
+                    ][
+                        "name"
+                    ]
+                )
+
+            else:
+
+                best_team_metrics = (
+                    confidence_metrics
+                )
+
+                best_strategy_name = (
+                    defer_expert[
+                        "confidence_strategy"
+                    ][
+                        "name"
+                    ]
+                )
+
+
+        # --------------------------------------------------------------
+        # Headroom
+        # --------------------------------------------------------------
+
+        headroom = (
+            calculate_collaboration_headroom(
+                y_true=y_true,
+                ai_predictions=(
+                    ai_predictions
                 ),
                 expert_predictions=(
                     expert_predictions
                 ),
+                best_team_metrics=(
+                    best_team_metrics
+                ),
             )
         )
 
-        curve_filename = (
-            f"coverage_accuracy_"
+
+        # --------------------------------------------------------------
+        # Coverage curve
+        # --------------------------------------------------------------
+
+        coverage_filename = (
+            "coverage_accuracy_"
             f"{expert_key}.png"
         )
 
         plot_coverage_accuracy(
-            expert_name=profile.name,
-            points=curve,
+            expert_name=(
+                profile.name
+            ),
+
+            confidence_points=(
+                coverage_data[
+                    expert_key
+                ][
+                    "confidence"
+                ]
+            ),
+
+            learned_points=(
+                coverage_data[
+                    expert_key
+                ][
+                    "learned"
+                ]
+            ),
+
             classifier_accuracy=(
-                classifier_accuracy
+                baseline_results[
+                    "accuracy"
+                ]
             ),
-            filename=curve_filename,
-        )
 
-        best_curve_point = max(
-            curve,
-            key=lambda point: (
-                point[
-                    "team_accuracy"
-                ],
-                -point[
-                    "deferral_rate"
-                ],
+            filename=(
+                coverage_filename
             ),
         )
 
-        confidence = (
-            calculate_confidence(
-                classifier_probabilities
-            )
-        )
 
-        defer_mask = (
-            confidence
-            < best_curve_point[
-                "threshold"
-            ]
-        )
-
-        team_predictions = np.where(
-            defer_mask,
-            expert_predictions,
-            classifier_predictions,
-        )
-
-        oracle_gap = (
-            calculate_oracle_gap(
-                true_labels=(
-                    true_labels
-                ),
-                classifier_predictions=(
-                    classifier_predictions
-                ),
-                expert_predictions=(
-                    expert_predictions
-                ),
-                team_predictions=(
-                    team_predictions
-                ),
-            )
-        )
+        # --------------------------------------------------------------
+        # Stability
+        # --------------------------------------------------------------
 
         stability = (
-            run_seed_stability(
+            calculate_expert_stability(
                 dataset=dataset,
-                model=baseline_model,
                 profile=profile,
             )
         )
 
-        expert_results[
+
+        experts[
             expert_key
         ] = {
-            "name": profile.name,
+            "name": (
+                profile.name
+            ),
+
+            "best_team_strategy": (
+                best_strategy_name
+            ),
 
             "complementarity": (
                 complementarity
             ),
 
-            "oracle_gap": (
-                oracle_gap
-            ),
-
-            "coverage_accuracy": (
-                curve
-            ),
-
-            "best_tradeoff": (
-                best_curve_point
+            "headroom": (
+                headroom
             ),
 
             "stability": (
@@ -1686,62 +1746,56 @@ def run_advanced_analysis() -> dict:
 
             "figures": {
                 "complementarity": (
-                    _figure_url(
+                    _figure_static_path(
                         complementarity_filename
                     )
                 ),
 
                 "coverage_accuracy": (
-                    _figure_url(
-                        curve_filename
+                    _figure_static_path(
+                        coverage_filename
                     )
                 ),
             },
         }
 
-    # ---------------------------------------------------------------
-    # Ablation
-    # Use one expert for interpretability of feature contribution.
-    # ---------------------------------------------------------------
 
-    ablation = run_ablation_study(
-        dataset=dataset,
-        baseline_model=baseline_model,
-        profile=EXPERT_PROFILES[
-            "technology_world"
-        ],
-    )
+    # ------------------------------------------------------------------
+    # Active learning
+    # ------------------------------------------------------------------
 
-    ablation_filename = (
-        "deferral_ablation.png"
-    )
-
-    plot_ablation(
-        results=ablation,
-        filename=ablation_filename,
-    )
-
-    # ---------------------------------------------------------------
-    # Existing active-learning curves
-    # ---------------------------------------------------------------
-
-    active_learning = (
-        load_active_learning_results()
-    )
-
-    active_learning_figures = {}
-
-    if active_learning is not None:
-        active_learning_figures = (
-            plot_active_learning_curves(
-                active_learning
-            )
+    active_figures = (
+        generate_active_learning_figures(
+            active_results
         )
+    )
+
+
+    # ------------------------------------------------------------------
+    # Final persisted output
+    # ------------------------------------------------------------------
 
     result = {
+        "experiment": {
+            "name": (
+                "Advanced Human-AI Analysis"
+            ),
+
+            "random_state": (
+                RANDOM_STATE
+            ),
+        },
+
+        # Store upstream artifact versions.
+        "source_artifacts": (
+            get_source_artifact_timestamps()
+        ),
+
         "classifier": {
-            "accuracy": (
-                classifier_accuracy
+            "accuracy": float(
+                baseline_results[
+                    "accuracy"
+                ]
             ),
 
             "calibration": (
@@ -1749,31 +1803,22 @@ def run_advanced_analysis() -> dict:
             ),
 
             "calibration_figure": (
-                _figure_url(
+                _figure_static_path(
                     calibration_filename
                 )
             ),
         },
 
         "experts": (
-            expert_results
+            experts
         ),
 
-        "ablation": {
-            "results": ablation,
-            "figure": (
-                _figure_url(
-                    ablation_filename
-                )
-            ),
-        },
-
         "active_learning_figures": (
-            active_learning_figures
+            active_figures
         ),
     }
 
-    save_advanced_analysis(
+    save_advanced_analysis_results(
         result
     )
 
@@ -1784,20 +1829,24 @@ def run_advanced_analysis() -> dict:
 # Persistence
 # ---------------------------------------------------------------------------
 
-def save_advanced_analysis(
-    result: dict,
-) -> None:
+def save_advanced_analysis_results(
+    result,
+):
+    """
+    Save the Advanced Analysis artifact atomically.
+    """
 
-    _ensure_directories()
+    _ensure_output_directories()
 
     temporary_path = (
-        ANALYSIS_RESULT_PATH
+        ADVANCED_METRICS_PATH
         .with_suffix(
             ".json.tmp"
         )
     )
 
     try:
+
         with temporary_path.open(
             "w",
             encoding="utf-8",
@@ -1811,7 +1860,7 @@ def save_advanced_analysis(
             )
 
         temporary_path.replace(
-            ANALYSIS_RESULT_PATH
+            ADVANCED_METRICS_PATH
         )
 
     except Exception:
@@ -1822,14 +1871,19 @@ def save_advanced_analysis(
         raise
 
 
-def load_advanced_analysis() -> dict | None:
+def load_advanced_analysis_results():
+    """
+    Load saved Advanced Analysis results.
+    """
 
-    if not ANALYSIS_RESULT_PATH.exists():
+    if not ADVANCED_METRICS_PATH.exists():
         return None
 
-    with ANALYSIS_RESULT_PATH.open(
+    with ADVANCED_METRICS_PATH.open(
         "r",
         encoding="utf-8",
     ) as file:
 
-        return json.load(file)
+        return json.load(
+            file
+        )

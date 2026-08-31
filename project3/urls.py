@@ -5,9 +5,23 @@ from . import views
 app_name = "project3"
 
 urlpatterns = [
-    path("", views.index, name="index"),
-    path("baseline/", views.baseline, name="baseline"),
-    path("expert/", views.expert, name="expert"),
+    path(
+        "",
+        views.index,
+        name="index",
+    ),
+
+    path(
+        "baseline/",
+        views.baseline,
+        name="baseline",
+    ),
+
+    path(
+        "expert/",
+        views.expert,
+        name="expert",
+    ),
 
     path(
         "learning-to-defer/",
@@ -28,7 +42,7 @@ urlpatterns = [
     ),
 
     path(
-        "analysis/",
+        "advanced-analysis/",
         views.advanced_analysis,
         name="advanced_analysis",
     ),

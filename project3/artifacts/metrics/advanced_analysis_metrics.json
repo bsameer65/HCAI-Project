@@ -1,0 +1,221 @@
+{
+  "experiment": {
+    "name": "Advanced Human-AI Analysis",
+    "random_state": 42
+  },
+  "classifier": {
+    "accuracy": 0.9236842105263158,
+    "calibration": {
+      "ece": 0.02199483811391724,
+      "bins": [
+        {
+          "lower": 0.2,
+          "upper": 0.30000000000000004,
+          "count": 1,
+          "mean_confidence": 0.29838617248194305,
+          "observed_accuracy": 0.0,
+          "absolute_gap": 0.29838617248194305
+        },
+        {
+          "lower": 0.30000000000000004,
+          "upper": 0.4,
+          "count": 47,
+          "mean_confidence": 0.3616931237432935,
+          "observed_accuracy": 0.46808510638297873,
+          "absolute_gap": 0.10639198263968525
+        },
+        {
+          "lower": 0.4,
+          "upper": 0.5,
+          "count": 173,
+          "mean_confidence": 0.45959338083939,
+          "observed_accuracy": 0.5375722543352601,
+          "absolute_gap": 0.07797887349587013
+        },
+        {
+          "lower": 0.5,
+          "upper": 0.6000000000000001,
+          "count": 298,
+          "mean_confidence": 0.5501431237293928,
+          "observed_accuracy": 0.6577181208053692,
+          "absolute_gap": 0.1075749970759764
+        },
+        {
+          "lower": 0.6000000000000001,
+          "upper": 0.7000000000000001,
+          "count": 314,
+          "mean_confidence": 0.6523409849997863,
+          "observed_accuracy": 0.7292993630573248,
+          "absolute_gap": 0.07695837805753847
+        },
+        {
+          "lower": 0.7000000000000001,
+          "upper": 0.8,
+          "count": 472,
+          "mean_confidence": 0.7538318423623367,
+          "observed_accuracy": 0.8050847457627118,
+          "absolute_gap": 0.05125290340037514
+        },
+        {
+          "lower": 0.8,
+          "upper": 0.9,
+          "count": 896,
+          "mean_confidence": 0.8559481522457519,
+          "observed_accuracy": 0.9084821428571429,
+          "absolute_gap": 0.05253399061139097
+        },
+        {
+          "lower": 0.9,
+          "upper": 1.0,
+          "count": 5399,
+          "mean_confidence": 0.975201424455835,
+          "observed_accuracy": 0.9790701981848491,
+          "absolute_gap": 0.0038687737290140634
+        }
+      ]
+    },
+    "calibration_figure": "project3/figures/advanced/classifier_calibration.png"
+  },
+  "experts": {
+    "sports_business": {
+      "name": "Sports and Business Specialist",
+      "best_team_strategy": "Confidence-Threshold Deferral",
+      "complementarity": {
+        "sample_count": 7600,
+        "both_correct": 4351,
+        "ai_only_correct": 2669,
+        "expert_only_correct": 367,
+        "both_wrong": 213,
+        "both_correct_percent": 57.25,
+        "ai_only_correct_percent": 35.118421052631575,
+        "expert_only_correct_percent": 4.828947368421053,
+        "both_wrong_percent": 2.8026315789473686
+      },
+      "headroom": {
+        "ai_accuracy": 0.9236842105263158,
+        "expert_accuracy": 0.6207894736842106,
+        "team_accuracy": 0.9252631578947368,
+        "oracle_accuracy": 0.9719736842105263,
+        "possible_gain": 0.04828947368421055,
+        "captured_gain": 0.0015789473684210131,
+        "gain_capture_ratio": 0.03269754768392287,
+        "gain_capture_percent": 3.269754768392287
+      },
+      "stability": {
+        "seeds": [
+          21,
+          42,
+          84,
+          123,
+          2026
+        ],
+        "runs": [
+          {
+            "seed": 21,
+            "accuracy": 0.6185526315789474
+          },
+          {
+            "seed": 42,
+            "accuracy": 0.6189473684210526
+          },
+          {
+            "seed": 84,
+            "accuracy": 0.6190789473684211
+          },
+          {
+            "seed": 123,
+            "accuracy": 0.6139473684210527
+          },
+          {
+            "seed": 2026,
+            "accuracy": 0.6303947368421052
+          }
+        ],
+        "mean_accuracy": 0.6201842105263158,
+        "std_accuracy": 0.006094392545497431,
+        "minimum_accuracy": 0.6139473684210527,
+        "maximum_accuracy": 0.6303947368421052
+      },
+      "figures": {
+        "complementarity": "project3/figures/advanced/complementarity_sports_business.png",
+        "coverage_accuracy": "project3/figures/advanced/coverage_accuracy_sports_business.png"
+      }
+    },
+    "technology_world": {
+      "name": "Technology and World Affairs Specialist",
+      "best_team_strategy": "Competence-Aware Learned Deferral",
+      "complementarity": {
+        "sample_count": 7600,
+        "both_correct": 4298,
+        "ai_only_correct": 2722,
+        "expert_only_correct": 348,
+        "both_wrong": 232,
+        "both_correct_percent": 56.55263157894736,
+        "ai_only_correct_percent": 35.81578947368421,
+        "expert_only_correct_percent": 4.578947368421052,
+        "both_wrong_percent": 3.052631578947368
+      },
+      "headroom": {
+        "ai_accuracy": 0.9236842105263158,
+        "expert_accuracy": 0.6113157894736843,
+        "team_accuracy": 0.9263157894736842,
+        "oracle_accuracy": 0.9694736842105263,
+        "possible_gain": 0.04578947368421049,
+        "captured_gain": 0.0026315789473684292,
+        "gain_capture_ratio": 0.05747126436781631,
+        "gain_capture_percent": 5.747126436781631
+      },
+      "stability": {
+        "seeds": [
+          21,
+          42,
+          84,
+          123,
+          2026
+        ],
+        "runs": [
+          {
+            "seed": 21,
+            "accuracy": 0.6052631578947368
+          },
+          {
+            "seed": 42,
+            "accuracy": 0.6089473684210527
+          },
+          {
+            "seed": 84,
+            "accuracy": 0.6106578947368421
+          },
+          {
+            "seed": 123,
+            "accuracy": 0.6067105263157895
+          },
+          {
+            "seed": 2026,
+            "accuracy": 0.6188157894736842
+          }
+        ],
+        "mean_accuracy": 0.610078947368421,
+        "std_accuracy": 0.005302974391426177,
+        "minimum_accuracy": 0.6052631578947368,
+        "maximum_accuracy": 0.6188157894736842
+      },
+      "figures": {
+        "complementarity": "project3/figures/advanced/complementarity_technology_world.png",
+        "coverage_accuracy": "project3/figures/advanced/coverage_accuracy_technology_world.png"
+      }
+    }
+  },
+  "active_learning_figures": {
+    "sports_business": {
+      "name": "Sports and Business Specialist",
+      "team_accuracy": "project3/figures/advanced/active_team_sports_business.png",
+      "competence_auroc": "project3/figures/advanced/active_auroc_sports_business.png"
+    },
+    "technology_world": {
+      "name": "Technology and World Affairs Specialist",
+      "team_accuracy": "project3/figures/advanced/active_team_technology_world.png",
+      "competence_auroc": "project3/figures/advanced/active_auroc_technology_world.png"
+    }
+  }
+}

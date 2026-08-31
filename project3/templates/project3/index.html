@@ -29,6 +29,7 @@
     </div>
 </section>
 
+
 <section class="p3-card">
     <h2>Experimental Workflow</h2>
 
@@ -39,70 +40,95 @@
             href="{% url 'project3:baseline' %}"
         >
             <strong>Baseline Classifier</strong>
+
             <span>
                 Train and evaluate a text classifier using the complete
                 labeled training dataset.
             </span>
         </a>
 
+
         <a
             class="p3-step-link"
             href="{% url 'project3:expert' %}"
         >
-            <strong>Simulated Expert</strong>
+            <strong>Simulated Experts</strong>
+
             <span>
-                Model a non-perfect expert with identifiable strengths and
-                weaknesses.
+                Model imperfect experts with identifiable strengths,
+                weaknesses, and specialist competence regions.
             </span>
         </a>
+
 
         <a
             class="p3-step-link"
             href="{% url 'project3:learning_to_defer' %}"
         >
             <strong>Learning to Defer</strong>
+
             <span>
                 Learn whether the classifier or the expert should handle a
                 particular article.
             </span>
         </a>
 
+
         <a
             class="p3-step-link"
             href="{% url 'project3:active_learning' %}"
         >
             <strong>Active Learning</strong>
+
             <span>
                 Query informative examples to discover the expert's
                 competence efficiently.
             </span>
         </a>
 
+
+        <a
+            class="p3-step-link"
+            href="{% url 'project3:human_expert' %}?new=1"
+        >
+            <strong>Human Expert</strong>
+
+            <span>
+                Interactive extension where a real user can classify selected
+                articles and provide expert feedback.
+            </span>
+        </a>
+
+
+        <a
+            class="p3-step-link"
+            href="{% url 'project3:advanced_analysis' %}"
+        >
+            <strong>Advanced Human–AI Analysis</strong>
+
+            <span>
+                Analyze complementarity, collaboration headroom,
+                confidence calibration, coverage–accuracy trade-offs,
+                active-learning efficiency, and robustness.
+            </span>
+        </a>
+
+
         <a
             class="p3-step-link"
             href="{% url 'project3:compare_results' %}"
         >
             <strong>Results Comparison</strong>
-            <span>
-                Compare classifier, expert, deferral, and active learning
-                performance.
-            </span>
-        </a>
-
-        <a
-            class="p3-step-link"
-            href="{% url 'project3:human_expert' %}"
-        >
-            <strong>Human Expert Demo</strong>
 
             <span>
-                Optional interactive extension where a real user can provide
-                expert labels.
+                Compare classifier, expert, deferral, and active-learning
+                performance in one consolidated view.
             </span>
         </a>
 
     </div>
 </section>
+
 
 <section class="p3-card">
     <h2>AG News Classification</h2>
@@ -119,15 +145,20 @@
     </div>
 </section>
 
+
 <section class="p3-card">
     <h2>Project Report</h2>
 
     <p>
-        The final report should explain the experimental design, motivate the
+        The final report will explain the experimental design, motivate the
         selected methods, and present a detailed analysis of the results.
     </p>
 
-    <button class="p3-btn" type="button" disabled>
+    <button
+        class="p3-btn"
+        type="button"
+        disabled
+    >
         Report available after completion
     </button>
 </section>

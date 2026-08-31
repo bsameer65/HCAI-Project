@@ -1415,3 +1415,242 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================================
+   ADVANCED ANALYSIS
+============================================================ */
+
+.p3-analysis-expert-name {
+    margin-top: -4px;
+    margin-bottom: 22px;
+
+    color: #65788c;
+
+    font-size: 0.98rem;
+    font-weight: 600;
+}
+
+
+/* Run form */
+
+.p3-analysis-run-form {
+    margin-top: 20px;
+}
+
+
+/* Warning */
+
+.p3-warning-box {
+    margin-top: 18px;
+
+    padding: 18px 20px;
+
+    border: 1px solid #e4b96f;
+    border-radius: 10px;
+
+    background: #fff8ea;
+
+    color: #6d4c1d;
+}
+
+
+.p3-warning-box strong {
+    display: block;
+
+    margin-bottom: 6px;
+}
+
+
+.p3-warning-box p {
+    margin: 8px 0;
+}
+
+
+.p3-warning-box ul {
+    margin: 10px 0 0 20px;
+}
+
+
+/* Missing prerequisite buttons */
+
+.p3-analysis-prerequisite-links {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 12px;
+
+    margin-top: 20px;
+}
+
+
+/* Plot containers */
+
+.p3-analysis-plot {
+    width: 100%;
+
+    margin-top: 22px;
+
+    overflow: hidden;
+
+    border: 1px solid #dce5ef;
+    border-radius: 12px;
+
+    background: #ffffff;
+
+    text-align: center;
+}
+
+
+.p3-analysis-plot img {
+    display: block;
+
+    width: 100%;
+    max-width: 850px;
+
+    height: auto;
+
+    margin: 0 auto;
+}
+
+
+/* Oracle / gain callout */
+
+.p3-analysis-callout {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    margin: 24px 0;
+
+    padding: 22px;
+
+    border-radius: 12px;
+
+    background: #edf4fb;
+
+    text-align: center;
+}
+
+
+.p3-analysis-value {
+    display: block;
+
+    color: #174f88;
+
+    font-size: 2rem;
+    font-weight: 800;
+}
+
+
+.p3-analysis-label {
+    display: block;
+
+    margin-top: 5px;
+
+    color: #536b82;
+}
+
+
+/* Active learning */
+
+.p3-analysis-expert-section {
+    margin-top: 32px;
+}
+
+
+.p3-analysis-expert-section
++ .p3-analysis-expert-section {
+    padding-top: 30px;
+
+    border-top: 1px solid #e2e9f1;
+}
+
+
+.p3-analysis-two-plots {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 20px;
+}
+
+
+/* Interpretation summary */
+
+.p3-analysis-summary-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+
+    gap: 18px;
+
+    margin-top: 22px;
+}
+
+
+.p3-analysis-summary-card {
+    padding: 20px;
+
+    border: 1px solid #dce5ef;
+    border-radius: 11px;
+
+    background: #f8fafd;
+}
+
+
+.p3-analysis-summary-card strong {
+    color: #174f88;
+}
+
+
+.p3-analysis-summary-card p {
+    margin-bottom: 0;
+
+    color: #536b82;
+
+    line-height: 1.55;
+}
+
+
+/* Responsive */
+
+@media (max-width: 900px) {
+
+    .p3-analysis-two-plots {
+        grid-template-columns: 1fr;
+    }
+
+
+    .p3-analysis-summary-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .p3-analysis-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+
+    .p3-analysis-prerequisite-links {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+}

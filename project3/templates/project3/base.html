@@ -71,18 +71,27 @@
             </a>
 
             <a
+                href="{% url 'project3:human_expert' %}?new=1"
+                class="{% if request.resolver_match.url_name == 'human_expert' %}active{% endif %}"
+            >
+                Human Expert
+            </a>
+            
+            <a
+                href="{% url 'project3:advanced_analysis' %}"
+                class="{% if request.resolver_match.url_name == 'advanced_analysis' %}active{% endif %}"
+            >
+                Advanced Analysis
+            </a>
+
+            <a
                 href="{% url 'project3:compare_results' %}"
                 class="{% if request.resolver_match.url_name == 'compare_results' %}active{% endif %}"
             >
                 Results
             </a>
 
-            <a
-                href="{% url 'project3:human_expert' %}?new=1"
-                class="{% if request.resolver_match.url_name == 'human_expert' %}active{% endif %}"
-            >
-                Human Expert
-            </a>
+            
         </nav>
 
         {% if messages %}

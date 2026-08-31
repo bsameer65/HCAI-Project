@@ -1,30 +1,26 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render
-import random
-from .models import HumanExpertResponse
-from .services.data_loader import load_ag_news
 
+import random
 import uuid
 
+from .models import HumanExpertResponse
 
-from .services.active_learning import load_active_learning_results
-from .services.baseline import load_baseline_results
-from .services.learning_to_defer import load_learning_to_defer_results
-from .services.simulated_expert import load_expert_results
+from .services.data_loader import load_ag_news
 
 from .services.baseline import (
     load_baseline_results,
     train_and_evaluate_baseline,
 )
 
-from .services.learning_to_defer import (
-    load_learning_to_defer_results,
-    run_learning_to_defer_experiment,
-)
-
 from .services.simulated_expert import (
     evaluate_all_simulated_experts,
     load_expert_results,
+)
+
+from .services.learning_to_defer import (
+    load_learning_to_defer_results,
+    run_learning_to_defer_experiment,
 )
 
 from .services.active_learning import (
@@ -43,7 +39,8 @@ from .services.human_expert import (
 )
 
 from .services.advanced_analysis import (
-    load_advanced_analysis,
+    advanced_analysis_is_stale,
+    load_advanced_analysis_results,
     run_advanced_analysis,
 )
 
@@ -932,17 +929,121 @@ def human_expert(request):
     
     
 def advanced_analysis(request):
+    """
+    Display or regenerate the Advanced Human-AI Analysis.
+
+    Existing results are displayed immediately when available. If one of the
+    source experiments has changed, the previous analysis remains visible but
+    is clearly marked as stale until the user regenerates it.
+    """
+
+    # ------------------------------------------------------------------
+    # Check prerequisite experiment artifacts
+    # ------------------------------------------------------------------
+
+    prerequisite_status = {
+        "baseline": (
+            load_baseline_results()
+            is not None
+        ),
+
+        "experts": (
+            load_expert_results()
+            is not None
+        ),
+
+        "learning_to_defer": (
+            load_learning_to_defer_results()
+            is not None
+        ),
+
+        "active_learning": (
+            load_active_learning_results()
+            is not None
+        ),
+    }
+
+
+    missing_prerequisites = []
+
+    if not prerequisite_status[
+        "baseline"
+    ]:
+
+        missing_prerequisites.append(
+            "Baseline"
+        )
+
+
+    if not prerequisite_status[
+        "experts"
+    ]:
+
+        missing_prerequisites.append(
+            "Simulated Experts"
+        )
+
+
+    if not prerequisite_status[
+        "learning_to_defer"
+    ]:
+
+        missing_prerequisites.append(
+            "Learning to Defer"
+        )
+
+
+    if not prerequisite_status[
+        "active_learning"
+    ]:
+
+        missing_prerequisites.append(
+            "Active Learning"
+        )
+
+
+    prerequisites_ready = (
+        len(
+            missing_prerequisites
+        )
+        == 0
+    )
+
+
+    # ------------------------------------------------------------------
+    # Generate / regenerate analysis
+    # ------------------------------------------------------------------
 
     if request.method == "POST":
 
+        if not prerequisites_ready:
+
+            messages.error(
+                request,
+                (
+                    "Advanced Analysis cannot be run yet. "
+                    "Please complete: "
+                    + ", ".join(
+                        missing_prerequisites
+                    )
+                    + "."
+                ),
+            )
+
+            return redirect(
+                "project3:advanced_analysis"
+            )
+
+
         try:
+
             run_advanced_analysis()
 
             messages.success(
                 request,
                 (
-                    "Advanced human-AI analysis "
-                    "completed successfully."
+                    "Advanced Analysis completed "
+                    "successfully."
                 ),
             )
 
@@ -951,7 +1052,8 @@ def advanced_analysis(request):
             messages.error(
                 request,
                 (
-                    "Advanced analysis failed: "
+                    "Advanced Analysis could not "
+                    "be completed: "
                     f"{exc}"
                 ),
             )
@@ -960,17 +1062,54 @@ def advanced_analysis(request):
             "project3:advanced_analysis"
         )
 
-    result = (
-        load_advanced_analysis()
+
+    # ------------------------------------------------------------------
+    # Load previous saved analysis
+    # ------------------------------------------------------------------
+
+    results = (
+        load_advanced_analysis_results()
     )
+
+
+    # ------------------------------------------------------------------
+    # Check whether those saved results are still current
+    # ------------------------------------------------------------------
+
+    results_stale = (
+        advanced_analysis_is_stale(
+            results
+        )
+    )
+
 
     return render(
         request,
         "project3/advanced_analysis.html",
         {
-            "result": result,
+            "results": (
+                results
+            ),
+
             "results_available": (
-                result is not None
+                results
+                is not None
+            ),
+
+            "results_stale": (
+                results_stale
+            ),
+
+            "prerequisites_ready": (
+                prerequisites_ready
+            ),
+
+            "missing_prerequisites": (
+                missing_prerequisites
+            ),
+
+            "prerequisite_status": (
+                prerequisite_status
             ),
         },
     )
