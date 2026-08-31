@@ -1,25 +1,3 @@
-"""
-Advanced Human-AI analysis for Project 3.
-
-This module reuses saved experiment artifacts wherever possible instead of
-retraining the baseline, learning-to-defer, or active-learning experiments.
-
-Analyses:
-1. Human-AI complementarity
-2. Collaboration headroom / oracle gap
-3. Coverage-accuracy trade-off
-4. Classifier confidence calibration
-5. Active-learning efficiency curves
-6. Multi-seed expert stability
-
-The output is persisted as JSON and figures so the same results can later
-be reused in the final report.
-
-The module also records modification timestamps of all source experiment
-artifacts. This allows the interface to detect when an already-generated
-Advanced Analysis has become stale because an upstream experiment was rerun.
-"""
-
 from __future__ import annotations
 
 from dataclasses import replace
@@ -34,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from sklearn.metrics import accuracy_score
+from .ablation import run_ablation_study
 
 from .active_learning import (
     ACTIVE_LEARNING_METRICS_PATH,
@@ -1294,6 +1273,8 @@ def generate_active_learning_figures(
     return figures
 
 
+
+
 # ---------------------------------------------------------------------------
 # Expert simulation stability
 # ---------------------------------------------------------------------------
@@ -1404,6 +1385,165 @@ def calculate_expert_stability(
         ),
     }
 
+def _extract_strategy_metrics(
+    strategy_result,
+):
+    """
+    Return the final test metrics from a Learning-to-Defer strategy.
+
+    The helper supports both direct metric storage and nested metric
+    dictionaries so that Advanced Analysis remains compatible with
+    previously generated result artifacts.
+    """
+
+    if not isinstance(
+        strategy_result,
+        dict,
+    ):
+        return None
+
+    # Metrics stored directly in the strategy dictionary.
+    if (
+        "team_accuracy"
+        in strategy_result
+    ):
+        return strategy_result
+
+    # Support nested result structures.
+    possible_keys = [
+        "test_metrics",
+        "metrics",
+        "test",
+        "evaluation",
+    ]
+
+    for key in possible_keys:
+
+        candidate = (
+            strategy_result.get(
+                key
+            )
+        )
+
+        if (
+            isinstance(
+                candidate,
+                dict,
+            )
+            and
+            "team_accuracy"
+            in candidate
+        ):
+            return candidate
+
+    return None
+
+
+def _get_best_team_metrics(
+    expert_result,
+):
+    """
+    Return the better final Learning-to-Defer strategy for one expert.
+
+    Team accuracy is the primary criterion. Lower deferral rate is used
+    as a tie-breaker.
+    """
+
+    candidates = []
+
+    for strategy_key in [
+        "confidence_strategy",
+        "learned_strategy",
+    ]:
+
+        strategy_result = (
+            expert_result.get(
+                strategy_key,
+                {}
+            )
+        )
+
+        metrics = (
+            _extract_strategy_metrics(
+                strategy_result
+            )
+        )
+
+        if metrics is not None:
+
+            candidates.append(
+                metrics
+            )
+
+    if not candidates:
+
+        raise RuntimeError(
+            "Could not find final Learning-to-Defer team metrics "
+            f"for expert '{expert_result.get('name', 'unknown')}'."
+        )
+
+    return max(
+        candidates,
+        key=lambda metrics: (
+            float(
+                metrics.get(
+                    "team_accuracy",
+                    0.0,
+                )
+            ),
+            -float(
+                metrics.get(
+                    "deferral_rate",
+                    1.0,
+                )
+            ),
+        ),
+    )
+
+
+def _get_coverage_classifier_accuracy(
+    defer_results,
+    fallback_accuracy,
+):
+    """
+    Return the classifier accuracy corresponding as closely as possible
+    to the Learning-to-Defer validation threshold search.
+
+    Older artifacts may not contain development-validation accuracy.
+    In that case the saved baseline accuracy is used as a fallback.
+    """
+
+    classifier_result = (
+        defer_results.get(
+            "classifier",
+            {}
+        )
+    )
+
+    possible_keys = [
+        "development_validation_accuracy",
+        "validation_accuracy",
+        "meta_validation_accuracy",
+    ]
+
+    for key in possible_keys:
+
+        value = (
+            classifier_result.get(
+                key
+            )
+        )
+
+        if value is not None:
+
+            return float(
+                value
+            )
+
+    return float(
+        fallback_accuracy
+    )
+
 
 # ---------------------------------------------------------------------------
 # Complete advanced analysis
@@ -1411,49 +1551,66 @@ def calculate_expert_stability(
 
 def run_advanced_analysis():
     """
-    Generate the complete Advanced Analysis artifact.
+    Run all Advanced Human-AI analyses.
 
-    Expensive base experiments are not rerun.
+    Existing experiment artifacts are reused wherever possible.
+
+    The analysis includes:
+    - classifier confidence calibration
+    - Human-AI complementarity
+    - collaboration headroom
+    - coverage-accuracy trade-offs
+    - expert simulation stability
+    - active-learning efficiency
+    - Learning-to-Defer feature ablation
     """
-
-    validate_required_results()
 
     _ensure_output_directories()
 
-    baseline_results = (
-        load_baseline_results()
-    )
+    # ---------------------------------------------------------------
+    # Validate prerequisites
+    # ---------------------------------------------------------------
 
-    defer_results = (
-        load_learning_to_defer_results()
-    )
+    validate_required_results()
 
-    active_results = (
-        load_active_learning_results()
-    )
+    baseline_results = load_baseline_results()
+    defer_results = load_learning_to_defer_results()
+    active_learning_results = load_active_learning_results()
+
+    if baseline_results is None:
+        raise RuntimeError(
+            "Baseline results are unavailable."
+        )
+
+    if defer_results is None:
+        raise RuntimeError(
+            "Learning-to-Defer results are unavailable."
+        )
+
+    if active_learning_results is None:
+        raise RuntimeError(
+            "Active-Learning results are unavailable."
+        )
+
+    # ---------------------------------------------------------------
+    # Prepare official AG News test predictions
+    # ---------------------------------------------------------------
 
     (
         dataset,
-        y_true,
-        ai_predictions,
-        ai_probabilities,
+        true_labels,
+        classifier_predictions,
+        classifier_probabilities,
     ) = prepare_test_predictions()
 
+    # ---------------------------------------------------------------
+    # Confidence calibration
+    # ---------------------------------------------------------------
 
-    # ------------------------------------------------------------------
-    # Calibration
-    # ------------------------------------------------------------------
-
-    calibration = (
-        calculate_calibration(
-            y_true=y_true,
-            predictions=(
-                ai_predictions
-            ),
-            probabilities=(
-                ai_probabilities
-            ),
-        )
+    calibration = calculate_calibration(
+        true_labels,
+        classifier_predictions,
+        classifier_probabilities,
     )
 
     calibration_filename = (
@@ -1461,257 +1618,326 @@ def run_advanced_analysis():
     )
 
     plot_calibration(
-        calibration=calibration,
-        filename=(
-            calibration_filename
-        ),
+        calibration,
+        calibration_filename,
     )
 
+    # ---------------------------------------------------------------
+    # Coverage-accuracy information
+    # ---------------------------------------------------------------
 
-    # ------------------------------------------------------------------
-    # Coverage-accuracy
-    # ------------------------------------------------------------------
+    coverage_results = prepare_coverage_accuracy(
+        defer_results
+    )
 
-    coverage_data = (
-        prepare_coverage_accuracy(
-            defer_results
+    # Threshold searches come from the L2D validation stage.
+    # Prefer the matching validation classifier accuracy if the
+    # saved artifact contains it.
+    defer_classifier = defer_results.get(
+        "classifier",
+        {},
+    )
+
+    coverage_classifier_accuracy = None
+
+    for key in [
+        "development_validation_accuracy",
+        "validation_accuracy",
+        "meta_validation_accuracy",
+    ]:
+
+        value = defer_classifier.get(
+            key
         )
-    )
 
+        if value is not None:
+            coverage_classifier_accuracy = float(
+                value
+            )
+            break
 
-    # ------------------------------------------------------------------
-    # Expert-specific analyses
-    # ------------------------------------------------------------------
+    # Backward-compatible fallback.
+    if coverage_classifier_accuracy is None:
+        coverage_classifier_accuracy = float(
+            baseline_results["accuracy"]
+        )
+
+    # ---------------------------------------------------------------
+    # Per-expert analyses
+    # ---------------------------------------------------------------
 
     experts = {}
 
+    defer_experts = defer_results.get(
+        "experts",
+        {},
+    )
+
     for (
-        expert_key,
+        profile_key,
         profile,
     ) in EXPERT_PROFILES.items():
+
+        # -----------------------------------------------------------
+        # Expert predictions
+        # -----------------------------------------------------------
 
         expert_predictions = (
             get_test_expert_predictions(
                 dataset=dataset,
                 profile=profile,
+                seed_offset=303,
             )
         )
 
-
-        # --------------------------------------------------------------
-        # Complementarity
-        # --------------------------------------------------------------
+        # -----------------------------------------------------------
+        # Human-AI complementarity
+        # -----------------------------------------------------------
 
         complementarity = (
             calculate_complementarity(
-                y_true=y_true,
-                ai_predictions=(
-                    ai_predictions
-                ),
-                expert_predictions=(
-                    expert_predictions
-                ),
+                true_labels,
+                classifier_predictions,
+                expert_predictions,
             )
         )
 
         complementarity_filename = (
-            "complementarity_"
-            f"{expert_key}.png"
+            f"complementarity_{profile_key}.png"
         )
 
         plot_complementarity(
-            expert_name=(
-                profile.name
+            expert_name=profile.name,
+            result=complementarity,
+            filename=complementarity_filename,
+        )
+
+        # -----------------------------------------------------------
+        # Learning-to-Defer result for this expert
+        # -----------------------------------------------------------
+
+        defer_expert_result = (
+            defer_experts.get(
+                profile_key
+            )
+        )
+
+        if defer_expert_result is None:
+            raise RuntimeError(
+                "Learning-to-Defer results are missing "
+                f"for expert '{profile_key}'."
+            )
+
+        # -----------------------------------------------------------
+        # Collect candidate team strategies
+        # -----------------------------------------------------------
+
+        candidate_metrics = []
+
+        strategy_names = {
+            "confidence_strategy": (
+                "Confidence Threshold"
             ),
-            result=(
-                complementarity
+            "learned_strategy": (
+                "Competence-Aware"
             ),
-            filename=(
-                complementarity_filename
-            ),
-        )
+        }
 
+        for strategy_key in [
+            "confidence_strategy",
+            "learned_strategy",
+        ]:
 
-        # --------------------------------------------------------------
-        # Best existing deferral policy
-        # --------------------------------------------------------------
-
-        defer_expert = (
-            defer_results[
-                "experts"
-            ][
-                expert_key
-            ]
-        )
-
-        confidence_metrics = (
-            defer_expert[
-                "confidence_strategy"
-            ][
-                "metrics"
-            ]
-        )
-
-        learned_metrics = (
-            defer_expert[
-                "learned_strategy"
-            ][
-                "metrics"
-            ]
-        )
-
-        confidence_accuracy = (
-            confidence_metrics[
-                "team_accuracy"
-            ]
-        )
-
-        learned_accuracy = (
-            learned_metrics[
-                "team_accuracy"
-            ]
-        )
-
-        if (
-            learned_accuracy
-            > confidence_accuracy
-        ):
-
-            best_team_metrics = (
-                learned_metrics
+            strategy_result = (
+                defer_expert_result.get(
+                    strategy_key,
+                    {},
+                )
             )
 
-            best_strategy_name = (
-                defer_expert[
-                    "learned_strategy"
-                ][
-                    "name"
-                ]
-            )
+            metrics = None
 
-        elif (
-            confidence_accuracy
-            > learned_accuracy
-        ):
-
-            best_team_metrics = (
-                confidence_metrics
-            )
-
-            best_strategy_name = (
-                defer_expert[
-                    "confidence_strategy"
-                ][
-                    "name"
-                ]
-            )
-
-        else:
-
-            # Same tie-break rule as learning_to_defer.py:
-            # prefer lower expert workload.
+            # Metrics may be stored directly.
             if (
-                learned_metrics[
-                    "deferral_rate"
-                ]
-                <
-                confidence_metrics[
-                    "deferral_rate"
-                ]
+                isinstance(
+                    strategy_result,
+                    dict,
+                )
+                and
+                "team_accuracy"
+                in strategy_result
             ):
-
-                best_team_metrics = (
-                    learned_metrics
-                )
-
-                best_strategy_name = (
-                    defer_expert[
-                        "learned_strategy"
-                    ][
-                        "name"
-                    ]
-                )
+                metrics = strategy_result
 
             else:
 
-                best_team_metrics = (
-                    confidence_metrics
+                # Support nested artifact structures.
+                for nested_key in [
+                    "test_metrics",
+                    "metrics",
+                    "test",
+                    "evaluation",
+                ]:
+
+                    if not isinstance(
+                        strategy_result,
+                        dict,
+                    ):
+                        continue
+
+                    nested_result = (
+                        strategy_result.get(
+                            nested_key
+                        )
+                    )
+
+                    if (
+                        isinstance(
+                            nested_result,
+                            dict,
+                        )
+                        and
+                        "team_accuracy"
+                        in nested_result
+                    ):
+                        metrics = nested_result
+                        break
+
+            if metrics is not None:
+
+                candidate_metrics.append(
+                    {
+                        "strategy_key": (
+                            strategy_key
+                        ),
+
+                        "strategy_name": (
+                            strategy_names[
+                                strategy_key
+                            ]
+                        ),
+
+                        "metrics": metrics,
+                    }
                 )
 
-                best_strategy_name = (
-                    defer_expert[
-                        "confidence_strategy"
-                    ][
-                        "name"
-                    ]
-                )
+        if not candidate_metrics:
+            raise RuntimeError(
+                "Could not find final team metrics "
+                f"for expert '{profile_key}'."
+            )
 
+        # -----------------------------------------------------------
+        # Select best existing deferral strategy
+        #
+        # 1. Highest team accuracy
+        # 2. Lower deferral rate as tie-break
+        # -----------------------------------------------------------
 
-        # --------------------------------------------------------------
-        # Headroom
-        # --------------------------------------------------------------
+        best_candidate = max(
+            candidate_metrics,
+            key=lambda candidate: (
+                float(
+                    candidate[
+                        "metrics"
+                    ].get(
+                        "team_accuracy",
+                        0.0,
+                    )
+                ),
+
+                -float(
+                    candidate[
+                        "metrics"
+                    ].get(
+                        "deferral_rate",
+                        1.0,
+                    )
+                ),
+            ),
+        )
+
+        best_team_metrics = (
+            best_candidate[
+                "metrics"
+            ]
+        )
+
+        best_strategy_name = (
+            best_candidate[
+                "strategy_name"
+            ]
+        )
+
+        best_strategy_key = (
+            best_candidate[
+                "strategy_key"
+            ]
+        )
+
+        # -----------------------------------------------------------
+        # Collaboration headroom
+        # -----------------------------------------------------------
 
         headroom = (
             calculate_collaboration_headroom(
-                y_true=y_true,
-                ai_predictions=(
-                    ai_predictions
-                ),
-                expert_predictions=(
-                    expert_predictions
-                ),
-                best_team_metrics=(
-                    best_team_metrics
-                ),
+                true_labels,
+                classifier_predictions,
+                expert_predictions,
+                best_team_metrics,
             )
         )
 
+        # Store strategy information explicitly for the template.
+        headroom[
+            "best_strategy_name"
+        ] = best_strategy_name
 
-        # --------------------------------------------------------------
-        # Coverage curve
-        # --------------------------------------------------------------
+        headroom[
+            "best_strategy_key"
+        ] = best_strategy_key
+
+        # -----------------------------------------------------------
+        # Coverage-accuracy trade-off
+        # -----------------------------------------------------------
+
+        coverage_accuracy = (
+            coverage_results.get(
+                profile_key
+            )
+        )
+
+        if coverage_accuracy is None:
+            raise RuntimeError(
+                "Coverage-accuracy results are missing "
+                f"for expert '{profile_key}'."
+            )
 
         coverage_filename = (
-            "coverage_accuracy_"
-            f"{expert_key}.png"
+            f"coverage_accuracy_{profile_key}.png"
         )
 
         plot_coverage_accuracy(
-            expert_name=(
-                profile.name
-            ),
-
+            expert_name=profile.name,
             confidence_points=(
-                coverage_data[
-                    expert_key
-                ][
+                coverage_accuracy[
                     "confidence"
                 ]
             ),
-
             learned_points=(
-                coverage_data[
-                    expert_key
-                ][
+                coverage_accuracy[
                     "learned"
                 ]
             ),
-
             classifier_accuracy=(
-                baseline_results[
-                    "accuracy"
-                ]
+                coverage_classifier_accuracy
             ),
-
-            filename=(
-                coverage_filename
-            ),
+            filename=coverage_filename,
         )
 
-
-        # --------------------------------------------------------------
-        # Stability
-        # --------------------------------------------------------------
+        # -----------------------------------------------------------
+        # Expert simulation stability
+        # -----------------------------------------------------------
 
         stability = (
             calculate_expert_stability(
@@ -1720,73 +1946,78 @@ def run_advanced_analysis():
             )
         )
 
+        # -----------------------------------------------------------
+        # Store expert-level analysis
+        # -----------------------------------------------------------
 
         experts[
-            expert_key
+            profile_key
         ] = {
             "name": (
                 profile.name
-            ),
-
-            "best_team_strategy": (
-                best_strategy_name
             ),
 
             "complementarity": (
                 complementarity
             ),
 
-            "headroom": (
+            "complementarity_figure": (
+                _figure_static_path(
+                    complementarity_filename
+                )
+            ),
+
+            "collaboration_headroom": (
                 headroom
+            ),
+
+            "coverage_accuracy": (
+                coverage_accuracy
+            ),
+
+            "coverage_accuracy_figure": (
+                _figure_static_path(
+                    coverage_filename
+                )
             ),
 
             "stability": (
                 stability
             ),
-
-            "figures": {
-                "complementarity": (
-                    _figure_static_path(
-                        complementarity_filename
-                    )
-                ),
-
-                "coverage_accuracy": (
-                    _figure_static_path(
-                        coverage_filename
-                    )
-                ),
-            },
         }
 
+    # ---------------------------------------------------------------
+    # Active-learning efficiency
+    # ---------------------------------------------------------------
 
-    # ------------------------------------------------------------------
-    # Active learning
-    # ------------------------------------------------------------------
-
-    active_figures = (
+    active_learning_figures = (
         generate_active_learning_figures(
-            active_results
+            active_learning_results
         )
     )
 
+    # ---------------------------------------------------------------
+    # Learning-to-Defer ablation study
+    # ---------------------------------------------------------------
 
-    # ------------------------------------------------------------------
-    # Final persisted output
-    # ------------------------------------------------------------------
+    ablation = (
+        run_ablation_study()
+    )
+
+    # ---------------------------------------------------------------
+    # Final Advanced Analysis artifact
+    # ---------------------------------------------------------------
 
     result = {
         "experiment": {
             "name": (
                 "Advanced Human-AI Analysis"
             ),
-
             "random_state": (
                 RANDOM_STATE
             ),
         },
 
-        # Store upstream artifact versions.
         "source_artifacts": (
             get_source_artifact_timestamps()
         ),
@@ -1814,9 +2045,17 @@ def run_advanced_analysis():
         ),
 
         "active_learning_figures": (
-            active_figures
+            active_learning_figures
+        ),
+
+        "ablation": (
+            ablation
         ),
     }
+
+    # ---------------------------------------------------------------
+    # Save artifact
+    # ---------------------------------------------------------------
 
     save_advanced_analysis_results(
         result

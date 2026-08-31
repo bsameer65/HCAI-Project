@@ -1420,25 +1420,311 @@
    ADVANCED ANALYSIS
 ============================================================ */
 
-.p3-analysis-expert-name {
-    margin-top: -4px;
-    margin-bottom: 22px;
+/* ============================================================
+   ADVANCED ANALYSIS INTRO
+============================================================ */
+
+.p3-analysis-intro {
+    padding-top: 24px;
+    padding-bottom: 24px;
+}
+
+
+/* Heading - same visual language as other Project 3 pages */
+
+.p3-analysis-intro-header {
+    margin-bottom: 18px;
+    padding-bottom: 13px;
+
+    border-bottom: 1px solid #dce5ef;
+}
+
+.p3-analysis-intro-header h1 {
+    margin: 0;
+
+    color: #174f88;
+
+    font-size: 1.2rem;
+    font-weight: 700;
+
+    line-height: 1.3;
+}
+
+
+/* Short page explanation */
+
+.p3-analysis-intro-text {
+    max-width: 1050px;
+
+    margin: 0;
+
+    color: #263f57;
+
+    font-size: 0.93rem;
+    line-height: 1.6;
+}
+
+
+/* ============================================================
+   METHODOLOGY NOTE
+============================================================ */
+
+.p3-analysis-method-note {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 12px;
+
+    margin-top: 18px;
+    padding: 13px 15px;
+
+    border-left: 3px solid #2163a1;
+    border-radius: 7px;
+
+    background: #eef4fb;
+}
+
+
+/* Information icon */
+
+.p3-analysis-method-icon {
+    display: flex;
+
+    flex: 0 0 23px;
+
+    align-items: center;
+    justify-content: center;
+
+    width: 23px;
+    height: 23px;
+
+    margin-top: 1px;
+
+    border: 1px solid #91aecb;
+    border-radius: 50%;
+
+    background: #ffffff;
+
+    color: #174f88;
+
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+
+.p3-analysis-method-content {
+    min-width: 0;
+}
+
+
+.p3-analysis-method-content strong {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color: #174f88;
+
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+
+.p3-analysis-method-content p {
+    margin: 0;
+
+    color: #536b82;
+
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+
+@media (max-width: 600px) {
+
+    .p3-analysis-intro {
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .p3-analysis-intro-header h1 {
+        font-size: 1.08rem;
+    }
+
+    .p3-analysis-method-note {
+        padding: 12px 13px;
+    }
+
+}
+
+
+/* ============================================================
+   ANALYSIS STATUS / RUN CARD
+============================================================ */
+
+.p3-analysis-status-card {
+    padding-top: 26px;
+    padding-bottom: 26px;
+}
+
+.p3-analysis-status-header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 24px;
+
+    padding-bottom: 18px;
+
+    border-bottom: 1px solid #e1e8f0;
+}
+
+.p3-analysis-status-header h2 {
+    margin: 0 0 5px;
+}
+
+.p3-analysis-status-header p {
+    margin: 0;
 
     color: #65788c;
 
-    font-size: 0.98rem;
-    font-weight: 600;
+    font-size: 0.86rem;
 }
 
 
 /* Run form */
 
 .p3-analysis-run-form {
-    margin-top: 20px;
+    flex-shrink: 0;
+
+    margin: 0;
 }
 
 
-/* Warning */
+/* Run button */
+
+.p3-analysis-run-button {
+    padding: 10px 18px;
+
+    border: 0;
+    border-radius: 8px;
+
+    background: #174f88;
+
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.p3-analysis-run-button:hover {
+    background: #123f6e;
+
+    transform: translateY(-1px);
+}
+
+.p3-analysis-run-button:disabled {
+    opacity: 0.65;
+
+    cursor: not-allowed;
+
+    transform: none;
+}
+
+
+/* Analysis status */
+
+.p3-analysis-status-message {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 11px;
+
+    margin-top: 18px;
+    padding: 14px 16px;
+
+    border: 1px solid #dce5ef;
+    border-radius: 9px;
+
+    background: #f7f9fc;
+}
+
+.p3-analysis-status-dot {
+    flex: 0 0 9px;
+
+    width: 9px;
+    height: 9px;
+
+    margin-top: 5px;
+
+    border-radius: 50%;
+
+    background: #667c91;
+}
+
+.p3-analysis-status-message strong {
+    display: block;
+
+    margin-bottom: 2px;
+
+    color: #344f69;
+
+    font-size: 0.84rem;
+}
+
+.p3-analysis-status-message p {
+    margin: 0;
+
+    color: #65788c;
+
+    font-size: 0.82rem;
+}
+
+
+/* Available / current */
+
+.p3-analysis-status-ready {
+    border-color: #cfe1d4;
+
+    background: #f2f8f4;
+}
+
+.p3-analysis-status-ready
+.p3-analysis-status-dot {
+    background: #4f8b5e;
+}
+
+
+/* Outdated */
+
+.p3-analysis-status-warning {
+    border-color: #ead7ad;
+
+    background: #fff9ed;
+}
+
+.p3-analysis-status-warning
+.p3-analysis-status-dot {
+    background: #c28a2c;
+}
+
+
+/* ============================================================
+   WARNING BOX
+============================================================ */
 
 .p3-warning-box {
     margin-top: 18px;
@@ -1453,121 +1739,186 @@
     color: #6d4c1d;
 }
 
-
 .p3-warning-box strong {
     display: block;
 
     margin-bottom: 6px;
 }
 
-
 .p3-warning-box p {
     margin: 8px 0;
 }
-
 
 .p3-warning-box ul {
     margin: 10px 0 0 20px;
 }
 
 
-/* Missing prerequisite buttons */
+/* ============================================================
+   PREREQUISITE LINKS
+============================================================ */
 
-.p3-analysis-prerequisite-links {
+.p3-action-row {
     display: flex;
     flex-wrap: wrap;
 
-    gap: 12px;
+    gap: 10px;
 
-    margin-top: 20px;
+    margin-top: 18px;
 }
 
 
-/* Plot containers */
+/* ============================================================
+   CLASSIFIER CALIBRATION
+============================================================ */
 
-.p3-analysis-plot {
-    width: 100%;
+.p3-calibration-grid {
+    display: grid;
 
-    margin-top: 22px;
+    grid-template-columns:
+        minmax(230px, 0.65fr)
+        minmax(0, 1.6fr);
 
-    overflow: hidden;
+    gap: 28px;
+
+    margin-top: 24px;
+
+    align-items: stretch;
+}
+
+
+/* Left column */
+
+.p3-calibration-summary {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 16px;
+}
+
+
+/* ECE metric */
+
+.p3-calibration-score-card {
+    display: flex;
+
+    flex: 1;
+
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 160px;
+
+    padding: 22px 18px;
+
+    border: 1px solid #d7e2ee;
+    border-radius: 12px;
+
+    background: #f4f7fb;
+
+    text-align: center;
+}
+
+.p3-calibration-score-label {
+    margin-bottom: 10px;
+
+    color: #5d758d;
+
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.p3-calibration-score {
+    color: #174f88;
+
+    font-size: 2rem;
+    font-weight: 800;
+
+    line-height: 1;
+}
+
+.p3-calibration-score-hint {
+    margin-top: 10px;
+
+    color: #8191a2;
+
+    font-size: 0.72rem;
+}
+
+
+/* Calibration explanation */
+
+.p3-calibration-explanation {
+    padding: 16px;
+
+    border-left: 3px solid #8fb0d1;
+    border-radius: 7px;
+
+    background: #f8fafc;
+}
+
+.p3-calibration-explanation strong {
+    display: block;
+
+    margin-bottom: 6px;
+
+    color: #174f88;
+
+    font-size: 0.8rem;
+}
+
+.p3-calibration-explanation p {
+    margin: 0;
+
+    color: #65788c;
+
+    font-size: 0.78rem;
+    line-height: 1.55;
+}
+
+
+/* Calibration graph */
+
+.p3-calibration-plot {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    min-width: 0;
+
+    padding: 12px;
 
     border: 1px solid #dce5ef;
     border-radius: 12px;
 
     background: #ffffff;
 
-    text-align: center;
+    overflow: hidden;
 }
 
-
-.p3-analysis-plot img {
+.p3-calibration-plot img {
     display: block;
 
     width: 100%;
-    max-width: 850px;
+    max-width: 570px;
 
     height: auto;
+    max-height: 430px;
 
     margin: 0 auto;
+
+    object-fit: contain;
 }
 
 
-/* Oracle / gain callout */
+/* ============================================================
+   EXPERT COMPARISON GRID
+============================================================ */
 
-.p3-analysis-callout {
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    margin: 24px 0;
-
-    padding: 22px;
-
-    border-radius: 12px;
-
-    background: #edf4fb;
-
-    text-align: center;
-}
-
-
-.p3-analysis-value {
-    display: block;
-
-    color: #174f88;
-
-    font-size: 2rem;
-    font-weight: 800;
-}
-
-
-.p3-analysis-label {
-    display: block;
-
-    margin-top: 5px;
-
-    color: #536b82;
-}
-
-
-/* Active learning */
-
-.p3-analysis-expert-section {
-    margin-top: 32px;
-}
-
-
-.p3-analysis-expert-section
-+ .p3-analysis-expert-section {
-    padding-top: 30px;
-
-    border-top: 1px solid #e2e9f1;
-}
-
-
-.p3-analysis-two-plots {
+.p3-expert-comparison-grid {
     display: grid;
 
     grid-template-columns:
@@ -1576,11 +1927,232 @@
             minmax(0, 1fr)
         );
 
-    gap: 20px;
+    gap: 24px;
+
+    margin-top: 24px;
+
+    align-items: stretch;
 }
 
 
-/* Interpretation summary */
+/* Individual expert card */
+
+.p3-expert-analysis-card {
+    min-width: 0;
+
+    padding: 22px;
+
+    border: 1px solid #dde6ef;
+    border-radius: 14px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 4px 14px
+        rgba(25, 55, 85, 0.06);
+}
+
+.p3-expert-analysis-card h3 {
+    margin: 0 0 18px;
+    padding-bottom: 13px;
+
+    border-bottom: 1px solid #e0e7ef;
+
+    color: #174f88;
+
+    font-size: 1.03rem;
+    font-weight: 700;
+}
+
+
+/* ============================================================
+   EXPERT MINI METRICS
+============================================================ */
+
+.p3-mini-stat-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 12px;
+}
+
+.p3-mini-stat {
+    min-width: 0;
+
+    padding: 14px 12px;
+
+    border: 1px solid #e0e7ef;
+    border-radius: 9px;
+
+    background: #f7f9fc;
+
+    text-align: center;
+}
+
+.p3-mini-stat span {
+    display: block;
+
+    margin-bottom: 5px;
+
+    color: #65788c;
+
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.p3-mini-stat strong {
+    display: block;
+
+    color: #174f88;
+
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+
+/* ============================================================
+   COLLABORATION HEADROOM
+============================================================ */
+
+.p3-compact-highlight {
+    margin-top: 16px;
+
+    padding: 14px 16px;
+
+    border-radius: 9px;
+
+    background: #edf4fb;
+
+    text-align: center;
+}
+
+.p3-compact-highlight strong {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color: #174f88;
+
+    font-size: 1.3rem;
+    font-weight: 800;
+}
+
+.p3-compact-highlight span {
+    color: #536b82;
+
+    font-size: 0.8rem;
+}
+
+.p3-card-note {
+    margin: 12px 0 0;
+
+    color: #65788c;
+
+    font-size: 0.8rem;
+
+    text-align: center;
+}
+
+.p3-card-note strong {
+    color: #344f69;
+}
+
+
+/* ============================================================
+   EXPERT COMPARISON PLOTS
+============================================================ */
+
+.p3-comparison-plot {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+
+    margin-top: 18px;
+    padding: 10px;
+
+    overflow: hidden;
+
+    border: 1px solid #dce5ef;
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    box-sizing: border-box;
+}
+
+.p3-comparison-plot img {
+    display: block;
+
+    width: 100%;
+    max-width: 500px;
+    max-height: 330px;
+
+    height: auto;
+
+    margin: 0 auto;
+
+    object-fit: contain;
+}
+
+
+/* ============================================================
+   ACTIVE LEARNING PLOTS
+============================================================ */
+
+.p3-small-analysis-plot {
+    margin-top: 18px;
+    padding: 10px;
+
+    overflow: hidden;
+
+    border: 1px solid #dce5ef;
+    border-radius: 10px;
+
+    background: #ffffff;
+}
+
+.p3-small-analysis-plot
++ .p3-small-analysis-plot {
+    margin-top: 14px;
+}
+
+.p3-plot-title {
+    margin: 2px 0 9px;
+
+    color: #536b82;
+
+    font-size: 0.8rem;
+    font-weight: 700;
+
+    text-align: center;
+}
+
+.p3-small-analysis-plot img {
+    display: block;
+
+    width: 100%;
+    max-width: 480px;
+    max-height: 300px;
+
+    height: auto;
+
+    margin: 0 auto;
+
+    object-fit: contain;
+}
+
+
+/* ============================================================
+   INTERPRETATION SUMMARY
+============================================================ */
 
 .p3-analysis-summary-grid {
     display: grid;
@@ -1591,44 +2163,164 @@
             minmax(0, 1fr)
         );
 
-    gap: 18px;
+    gap: 16px;
 
     margin-top: 22px;
 }
 
-
 .p3-analysis-summary-card {
-    padding: 20px;
+    padding: 18px;
 
     border: 1px solid #dce5ef;
-    border-radius: 11px;
+    border-radius: 10px;
 
     background: #f8fafd;
 }
 
-
 .p3-analysis-summary-card strong {
     color: #174f88;
+
+    font-size: 0.9rem;
 }
 
-
 .p3-analysis-summary-card p {
-    margin-bottom: 0;
+    margin: 8px 0 0;
 
     color: #536b82;
 
+    font-size: 0.84rem;
     line-height: 1.55;
 }
 
 
-/* Responsive */
+/* ============================================================
+   ABLATION STUDY
+============================================================ */
 
-@media (max-width: 900px) {
+.p3-ablation-expert {
+    margin-top: 26px;
+}
 
-    .p3-analysis-two-plots {
-        grid-template-columns: 1fr;
-    }
+.p3-ablation-expert
++ .p3-ablation-expert {
+    margin-top: 30px;
+    padding-top: 26px;
 
+    border-top: 1px solid #e1e8f0;
+}
+
+.p3-ablation-expert h3 {
+    margin: 0 0 16px;
+
+    color: #1a4f8a;
+
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+
+/* Table wrapper */
+
+.p3-table-wrap {
+    width: 100%;
+
+    overflow-x: auto;
+
+    border: 1px solid #e1e8f0;
+    border-radius: 10px;
+}
+
+
+/* Ablation table */
+
+.p3-ablation-table {
+    width: 100%;
+    min-width: 780px;
+
+    border-collapse: collapse;
+}
+
+.p3-ablation-table th,
+.p3-ablation-table td {
+    padding: 11px 12px;
+
+    border-bottom: 1px solid #e2e8f0;
+
+    vertical-align: middle;
+}
+
+.p3-ablation-table th {
+    background: #eef3fb;
+
+    color: #1a4f8a;
+
+    font-size: 0.8rem;
+    font-weight: 700;
+
+    text-align: left;
+
+    white-space: nowrap;
+}
+
+.p3-ablation-table td {
+    color: #34495e;
+
+    font-size: 0.84rem;
+}
+
+.p3-ablation-table td:not(:first-child),
+.p3-ablation-table th:not(:first-child) {
+    text-align: center;
+}
+
+.p3-ablation-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+
+/* Ablation description */
+
+.p3-ablation-description {
+    display: block;
+
+    max-width: 390px;
+
+    margin-top: 4px;
+
+    color: #6b7a90;
+
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+
+/* Best variant */
+
+.p3-ablation-best {
+    background: #f2f8f3;
+}
+
+.p3-ablation-best td:first-child {
+    border-left: 4px solid #4b8c5a;
+}
+
+
+/* Ablation interpretation */
+
+.p3-ablation-interpretation {
+    margin-top: 24px;
+}
+
+.p3-ablation-interpretation p {
+    margin-bottom: 0;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+
+@media (max-width: 1000px) {
 
     .p3-analysis-summary-grid {
         grid-template-columns:
@@ -1641,16 +2333,85 @@
 }
 
 
+@media (max-width: 900px) {
+
+    .p3-expert-comparison-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .p3-comparison-plot img {
+        max-width: 620px;
+    }
+
+    .p3-small-analysis-plot img {
+        max-width: 620px;
+    }
+
+}
+
+
+@media (max-width: 850px) {
+
+    .p3-analysis-status-header {
+        flex-direction: column;
+
+        align-items: flex-start;
+    }
+
+    .p3-calibration-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .p3-calibration-score-card {
+        min-height: auto;
+    }
+
+    .p3-calibration-plot img {
+        max-width: 620px;
+    }
+
+}
+
+
 @media (max-width: 600px) {
+
+    .p3-analysis-run-form {
+        width: 100%;
+    }
+
+    .p3-analysis-run-button {
+        width: 100%;
+    }
+
+    .p3-action-row {
+        flex-direction: column;
+
+        align-items: stretch;
+    }
+
+    .p3-action-row a {
+        width: 100%;
+
+        box-sizing: border-box;
+
+        text-align: center;
+    }
 
     .p3-analysis-summary-grid {
         grid-template-columns: 1fr;
     }
 
+}
 
-    .p3-analysis-prerequisite-links {
-        flex-direction: column;
-        align-items: flex-start;
+
+@media (max-width: 500px) {
+
+    .p3-expert-analysis-card {
+        padding: 17px;
+    }
+
+    .p3-mini-stat-grid {
+        grid-template-columns: 1fr;
     }
 
 }
