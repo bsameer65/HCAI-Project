@@ -1,0 +1,113 @@
+{
+  "experiment": {
+    "name": "Selected Active Learning Experiment",
+    "initial_query_size": 100,
+    "batch_size": 100,
+    "random_state": 42
+  },
+  "dataset": {
+    "training_samples": 120000,
+    "test_samples": 7600
+  },
+  "classifier": {
+    "test_accuracy": 0.9236842105263158
+  },
+  "selection": {
+    "expert_key": "technology_world",
+    "expert_name": "Technology and World Affairs Specialist",
+    "expert_description": "Highly reliable for articles containing clear technology terms and strong for international or political news, but weaker for Sports and Business articles.",
+    "strategy_key": "classifier_entropy",
+    "strategy_name": "Classifier Entropy",
+    "query_budget": 1000
+  },
+  "strategy": {
+    "key": "classifier_entropy",
+    "name": "Classifier Entropy",
+    "learning_curve": [
+      {
+        "query_budget": 100,
+        "query_fraction": 0.0008333333333333334,
+        "competence_accuracy": 0.5101315789473684,
+        "competence_f1": 0.5174335709656513,
+        "competence_auroc": 0.536512653352702,
+        "brier_score": 0.24984899346326103,
+        "team_accuracy": 0.9257894736842105,
+        "deferral_rate": 0.05263157894736842,
+        "beneficial_deferrals": 101,
+        "harmful_deferrals": 85
+      },
+      {
+        "query_budget": 200,
+        "query_fraction": 0.0016666666666666668,
+        "competence_accuracy": 0.5577631578947368,
+        "competence_f1": 0.6663357490320659,
+        "competence_auroc": 0.5084291682434767,
+        "brier_score": 0.24776713233094733,
+        "team_accuracy": 0.9260526315789473,
+        "deferral_rate": 0.027763157894736844,
+        "beneficial_deferrals": 59,
+        "harmful_deferrals": 41
+      },
+      {
+        "query_budget": 400,
+        "query_fraction": 0.0033333333333333335,
+        "competence_accuracy": 0.4702631578947368,
+        "competence_f1": 0.5244507441530829,
+        "competence_auroc": 0.46556645356816995,
+        "brier_score": 0.253668839869674,
+        "team_accuracy": 0.9252631578947368,
+        "deferral_rate": 0.03276315789473684,
+        "beneficial_deferrals": 64,
+        "harmful_deferrals": 52
+      },
+      {
+        "query_budget": 600,
+        "query_fraction": 0.005,
+        "competence_accuracy": 0.47657894736842105,
+        "competence_f1": 0.540964689591507,
+        "competence_auroc": 0.46341938350766454,
+        "brier_score": 0.25241482144027333,
+        "team_accuracy": 0.9248684210526316,
+        "deferral_rate": 0.030263157894736843,
+        "beneficial_deferrals": 58,
+        "harmful_deferrals": 49
+      },
+      {
+        "query_budget": 800,
+        "query_fraction": 0.006666666666666667,
+        "competence_accuracy": 0.47578947368421054,
+        "competence_f1": 0.540590405904059,
+        "competence_auroc": 0.46215706600372897,
+        "brier_score": 0.2504185064825878,
+        "team_accuracy": 0.9252631578947368,
+        "deferral_rate": 0.026973684210526316,
+        "beneficial_deferrals": 55,
+        "harmful_deferrals": 43
+      },
+      {
+        "query_budget": 1000,
+        "query_fraction": 0.008333333333333333,
+        "competence_accuracy": 0.5351315789473684,
+        "competence_f1": 0.6489118553115373,
+        "competence_auroc": 0.4671341704682189,
+        "brier_score": 0.24854722553892758,
+        "team_accuracy": 0.925921052631579,
+        "deferral_rate": 0.02539473684210526,
+        "beneficial_deferrals": 56,
+        "harmful_deferrals": 39
+      }
+    ],
+    "final": {
+      "query_budget": 1000,
+      "query_fraction": 0.008333333333333333,
+      "competence_accuracy": 0.5351315789473684,
+      "competence_f1": 0.6489118553115373,
+      "competence_auroc": 0.4671341704682189,
+      "brier_score": 0.24854722553892758,
+      "team_accuracy": 0.925921052631579,
+      "deferral_rate": 0.02539473684210526,
+      "beneficial_deferrals": 56,
+      "harmful_deferrals": 39
+    }
+  }
+}

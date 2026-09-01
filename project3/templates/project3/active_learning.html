@@ -1,147 +1,154 @@
 {% extends "project3/base.html" %}
 
 {% block title %}
-    Active Learning
+Active Learning | Project 3
 {% endblock %}
+
 
 {% block content %}
 
-<section class="p3-card">
+<section class="p3-card p3-al-intro">
 
-    <h2>Active Learning for Expert Competence Discovery</h2>
+    <h1>
+        Active Learning for Expert Competence Discovery
+    </h1>
 
     <p>
-        At this stage, the classifier can use the complete labeled AG News
-        training set, but expert predictions are initially unavailable.
-        The system must therefore decide which articles are worth querying
-        from the expert.
+        Query the expert selectively to learn when Human-AI deferral
+        is beneficial.
     </p>
-
-    <div class="p3-info-box">
-        The objective is to discover the expert's competence profile using as
-        few expert queries as possible, while maintaining effective
-        human–AI collaboration.
-    </div>
 
 </section>
 
 
 <section class="p3-card">
 
-    <h2>Query Strategies</h2>
-
-    <div class="p3-method-grid">
-
-        <article class="p3-method-card">
-
-            <h3>Random Sampling</h3>
-
-            <p>
-                Selects articles uniformly at random. This provides a
-                reference baseline for evaluating whether active selection
-                actually improves query efficiency.
-            </p>
-
-        </article>
-
-
-        <article class="p3-method-card">
-
-            <h3>Classifier Entropy</h3>
-
-            <p>
-                Queries articles where the news classifier has the highest
-                predictive entropy.
-            </p>
-
-            <div class="p3-info-box">
-                This corresponds directly to information-based uncertainty
-                sampling from the lecture.
-            </div>
-
-        </article>
-
-
-        <article class="p3-method-card">
-
-            <h3>Competence Uncertainty</h3>
-
-            <p>
-                Queries articles where the competence model is most uncertain
-                whether the expert will be correct.
-            </p>
-
-            <div class="p3-info-box">
-                This directly targets expert competence discovery rather than
-                only classifier uncertainty.
-            </div>
-
-        </article>
-
-
-        <article class="p3-method-card">
-
-            <h3>Hybrid Uncertainty + Diversity</h3>
-
-            <p>
-                Combines competence uncertainty with diversity from previously
-                queried articles.
-            </p>
-
-            <div class="p3-info-box">
-                The strategy combines information-based and
-                representation-based selection to reduce redundant expert
-                queries.
-            </div>
-
-        </article>
-
-    </div>
-
-</section>
-
-
-<section class="p3-card">
-
-    <h2>Run Experiment</h2>
-
-    {% if results_available %}
-
-        <div class="p3-success-box">
-            Active-learning results are available. Re-run the experiment after
-            changing query strategies, budgets, or expert configurations.
-        </div>
-
-    {% else %}
-
-        <div class="p3-warning-box">
-            No active-learning results are available yet.
-        </div>
-
-    {% endif %}
-
-    <p class="p3-muted">
-        Each strategy begins with the same number of initial expert queries.
-        Performance is then evaluated as the query budget increases.
-    </p>
+    <h2>
+        Configure Experiment
+    </h2>
 
     <form
-        id="active-learning-form"
         method="post"
+        id="active-learning-form"
     >
         {% csrf_token %}
 
-        <button
-            id="active-learning-button"
-            class="p3-btn"
-            type="submit"
-        >
-            {% if results_available %}
-                Re-run Active Learning
-            {% else %}
+        <div class="p3-al-control-grid">
+
+            <!-- SIMULATED EXPERT -->
+            <div class="p3-al-control">
+
+                <label for="expert">
+                    Simulated Expert
+                </label>
+
+                <select
+                    id="expert"
+                    name="expert"
+                    required
+                >
+                    {% for expert in expert_options %}
+
+                        <option
+                            value="{{ expert.key }}"
+                            {% if expert.key == selected_expert %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ expert.name }}
+                        </option>
+
+                    {% endfor %}
+                </select>
+
+                <span class="p3-control-help">
+                    Select the expert whose competence should be learned.
+                </span>
+
+            </div>
+
+
+            <!-- FIXED ACTIVE LEARNING STRATEGY -->
+            <div class="p3-al-control">
+
+                <label>
+                    Query Strategy
+                </label>
+
+                <div class="p3-al-fixed-strategy">
+
+                    <div>
+                        <strong>
+                            Classifier Entropy
+                        </strong>
+                    </div>
+
+                    <span>
+                        Primary strategy
+                    </span>
+
+                </div>
+
+                <span class="p3-control-help">
+                    Queries examples with the highest classifier uncertainty.
+                </span>
+
+            </div>
+
+
+            <!-- QUERY BUDGET -->
+            <div class="p3-al-control">
+
+                <label for="query_budget">
+                    Expert Query Budget
+                </label>
+
+                <select
+                    id="query_budget"
+                    name="query_budget"
+                    required
+                >
+                    {% for budget in query_budgets %}
+
+                        <option
+                            value="{{ budget }}"
+                            {% if budget == selected_budget %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ budget }} queries
+                        </option>
+
+                    {% endfor %}
+                </select>
+
+                <span class="p3-control-help">
+                    Maximum number of expert responses available.
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="p3-al-run-row">
+
+            <button
+                type="submit"
+                id="active-learning-button"
+                class="p3-primary-btn"
+            >
                 Run Active Learning
-            {% endif %}
-        </button>
+            </button>
+
+            <a
+                href="{% url 'project3:active_learning_compare' %}"
+                class="p3-secondary-btn"
+            >
+                Compare Strategies
+            </a>
+
+        </div>
 
     </form>
 
@@ -152,51 +159,48 @@
 
 <section class="p3-card">
 
-    <h2>Experimental Setup</h2>
+    <h2>
+        Selected Configuration
+    </h2>
 
-    <div class="p3-stat-row">
+    <div class="p3-al-selection-grid">
 
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {{ result.dataset.training_samples }}
+        <div class="p3-al-selection-item">
+
+            <span>
+                Expert
             </span>
 
-            <span class="p3-stat-label">
-                Training articles
-            </span>
+            <strong>
+                {{ results.selection.expert_name }}
+            </strong>
+
         </div>
 
 
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {{ result.experiment.initial_query_size }}
+        <div class="p3-al-selection-item">
+
+            <span>
+                Query Strategy
             </span>
 
-            <span class="p3-stat-label">
-                Initial expert queries
-            </span>
+            <strong>
+                {{ results.selection.strategy_name }}
+            </strong>
+
         </div>
 
 
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {{ result.experiment.batch_size }}
+        <div class="p3-al-selection-item">
+
+            <span>
+                Query Budget
             </span>
 
-            <span class="p3-stat-label">
-                Queries per round
-            </span>
-        </div>
+            <strong>
+                {{ results.selection.query_budget }}
+            </strong>
 
-
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {{ result.classifier.test_accuracy|floatformat:4 }}
-            </span>
-
-            <span class="p3-stat-label">
-                Classifier test accuracy
-            </span>
         </div>
 
     </div>
@@ -206,75 +210,186 @@
 
 <section class="p3-card">
 
-    <h2>Final Strategy Comparison</h2>
+    <h2>
+        Active Learning Results
+    </h2>
 
-    <p class="p3-muted">
-        The table compares performance at the largest expert-query budget.
-        Higher competence AUROC indicates better discovery of where the
-        expert is reliable.
+    {% with final=results.strategy.final %}
+
+    <div class="p3-al-metric-grid">
+
+        <div class="p3-al-metric-card">
+
+            <span>
+                Team Accuracy
+            </span>
+
+            <strong>
+                {{ final.team_accuracy|floatformat:4 }}
+            </strong>
+
+        </div>
+
+
+        <div class="p3-al-metric-card">
+
+            <span>
+                Competence AUROC
+            </span>
+
+            <strong>
+                {{ final.competence_auroc|floatformat:4 }}
+            </strong>
+
+        </div>
+
+
+        <div class="p3-al-metric-card">
+
+            <span>
+                Competence F1
+            </span>
+
+            <strong>
+                {{ final.competence_f1|floatformat:4 }}
+            </strong>
+
+        </div>
+
+
+        <div class="p3-al-metric-card">
+
+            <span>
+                Deferral Rate
+            </span>
+
+            <strong>
+                {{ final.deferral_rate|floatformat:4 }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <div class="p3-al-secondary-metrics">
+
+        {% if final.beneficial_deferral_rate is not None %}
+
+        <div>
+            <span>
+                Beneficial Deferrals
+            </span>
+
+            <strong>
+                {{ final.beneficial_deferral_rate|floatformat:4 }}
+            </strong>
+        </div>
+
+        {% endif %}
+
+
+        {% if final.harmful_deferral_rate is not None %}
+
+        <div>
+            <span>
+                Harmful Deferrals
+            </span>
+
+            <strong>
+                {{ final.harmful_deferral_rate|floatformat:4 }}
+            </strong>
+        </div>
+
+        {% endif %}
+
+
+        {% if final.brier_score is not None %}
+
+        <div>
+            <span>
+                Brier Score
+            </span>
+
+            <strong>
+                {{ final.brier_score|floatformat:4 }}
+            </strong>
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    {% endwith %}
+
+</section>
+
+
+<section class="p3-card">
+
+    <h2>
+        Learning Progression
+    </h2>
+
+    <p class="p3-section-description">
+        Performance as more expert responses become available.
     </p>
 
-    <div class="p3-table-scroll">
+    <div class="p3-table-wrap">
 
-        <table class="p3-table">
+        <table class="p3-al-table">
 
             <thead>
                 <tr>
-                    <th>Expert</th>
-                    <th>Query Strategy</th>
-                    <th>Queries</th>
-                    <th>Competence AUROC</th>
-                    <th>Competence F1</th>
-                    <th>Team Accuracy</th>
-                    <th>Deferral Rate</th>
+                    <th>
+                        Expert Queries
+                    </th>
+
+                    <th>
+                        Team Accuracy
+                    </th>
+
+                    <th>
+                        Competence AUROC
+                    </th>
+
+                    <th>
+                        Competence F1
+                    </th>
+
+                    <th>
+                        Deferral Rate
+                    </th>
                 </tr>
             </thead>
 
             <tbody>
 
-                {% for expert_key, expert in result.experts.items %}
+                {% for point in results.strategy.learning_curve %}
 
-                    {% for strategy_key, strategy in expert.strategies.items %}
+                <tr>
 
-                    <tr class="{% if strategy.is_best %}p3-row-best{% endif %}">
+                    <td>
+                        {{ point.query_budget }}
+                    </td>
 
-                        <td>
-                            {{ expert.name }}
-                        </td>
+                    <td>
+                        {{ point.team_accuracy|floatformat:4 }}
+                    </td>
 
-                        <td>
-                            {{ strategy.name }}
+                    <td>
+                        {{ point.competence_auroc|floatformat:4 }}
+                    </td>
 
-                            {% if strategy.is_best %}
-                                <span class="p3-best-badge">
-                                    Best Team Accuracy
-                                </span>
-                            {% endif %}
-                        </td>
+                    <td>
+                        {{ point.competence_f1|floatformat:4 }}
+                    </td>
 
-                        <td>
-                            {{ strategy.final.query_budget }}
-                        </td>
+                    <td>
+                        {{ point.deferral_rate|floatformat:4 }}
+                    </td>
 
-                        <td>
-                            {{ strategy.final.competence_auroc|floatformat:4 }}
-                        </td>
-
-                        <td>
-                            {{ strategy.final.competence_f1|floatformat:4 }}
-                        </td>
-
-                        <td>
-                            {{ strategy.final.team_accuracy|floatformat:4 }}
-                        </td>
-
-                        <td>
-                            {% widthratio strategy.final.deferral_rate 1 100 %}%
-                        </td>
-
-                    </tr>
-
-                    {% endfor %}
+                </tr>
 
                 {% endfor %}
 
@@ -287,143 +402,27 @@
 </section>
 
 
-{% for expert_key, expert in result.experts.items %}
+<section class="p3-card p3-al-comparison-cta">
 
-<section class="p3-card">
-
-    <div class="p3-expert-heading-row">
+    <div>
 
         <h2>
-            {{ expert.name }}
+            Strategy Comparison
         </h2>
 
-        <span class="p3-best-badge p3-best-badge-large">
-            Best Team Accuracy: {{ expert.best_strategy_name }}
-        </span>
+        <p>
+            Compare Classifier Entropy with Random Sampling,
+            Competence Uncertainty, and Hybrid querying.
+        </p>
 
     </div>
 
-
-    <p>
-        {{ expert.description }}
-    </p>
-
-
-    <h3 class="p3-sub-heading">
-        Learning Curves
-    </h3>
-
-    <p class="p3-muted">
-        A useful active-learning strategy should achieve strong competence
-        discovery and team performance using fewer expert queries.
-    </p>
-
-
-    {% for strategy_key, strategy in expert.strategies.items %}
-
-    <div class="p3-al-strategy">
-
-        <h3>
-            {{ strategy.name }}
-
-            {% if strategy.is_best %}
-                <span class="p3-best-badge">
-                    Best final team accuracy
-                </span>
-            {% endif %}
-        </h3>
-
-
-        <div class="p3-table-scroll">
-
-            <table class="p3-table">
-
-                <thead>
-                    <tr>
-                        <th>Queries</th>
-                        <th>Query %</th>
-                        <th>Competence Accuracy</th>
-                        <th>AUROC</th>
-                        <th>Team Accuracy</th>
-                        <th>Deferral Rate</th>
-                        <th>Beneficial</th>
-                        <th>Harmful</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-
-                    {% for point in strategy.learning_curve %}
-
-                    <tr>
-
-                        <td>
-                            {{ point.query_budget }}
-                        </td>
-
-                        <td>
-                            {% widthratio point.query_fraction 1 100 %}%
-                        </td>
-
-                        <td>
-                            {{ point.competence_accuracy|floatformat:4 }}
-                        </td>
-
-                        <td>
-                            {{ point.competence_auroc|floatformat:4 }}
-                        </td>
-
-                        <td>
-                            {{ point.team_accuracy|floatformat:4 }}
-                        </td>
-
-                        <td>
-                            {% widthratio point.deferral_rate 1 100 %}%
-                        </td>
-
-                        <td>
-                            {{ point.beneficial_deferrals }}
-                        </td>
-
-                        <td>
-                            {{ point.harmful_deferrals }}
-                        </td>
-
-                    </tr>
-
-                    {% endfor %}
-
-                </tbody>
-
-            </table>
-
-        </div>
-
-    </div>
-
-    {% endfor %}
-
-</section>
-
-{% endfor %}
-
-
-<section class="p3-card">
-
-    <h2>How to Interpret the Experiment</h2>
-
-    <div class="p3-info-box">
-        Random sampling establishes the reference level. If an active strategy
-        reaches similar or better competence prediction with fewer expert
-        queries, it is using human effort more efficiently.
-    </div>
-
-    <p>
-        Classifier entropy focuses on difficult classification examples,
-        whereas competence uncertainty explicitly focuses on what is still
-        unknown about the expert. The hybrid strategy additionally discourages
-        redundant queries by favoring diverse articles.
-    </p>
+    <a
+        href="{% url 'project3:active_learning_compare' %}"
+        class="p3-secondary-btn"
+    >
+        Compare Strategies
+    </a>
 
 </section>
 
@@ -433,161 +432,68 @@
 <div
     id="active-learning-overlay"
     class="p3-training-overlay"
-    role="status"
-    aria-live="polite"
-    aria-hidden="true"
 >
 
     <div class="p3-training-dialog">
 
-        <div
-            class="p3-spinner"
-            aria-hidden="true"
-        ></div>
+        <div class="p3-spinner"></div>
 
-        <h2>
-            Running active learning
-        </h2>
+        <h3>
+            Running Active Learning
+        </h3>
 
-        <p id="active-learning-status">
-            Training the news classifier...
-        </p>
-
-        <div class="p3-progress-track">
-            <div class="p3-progress-bar"></div>
-        </div>
-
-        <p class="p3-muted">
-            Both expert profiles and all query strategies are being evaluated.
-            This experiment may take longer than the previous sections.
+        <p>
+            Querying the expert and evaluating the learned competence model...
         </p>
 
     </div>
 
 </div>
 
-<script>
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
 
-        const form = document.getElementById(
+<script>
+
+    const activeLearningForm =
+        document.getElementById(
             "active-learning-form"
         );
 
-        const button = document.getElementById(
-            "active-learning-button"
-        );
-
-        const overlay = document.getElementById(
+    const activeLearningOverlay =
+        document.getElementById(
             "active-learning-overlay"
         );
 
-        const status = document.getElementById(
-            "active-learning-status"
+    const activeLearningButton =
+        document.getElementById(
+            "active-learning-button"
         );
 
-        let timer = null;
+    if (activeLearningForm) {
 
-
-        function hideOverlay() {
-
-            if (overlay) {
-                overlay.classList.remove(
-                    "is-visible"
-                );
-
-                overlay.setAttribute(
-                    "aria-hidden",
-                    "true"
-                );
-            }
-
-            if (button) {
-                button.disabled = false;
-            }
-
-            if (timer !== null) {
-                window.clearInterval(
-                    timer
-                );
-
-                timer = null;
-            }
-        }
-
-
-        hideOverlay();
-
-
-        if (
-            !form
-            || !button
-            || !overlay
-            || !status
-        ) {
-            return;
-        }
-
-
-        form.addEventListener(
+        activeLearningForm.addEventListener(
             "submit",
             function () {
 
-                button.disabled = true;
+                if (activeLearningOverlay) {
+                    activeLearningOverlay.classList.add(
+                        "is-visible"
+                    );
+                }
 
-                button.textContent =
-                    "Running active learning...";
+                if (activeLearningButton) {
 
-                overlay.classList.add(
-                    "is-visible"
-                );
+                    activeLearningButton.disabled = true;
 
-                overlay.setAttribute(
-                    "aria-hidden",
-                    "false"
-                );
+                    activeLearningButton.textContent =
+                        "Running...";
 
+                }
 
-                const messages = [
-                    "Training the news classifier...",
-                    "Preparing the unlabeled expert-query pool...",
-                    "Creating the initial expert-query set...",
-                    "Training expert competence models...",
-                    "Selecting informative expert queries...",
-                    "Comparing uncertainty and diversity strategies...",
-                    "Evaluating competence discovery...",
-                    "Measuring human-AI team performance...",
-                    "Saving active-learning results..."
-                ];
-
-
-                let index = 0;
-
-
-                timer = window.setInterval(
-                    function () {
-
-                        index = (
-                            index + 1
-                        ) % messages.length;
-
-                        status.textContent =
-                            messages[index];
-
-                    },
-                    4000
-                );
             }
         );
 
-
-        window.addEventListener(
-            "pageshow",
-            hideOverlay
-        );
     }
-);
+
 </script>
 
 {% endblock %}

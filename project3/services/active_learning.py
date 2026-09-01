@@ -1,15 +1,24 @@
 """
 Pool-based Active Learning for Expert Competence Discovery.
 
-The classifier has access to all AG News training labels, as required by the
-project. Expert predictions, however, are initially unknown.
+The classifier has access to all AG News training labels, as required by
+the project. Expert predictions, however, are initially unknown.
 
 The active learner selectively queries expert responses and trains a
 competence model that estimates:
 
     P(expert is correct | article, classifier information)
 
-Four query strategies are compared:
+Two workflows are supported:
+
+1. Selected Active Learning
+   The user chooses one expert, one query strategy, and one query budget.
+
+2. Strategy Comparison
+   All four query strategies are evaluated for all simulated experts under
+   the same experimental conditions.
+
+Query strategies:
 
 1. Random Sampling
 2. Classifier Entropy
@@ -42,13 +51,13 @@ from sklearn.metrics import (
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
-from .baseline import build_baseline_pipeline
+from .baseline import load_baseline_model
 from .data_loader import load_ag_news
 from .learning_to_defer import (
     calculate_confidence,
+    calculate_deferral_metrics,
     calculate_entropy,
     calculate_margin,
-    calculate_deferral_metrics,
 )
 from .simulated_expert import (
     CLASS_NAMES,
@@ -63,15 +72,37 @@ from .simulated_expert import (
 # Paths
 # ---------------------------------------------------------------------------
 
-PROJECT3_DIR = Path(__file__).resolve().parent.parent
-
-ACTIVE_LEARNING_METRICS_DIR = (
-    PROJECT3_DIR / "artifacts" / "metrics"
+PROJECT3_DIR = (
+    Path(__file__)
+    .resolve()
+    .parent
+    .parent
 )
 
+ACTIVE_LEARNING_METRICS_DIR = (
+    PROJECT3_DIR
+    / "artifacts"
+    / "metrics"
+)
+
+# Full benchmark artifact.
+#
+# This artifact is intentionally preserved for:
+# - Compare Strategies
+# - Advanced Analysis
+# - final reporting
 ACTIVE_LEARNING_METRICS_PATH = (
     ACTIVE_LEARNING_METRICS_DIR
     / "active_learning_metrics.json"
+)
+
+# Latest interactive/user-selected experiment.
+#
+# Keeping this separate prevents a single user experiment from overwriting
+# the full benchmark required by Advanced Analysis.
+SELECTED_ACTIVE_LEARNING_METRICS_PATH = (
+    ACTIVE_LEARNING_METRICS_DIR
+    / "active_learning_selected_metrics.json"
 )
 
 
@@ -81,13 +112,14 @@ ACTIVE_LEARNING_METRICS_PATH = (
 
 RANDOM_STATE = 42
 
-# Initial expert queries needed before a competence model can be trained.
+# Initial expert queries required before a competence model can be trained.
 INITIAL_QUERY_SIZE = 100
 
-# Additional queries performed in each active-learning round.
+# Number of additional expert queries selected during one active-learning
+# iteration.
 BATCH_SIZE = 100
 
-# Total expert budgets at which performance is recorded.
+# Supported cumulative expert-query budgets.
 QUERY_BUDGETS = [
     100,
     200,
@@ -98,11 +130,20 @@ QUERY_BUDGETS = [
 ]
 
 STRATEGIES = {
-    "random": "Random Sampling",
-    "classifier_entropy": "Classifier Entropy",
-    "competence_uncertainty": "Competence Uncertainty",
-    "hybrid": "Hybrid Uncertainty + Diversity",
+    "random": (
+        "Random Sampling"
+    ),
+    "classifier_entropy": (
+        "Classifier Entropy"
+    ),
+    "competence_uncertainty": (
+        "Competence Uncertainty"
+    ),
+    "hybrid": (
+        "Hybrid Uncertainty + Diversity"
+    ),
 }
+PRIMARY_ACTIVE_LEARNING_STRATEGY = "classifier_entropy"
 
 
 NUMERIC_FEATURES = [
@@ -130,58 +171,97 @@ def build_competence_features(
     Build features available without querying the expert.
 
     Expert predictions and configured expert reliability are deliberately
-    excluded. Otherwise the active learner would already know the competence
-    profile it is supposed to discover.
+    excluded. Otherwise the active learner would already know the
+    competence profile it is supposed to discover.
     """
 
-    text_list = list(texts)
+    text_list = list(
+        texts
+    )
 
     classifier_predictions = np.asarray(
-        list(classifier_predictions),
+        list(
+            classifier_predictions
+        ),
         dtype=int,
     )
 
-    if len(text_list) != len(classifier_predictions):
+    classifier_probabilities = np.asarray(
+        classifier_probabilities,
+        dtype=float,
+    )
+
+    if (
+        len(text_list)
+        != len(
+            classifier_predictions
+        )
+    ):
         raise ValueError(
             "Texts and classifier predictions must have equal length."
         )
 
-    if len(text_list) != len(classifier_probabilities):
+    if (
+        len(text_list)
+        != len(
+            classifier_probabilities
+        )
+    ):
         raise ValueError(
             "Texts and probability rows must have equal length."
         )
 
-    confidence = calculate_confidence(
-        classifier_probabilities
+    confidence = (
+        calculate_confidence(
+            classifier_probabilities
+        )
     )
 
-    entropy = calculate_entropy(
-        classifier_probabilities
+    entropy = (
+        calculate_entropy(
+            classifier_probabilities
+        )
     )
 
-    margin = calculate_margin(
-        classifier_probabilities
+    margin = (
+        calculate_margin(
+            classifier_probabilities
+        )
     )
 
     text_length = np.asarray(
         [
-            len(str(text).split())
-            for text in text_list
+            len(
+                str(text).split()
+            )
+            for text
+            in text_list
         ],
         dtype=float,
     )
 
     return pd.DataFrame(
         {
-            "classifier_confidence": confidence,
-            "classifier_entropy": entropy,
-            "classifier_margin": margin,
-            "log_text_length": np.log1p(
-                text_length
+            "classifier_confidence": (
+                confidence
+            ),
+            "classifier_entropy": (
+                entropy
+            ),
+            "classifier_margin": (
+                margin
+            ),
+            "log_text_length": (
+                np.log1p(
+                    text_length
+                )
             ),
             "predicted_class": [
-                CLASS_NAMES[int(label)]
-                for label in classifier_predictions
+                CLASS_NAMES[
+                    int(label)
+                ]
+                for label
+                in classifier_predictions
             ],
         }
     )
@@ -200,8 +280,9 @@ def query_expert(
     """
     Query the simulated expert.
 
-    In the experiment, this function represents the oracle. The active
-    learner may call it only for selected indices.
+    Conceptually, this function represents the hidden expert oracle.
+    Active learning may access expert outcomes only for selected examples
+    when constructing the competence-training set.
     """
 
     queried_profile = replace(
@@ -212,10 +293,12 @@ def query_expert(
         ),
     )
 
-    return simulate_expert_predictions(
-        texts=texts,
-        true_labels=true_labels,
-        profile=queried_profile,
+    return (
+        simulate_expert_predictions(
+            texts=texts,
+            true_labels=true_labels,
+            profile=queried_profile,
+        )
     )
 
 
@@ -224,29 +307,44 @@ def build_expert_correctness_target(
     expert_outputs: list[ExpertPrediction],
 ) -> np.ndarray:
     """
-    Target for competence discovery.
+    Build the binary target used for expert-competence discovery.
 
     1 = expert prediction is correct
     0 = expert prediction is incorrect
     """
 
     true_labels = np.asarray(
-        list(true_labels),
+        list(
+            true_labels
+        ),
         dtype=int,
     )
 
     expert_predictions = np.asarray(
         [
             output.prediction
-            for output in expert_outputs
+            for output
+            in expert_outputs
         ],
         dtype=int,
     )
 
+    if (
+        len(true_labels)
+        != len(
+            expert_predictions
+        )
+    ):
+        raise ValueError(
+            "True labels and expert outputs must have equal length."
+        )
+
     return (
         expert_predictions
         == true_labels
-    ).astype(int)
+    ).astype(
+        int
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -255,31 +353,45 @@ def build_expert_correctness_target(
 
 def build_competence_model() -> Pipeline:
     """
-    Binary model estimating the probability that the expert is correct.
+    Build the binary model that estimates:
+
+        P(expert is correct | observable information)
     """
 
-    preprocessing = ColumnTransformer(
-        transformers=[
-            (
-                "numeric",
-                "passthrough",
-                NUMERIC_FEATURES,
-            ),
-            (
-                "categorical",
-                OneHotEncoder(
-                    handle_unknown="ignore",
+    preprocessing = (
+        ColumnTransformer(
+            transformers=[
+                (
+                    "numeric",
+                    "passthrough",
+                    NUMERIC_FEATURES,
                 ),
-                CATEGORICAL_FEATURES,
-            ),
-        ]
+                (
+                    "categorical",
+                    OneHotEncoder(
+                        handle_unknown=(
+                            "ignore"
+                        ),
+                    ),
+                    CATEGORICAL_FEATURES,
+                ),
+            ]
+        )
     )
 
-    classifier = LogisticRegression(
-        max_iter=1000,
-        class_weight="balanced",
-        random_state=RANDOM_STATE,
-        solver="liblinear",
+    classifier = (
+        LogisticRegression(
+            max_iter=1000,
+            class_weight=(
+                "balanced"
+            ),
+            random_state=(
+                RANDOM_STATE
+            ),
+            solver=(
+                "liblinear"
+            ),
+        )
     )
 
     return Pipeline(
@@ -302,20 +414,36 @@ def fit_competence_model(
     queried_indices: list[int],
 ) -> Pipeline:
     """
-    Train a competence model using only queried expert examples.
+    Train the competence model using only queried expert examples.
     """
 
-    queried_targets = targets[
-        queried_indices
-    ]
+    if not queried_indices:
+        raise ValueError(
+            "At least one queried expert example is required."
+        )
 
-    if len(np.unique(queried_targets)) < 2:
+    queried_targets = (
+        targets[
+            queried_indices
+        ]
+    )
+
+    if (
+        len(
+            np.unique(
+                queried_targets
+            )
+        )
+        < 2
+    ):
         raise ValueError(
             "Queried expert labels contain only one correctness class. "
             "Increase the initial query size."
         )
 
-    model = build_competence_model()
+    model = (
+        build_competence_model()
+    )
 
     model.fit(
         features.iloc[
@@ -335,15 +463,26 @@ def competence_uncertainty_score(
     probabilities: np.ndarray,
 ) -> np.ndarray:
     """
-    Binary uncertainty around P(expert correct)=0.5.
+    Binary competence uncertainty around:
 
-    Highest utility occurs at probability 0.5.
+        P(expert correct) = 0.5
+
+    Maximum utility occurs when estimated competence is closest to 0.5.
     """
 
-    return 1.0 - (
-        2.0
-        * np.abs(
-            probabilities - 0.5
+    probabilities = np.asarray(
+        probabilities,
+        dtype=float,
+    )
+
+    return (
+        1.0
+        - (
+            2.0
+            * np.abs(
+                probabilities
+                - 0.5
+            )
         )
     )
 
@@ -360,19 +499,31 @@ def normalize_scores(
         dtype=float,
     )
 
-    minimum = values.min()
-    maximum = values.max()
+    if values.size == 0:
+        return values
+
+    minimum = (
+        values.min()
+    )
+
+    maximum = (
+        values.max()
+    )
 
     if np.isclose(
         minimum,
         maximum,
     ):
-        return np.zeros_like(values)
+        return np.zeros_like(
+            values
+        )
 
     return (
-        values - minimum
+        values
+        - minimum
     ) / (
-        maximum - minimum
+        maximum
+        - minimum
     )
 
 
@@ -381,26 +532,36 @@ def calculate_diversity_score(
     queried_texts: list[str],
 ) -> np.ndarray:
     """
-    Estimate diversity using TF-IDF distance from already queried samples.
+    Estimate diversity using TF-IDF distance from previously queried samples.
 
     A candidate receives high diversity utility when it has low maximum
-    cosine similarity with previously queried articles.
+    cosine similarity with already queried articles.
     """
 
     if not pool_texts:
-        return np.asarray([])
-
-    if not queried_texts:
-        return np.ones(
-            len(pool_texts),
+        return np.asarray(
+            [],
             dtype=float,
         )
 
-    vectorizer = TfidfVectorizer(
-        lowercase=True,
-        max_features=5000,
-        min_df=2,
-        ngram_range=(1, 1),
+    if not queried_texts:
+        return np.ones(
+            len(
+                pool_texts
+            ),
+            dtype=float,
+        )
+
+    vectorizer = (
+        TfidfVectorizer(
+            lowercase=True,
+            max_features=5000,
+            min_df=2,
+            ngram_range=(
+                1,
+                1,
+            ),
+        )
     )
 
     all_texts = (
@@ -408,17 +569,37 @@ def calculate_diversity_score(
         + pool_texts
     )
 
-    matrix = vectorizer.fit_transform(
-        all_texts
+    try:
+        matrix = (
+            vectorizer.fit_transform(
+                all_texts
+            )
+        )
+
+    except ValueError:
+        # Defensive fallback for an unusually small or empty vocabulary.
+        return np.ones(
+            len(
+                pool_texts
+            ),
+            dtype=float,
+        )
+
+    queried_matrix = (
+        matrix[
+            :len(
+                queried_texts
+            )
+        ]
     )
 
-    queried_matrix = matrix[
-        :len(queried_texts)
-    ]
-
-    pool_matrix = matrix[
-        len(queried_texts):
-    ]
+    pool_matrix = (
+        matrix[
+            len(
+                queried_texts
+            ):
+        ]
+    )
 
     similarities = (
         pool_matrix
@@ -426,15 +607,20 @@ def calculate_diversity_score(
     ).toarray()
 
     maximum_similarity = (
-        similarities.max(axis=1)
+        similarities.max(
+            axis=1
+        )
     )
 
     diversity = (
-        1.0 - maximum_similarity
+        1.0
+        - maximum_similarity
     )
 
-    return normalize_scores(
-        diversity
+    return (
+        normalize_scores(
+            diversity
+        )
     )
 
 
@@ -449,37 +635,82 @@ def select_query_indices(
     random_generator: random.Random,
 ) -> list[int]:
     """
-    Select the next batch according to one query strategy.
+    Select the next batch according to one active-learning strategy.
     """
 
-    if len(candidate_indices) <= batch_size:
-        return candidate_indices.tolist()
-
-    if strategy_key == "random":
-        return random_generator.sample(
-            candidate_indices.tolist(),
-            batch_size,
+    if (
+        strategy_key
+        not in STRATEGIES
+    ):
+        raise ValueError(
+            f"Unknown active-learning strategy: {strategy_key}"
         )
 
-    if strategy_key == "classifier_entropy":
-        utility = classifier_entropy[
+    if batch_size <= 0:
+        return []
+
+    if (
+        len(
             candidate_indices
-        ]
+        )
+        <= batch_size
+    ):
+        return (
+            candidate_indices.tolist()
+        )
 
-    elif strategy_key == "competence_uncertainty":
-        if competence_probabilities is None:
-            raise ValueError(
-                "Competence probabilities are required."
+    if (
+        strategy_key
+        == "random"
+    ):
+        return (
+            random_generator.sample(
+                candidate_indices.tolist(),
+                batch_size,
             )
+        )
 
-        utility = competence_uncertainty_score(
-            competence_probabilities[
+    if (
+        strategy_key
+        == "classifier_entropy"
+    ):
+
+        utility = (
+            classifier_entropy[
                 candidate_indices
             ]
         )
 
-    elif strategy_key == "hybrid":
-        if competence_probabilities is None:
+    elif (
+        strategy_key
+        == "competence_uncertainty"
+    ):
+
+        if (
+            competence_probabilities
+            is None
+        ):
+            raise ValueError(
+                "Competence probabilities are required."
+            )
+
+        utility = (
+            competence_uncertainty_score(
+                competence_probabilities[
+                    candidate_indices
+                ]
+            )
+        )
+
+    elif (
+        strategy_key
+        == "hybrid"
+    ):
+
+        if (
+            competence_probabilities
+            is None
+        ):
             raise ValueError(
                 "Competence probabilities are required."
             )
@@ -493,21 +724,32 @@ def select_query_indices(
         )
 
         pool_texts = [
-            texts[index]
-            for index in candidate_indices
+            texts[
+                index
+            ]
+            for index
+            in candidate_indices
         ]
 
         queried_texts = [
-            texts[index]
-            for index in queried_indices
+            texts[
+                index
+            ]
+            for index
+            in queried_indices
         ]
 
-        diversity = calculate_diversity_score(
-            pool_texts=pool_texts,
-            queried_texts=queried_texts,
+        diversity = (
+            calculate_diversity_score(
+                pool_texts=(
+                    pool_texts
+                ),
+                queried_texts=(
+                    queried_texts
+                ),
+            )
         )
 
-        # Equal-weight combination of information and representation utility.
         utility = (
             0.5
             * normalize_scores(
@@ -522,13 +764,19 @@ def select_query_indices(
             f"Unknown active-learning strategy: {strategy_key}"
         )
 
-    top_local_indices = np.argsort(
-        utility
-    )[-batch_size:]
+    top_local_indices = (
+        np.argsort(
+            utility
+        )[
+            -batch_size:
+        ]
+    )
 
-    return candidate_indices[
-        top_local_indices
-    ].tolist()
+    return (
+        candidate_indices[
+            top_local_indices
+        ].tolist()
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -543,37 +791,60 @@ def evaluate_competence_predictions(
     Evaluate how accurately expert competence has been learned.
     """
 
+    true_correctness = np.asarray(
+        true_correctness,
+        dtype=int,
+    )
+
+    predicted_probabilities = np.asarray(
+        predicted_probabilities,
+        dtype=float,
+    )
+
     predicted_labels = (
         predicted_probabilities
         >= 0.5
-    ).astype(int)
-
-    accuracy = accuracy_score(
-        true_correctness,
-        predicted_labels,
+    ).astype(
+        int
     )
 
-    f1 = f1_score(
-        true_correctness,
-        predicted_labels,
-        zero_division=0,
-    )
-
-    if len(
-        np.unique(
-            true_correctness
-        )
-    ) > 1:
-        auroc = roc_auc_score(
+    accuracy = (
+        accuracy_score(
             true_correctness,
-            predicted_probabilities,
+            predicted_labels,
+        )
+    )
+
+    f1 = (
+        f1_score(
+            true_correctness,
+            predicted_labels,
+            zero_division=0,
+        )
+    )
+
+    if (
+        len(
+            np.unique(
+                true_correctness
+            )
+        )
+        > 1
+    ):
+        auroc = (
+            roc_auc_score(
+                true_correctness,
+                predicted_probabilities,
+            )
         )
     else:
         auroc = None
 
-    brier = brier_score_loss(
-        true_correctness,
-        predicted_probabilities,
+    brier = (
+        brier_score_loss(
+            true_correctness,
+            predicted_probabilities,
+        )
     )
 
     return {
@@ -584,8 +855,11 @@ def evaluate_competence_predictions(
             f1
         ),
         "auroc": (
-            float(auroc)
-            if auroc is not None
+            float(
+                auroc
+            )
+            if auroc
+            is not None
             else None
         ),
         "brier_score": float(
@@ -610,20 +884,198 @@ def evaluate_team_from_competence(
         > classifier_confidence
     )
 
-    return calculate_deferral_metrics(
-        true_labels=true_labels,
-        classifier_predictions=(
-            classifier_predictions
-        ),
-        expert_predictions=(
-            expert_predictions
-        ),
-        defer_mask=defer_mask,
+    return (
+        calculate_deferral_metrics(
+            true_labels=(
+                true_labels
+            ),
+            classifier_predictions=(
+                classifier_predictions
+            ),
+            expert_predictions=(
+                expert_predictions
+            ),
+            defer_mask=(
+                defer_mask
+            ),
+        )
     )
 
 
 # ---------------------------------------------------------------------------
-# One active-learning strategy
+# Shared classifier/data preparation
+# ---------------------------------------------------------------------------
+
+def prepare_active_learning_data() -> dict:
+    """
+    Prepare all classifier information required by Active Learning.
+
+    The saved baseline classifier is reused instead of being retrained here.
+
+    This is preferable because:
+    - the Baseline experiment is already responsible for training it;
+    - the classifier uses the complete labeled AG News training set;
+    - interactive Active Learning can therefore focus only on discovering
+      expert competence.
+    """
+
+    dataset = (
+        load_ag_news()
+    )
+
+    classifier = (
+        load_baseline_model()
+    )
+
+    if classifier is None:
+        raise RuntimeError(
+            "The saved baseline classifier is unavailable. "
+            "Run the Baseline experiment first."
+        )
+
+    train_predictions = (
+        classifier.predict(
+            dataset.train[
+                "text"
+            ]
+        )
+    )
+
+    train_probabilities = (
+        classifier.predict_proba(
+            dataset.train[
+                "text"
+            ]
+        )
+    )
+
+    test_predictions = (
+        classifier.predict(
+            dataset.test[
+                "text"
+            ]
+        )
+    )
+
+    test_probabilities = (
+        classifier.predict_proba(
+            dataset.test[
+                "text"
+            ]
+        )
+    )
+
+    train_entropy = (
+        calculate_entropy(
+            train_probabilities
+        )
+    )
+
+    test_confidence = (
+        calculate_confidence(
+            test_probabilities
+        )
+    )
+
+    train_features = (
+        build_competence_features(
+            texts=(
+                dataset.train[
+                    "text"
+                ]
+            ),
+            classifier_predictions=(
+                train_predictions
+            ),
+            classifier_probabilities=(
+                train_probabilities
+            ),
+        )
+    )
+
+    test_features = (
+        build_competence_features(
+            texts=(
+                dataset.test[
+                    "text"
+                ]
+            ),
+            classifier_predictions=(
+                test_predictions
+            ),
+            classifier_probabilities=(
+                test_probabilities
+            ),
+        )
+    )
+
+    train_texts = (
+        dataset.train[
+            "text"
+        ].tolist()
+    )
+
+    train_labels = (
+        dataset.train[
+            "label"
+        ].to_numpy()
+    )
+
+    test_labels = (
+        dataset.test[
+            "label"
+        ].to_numpy()
+    )
+
+    classifier_accuracy = (
+        accuracy_score(
+            test_labels,
+            test_predictions,
+        )
+    )
+
+    return {
+        "dataset": (
+            dataset
+        ),
+        "train_texts": (
+            train_texts
+        ),
+        "train_labels": (
+            train_labels
+        ),
+        "test_labels": (
+            test_labels
+        ),
+        "train_features": (
+            train_features
+        ),
+        "test_features": (
+            test_features
+        ),
+        "train_entropy": (
+            train_entropy
+        ),
+        "test_predictions": (
+            np.asarray(
+                test_predictions,
+                dtype=int,
+            )
+        ),
+        "test_confidence": (
+            np.asarray(
+                test_confidence,
+                dtype=float,
+            )
+        ),
+        "classifier_accuracy": float(
+            classifier_accuracy
+        ),
+    }
+
+
+# ---------------------------------------------------------------------------
+# One Active Learning strategy
 # ---------------------------------------------------------------------------
 
 def run_strategy_for_expert(
@@ -639,17 +1091,79 @@ def run_strategy_for_expert(
     test_classifier_confidence: np.ndarray,
     test_expert_outputs: list[ExpertPrediction],
     train_expert_outputs: list[ExpertPrediction],
+    query_budgets: list[int] | None = None,
 ) -> dict:
     """
-    Run one complete pool-based active-learning experiment.
+    Run one pool-based Active Learning strategy for one expert.
+
+    query_budgets determines the checkpoints at which the competence model
+    and Human-AI team are evaluated.
+
+    When omitted, the complete benchmark budget sequence is used.
     """
 
-    random_generator = random.Random(
-        RANDOM_STATE
-        + profile.random_state
-        + sum(
-            ord(character)
-            for character in strategy_key
+    if (
+        strategy_key
+        not in STRATEGIES
+    ):
+        raise ValueError(
+            f"Unknown active-learning strategy: {strategy_key}"
+        )
+
+    if query_budgets is None:
+        query_budgets = list(
+            QUERY_BUDGETS
+        )
+
+    query_budgets = sorted(
+        {
+            int(
+                budget
+            )
+            for budget
+            in query_budgets
+        }
+    )
+
+    if not query_budgets:
+        raise ValueError(
+            "At least one query budget is required."
+        )
+
+    if (
+        query_budgets[
+            0
+        ]
+        < INITIAL_QUERY_SIZE
+    ):
+        raise ValueError(
+            "Query budgets cannot be smaller than "
+            f"{INITIAL_QUERY_SIZE}."
+        )
+
+    if (
+        query_budgets[
+            -1
+        ]
+        > len(
+            train_labels
+        )
+    ):
+        raise ValueError(
+            "Query budget cannot exceed the size of the training pool."
+        )
+
+    random_generator = (
+        random.Random(
+            RANDOM_STATE
+            + profile.random_state
+            + sum(
+                ord(
+                    character
+                )
+                for character
+                in strategy_key
+            )
         )
     )
 
@@ -667,41 +1181,66 @@ def run_strategy_for_expert(
         )
     )
 
-    test_expert_predictions = np.asarray(
-        [
-            output.prediction
-            for output in test_expert_outputs
-        ],
-        dtype=int,
+    test_expert_predictions = (
+        np.asarray(
+            [
+                output.prediction
+                for output
+                in test_expert_outputs
+            ],
+            dtype=int,
+        )
     )
 
-    all_indices = np.arange(
-        len(train_labels)
+    all_indices = (
+        np.arange(
+            len(
+                train_labels
+            )
+        )
     )
 
-    # Same-size random seed for every strategy.
-    queried_indices = random_generator.sample(
-        all_indices.tolist(),
-        INITIAL_QUERY_SIZE,
+    # Same-size random seed set for every strategy.
+    queried_indices = (
+        random_generator.sample(
+            all_indices.tolist(),
+            INITIAL_QUERY_SIZE,
+        )
     )
 
     learning_curve = []
 
-    for query_budget in QUERY_BUDGETS:
+    for query_budget in query_budgets:
+
+        # -----------------------------------------------------------
+        # Actively acquire expert labels until this checkpoint.
+        # -----------------------------------------------------------
 
         while (
-            len(queried_indices)
+            len(
+                queried_indices
+            )
             < query_budget
         ):
 
-            model = fit_competence_model(
-                features=train_features,
-                targets=train_expert_correctness,
-                queried_indices=queried_indices,
+            model = (
+                fit_competence_model(
+                    features=(
+                        train_features
+                    ),
+                    targets=(
+                        train_expert_correctness
+                    ),
+                    queried_indices=(
+                        queried_indices
+                    ),
+                )
             )
 
             pool_mask = np.ones(
-                len(train_labels),
+                len(
+                    train_labels
+                ),
                 dtype=bool,
             )
 
@@ -709,29 +1248,41 @@ def run_strategy_for_expert(
                 queried_indices
             ] = False
 
-            candidate_indices = all_indices[
-                pool_mask
-            ]
+            candidate_indices = (
+                all_indices[
+                    pool_mask
+                ]
+            )
 
             remaining_budget = (
                 query_budget
-                - len(queried_indices)
+                - len(
+                    queried_indices
+                )
             )
 
             current_batch_size = min(
                 BATCH_SIZE,
                 remaining_budget,
+                len(
+                    candidate_indices
+                ),
             )
 
             competence_probabilities = (
                 model.predict_proba(
                     train_features
-                )[:, 1]
+                )[
+                    :,
+                    1
+                ]
             )
 
             selected_indices = (
                 select_query_indices(
-                    strategy_key=strategy_key,
+                    strategy_key=(
+                        strategy_key
+                    ),
                     candidate_indices=(
                         candidate_indices
                     ),
@@ -744,7 +1295,9 @@ def run_strategy_for_expert(
                     competence_probabilities=(
                         competence_probabilities
                     ),
-                    texts=train_texts,
+                    texts=(
+                        train_texts
+                    ),
                     queried_indices=(
                         queried_indices
                     ),
@@ -754,23 +1307,38 @@ def run_strategy_for_expert(
                 )
             )
 
+            if not selected_indices:
+                break
+
             queried_indices.extend(
                 selected_indices
             )
 
-        # Retrain after reaching this budget.
+        # -----------------------------------------------------------
+        # Evaluate competence model at this budget.
+        # -----------------------------------------------------------
+
         competence_model = (
             fit_competence_model(
-                features=train_features,
-                targets=train_expert_correctness,
-                queried_indices=queried_indices,
+                features=(
+                    train_features
+                ),
+                targets=(
+                    train_expert_correctness
+                ),
+                queried_indices=(
+                    queried_indices
+                ),
             )
         )
 
         test_competence_probability = (
             competence_model.predict_proba(
                 test_features
-            )[:, 1]
+            )[
+                :,
+                1
+            ]
         )
 
         competence_metrics = (
@@ -786,7 +1354,9 @@ def run_strategy_for_expert(
 
         team_metrics = (
             evaluate_team_from_competence(
-                true_labels=test_labels,
+                true_labels=(
+                    test_labels
+                ),
                 classifier_predictions=(
                     test_classifier_predictions
                 ),
@@ -809,7 +1379,9 @@ def run_strategy_for_expert(
                 ),
                 "query_fraction": float(
                     query_budget
-                    / len(train_labels)
+                    / len(
+                        train_labels
+                    )
                 ),
                 "competence_accuracy": (
                     competence_metrics[
@@ -854,215 +1426,165 @@ def run_strategy_for_expert(
             }
         )
 
+    if not learning_curve:
+        raise RuntimeError(
+            "Active Learning produced no evaluation checkpoints."
+        )
+
     final_point = (
-        learning_curve[-1]
+        learning_curve[
+            -1
+        ]
     )
 
     return {
-        "key": strategy_key,
-        "name": STRATEGIES[
+        "key": (
             strategy_key
-        ],
-        "learning_curve": learning_curve,
-        "final": final_point,
+        ),
+        "name": (
+            STRATEGIES[
+                strategy_key
+            ]
+        ),
+        "learning_curve": (
+            learning_curve
+        ),
+        "final": (
+            final_point
+        ),
     }
 
 
 # ---------------------------------------------------------------------------
-# Full experiment
+# Selected interactive experiment
 # ---------------------------------------------------------------------------
 
-def run_active_learning_experiment() -> dict:
+def run_selected_active_learning(
+    expert_key: str,
+    query_budget: int,
+) -> dict:
     """
-    Compare all query strategies for both simulated experts.
+    Run the primary Active Learning strategy for one selected expert
+    and expert-query budget.
+
+    Classifier Entropy is the project's chosen acquisition strategy.
+    Alternative strategies are evaluated separately on the comparison page.
     """
 
-    dataset = load_ag_news()
+    strategy_key = PRIMARY_ACTIVE_LEARNING_STRATEGY
 
-    # ---------------------------------------------------------------
-    # Train classifier using the complete labeled training set.
-    # This is explicitly allowed by the project specification.
-    # ---------------------------------------------------------------
-
-    classifier = build_baseline_pipeline()
-
-    classifier.fit(
-        dataset.train["text"],
-        dataset.train["label"],
-    )
-
-    train_predictions = classifier.predict(
-        dataset.train["text"]
-    )
-
-    train_probabilities = (
-        classifier.predict_proba(
-            dataset.train["text"]
+    if expert_key not in EXPERT_PROFILES:
+        raise ValueError(
+            "Unknown simulated expert."
         )
-    )
 
-    test_predictions = classifier.predict(
-        dataset.test["text"]
-    )
-
-    test_probabilities = (
-        classifier.predict_proba(
-            dataset.test["text"]
+    try:
+        query_budget = int(
+            query_budget
         )
-    )
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "Query budget must be an integer."
+        ) from exc
 
-    train_entropy = calculate_entropy(
-        train_probabilities
-    )
-
-    test_confidence = calculate_confidence(
-        test_probabilities
-    )
-
-    # ---------------------------------------------------------------
-    # Build features that do not reveal expert labels.
-    # ---------------------------------------------------------------
-
-    train_features = (
-        build_competence_features(
-            texts=dataset.train["text"],
-            classifier_predictions=(
-                train_predictions
-            ),
-            classifier_probabilities=(
-                train_probabilities
-            ),
+    if query_budget not in QUERY_BUDGETS:
+        raise ValueError(
+            "Unsupported query budget. "
+            f"Choose one of: {QUERY_BUDGETS}"
         )
+
+    prepared = (
+        prepare_active_learning_data()
     )
 
-    test_features = (
-        build_competence_features(
-            texts=dataset.test["text"],
-            classifier_predictions=(
-                test_predictions
-            ),
-            classifier_probabilities=(
-                test_probabilities
-            ),
-        )
-    )
+    dataset = prepared[
+        "dataset"
+    ]
 
-    train_texts = (
-        dataset.train["text"].tolist()
-    )
+    profile = EXPERT_PROFILES[
+        expert_key
+    ]
 
-    train_labels = (
-        dataset.train["label"].to_numpy()
-    )
-
-    test_labels = (
-        dataset.test["label"].to_numpy()
-    )
-
-    expert_results = {}
-
-    # ---------------------------------------------------------------
-    # Evaluate active learning separately for each expert.
-    # ---------------------------------------------------------------
-
-    for profile_key, profile in EXPERT_PROFILES.items():
-
-        # The simulator generates hidden oracle responses.
-        # The active learner receives only queried entries.
-        train_expert_outputs = query_expert(
-            texts=dataset.train["text"],
-            true_labels=dataset.train["label"],
+    train_expert_outputs = (
+        query_expert(
+            texts=dataset.train[
+                "text"
+            ],
+            true_labels=dataset.train[
+                "label"
+            ],
             profile=profile,
             seed_offset=500,
         )
+    )
 
-        test_expert_outputs = query_expert(
-            texts=dataset.test["text"],
-            true_labels=dataset.test["label"],
+    test_expert_outputs = (
+        query_expert(
+            texts=dataset.test[
+                "text"
+            ],
+            true_labels=dataset.test[
+                "label"
+            ],
             profile=profile,
             seed_offset=600,
         )
+    )
 
-        strategy_results = {}
+    selected_budgets = [
+        budget
+        for budget in QUERY_BUDGETS
+        if budget <= query_budget
+    ]
 
-        for strategy_key in STRATEGIES:
-
-            strategy_results[
-                strategy_key
-            ] = run_strategy_for_expert(
-                strategy_key=strategy_key,
-                profile=profile,
-                train_texts=train_texts,
-                train_labels=train_labels,
-                train_features=train_features,
-                train_classifier_entropy=(
-                    train_entropy
-                ),
-                test_features=test_features,
-                test_labels=test_labels,
-                test_classifier_predictions=(
-                    test_predictions
-                ),
-                test_classifier_confidence=(
-                    test_confidence
-                ),
-                test_expert_outputs=(
-                    test_expert_outputs
-                ),
-                train_expert_outputs=(
-                    train_expert_outputs
-                ),
-            )
-
-        best_strategy_key = max(
-            strategy_results,
-            key=lambda key: (
-                strategy_results[key][
-                    "final"
-                ]["team_accuracy"]
+    strategy_result = (
+        run_strategy_for_expert(
+            strategy_key=strategy_key,
+            profile=profile,
+            train_texts=prepared[
+                "train_texts"
+            ],
+            train_labels=prepared[
+                "train_labels"
+            ],
+            train_features=prepared[
+                "train_features"
+            ],
+            train_classifier_entropy=prepared[
+                "train_entropy"
+            ],
+            test_features=prepared[
+                "test_features"
+            ],
+            test_labels=prepared[
+                "test_labels"
+            ],
+            test_classifier_predictions=prepared[
+                "test_predictions"
+            ],
+            test_classifier_confidence=prepared[
+                "test_confidence"
+            ],
+            test_expert_outputs=(
+                test_expert_outputs
             ),
+            train_expert_outputs=(
+                train_expert_outputs
+            ),
+            query_budgets=selected_budgets,
         )
-
-        for strategy_key, strategy in (
-            strategy_results.items()
-        ):
-            strategy["is_best"] = (
-                strategy_key
-                == best_strategy_key
-            )
-
-        expert_results[
-            profile_key
-        ] = {
-            "name": profile.name,
-            "description": (
-                profile.description
-            ),
-            "best_strategy_key": (
-                best_strategy_key
-            ),
-            "best_strategy_name": (
-                strategy_results[
-                    best_strategy_key
-                ]["name"]
-            ),
-            "strategies": (
-                strategy_results
-            ),
-        }
+    )
 
     result = {
         "experiment": {
             "name": (
-                "Active Learning for "
-                "Expert Competence Discovery"
+                "Selected Active Learning Experiment"
             ),
             "initial_query_size": (
                 INITIAL_QUERY_SIZE
             ),
-            "batch_size": BATCH_SIZE,
-            "query_budgets": (
-                QUERY_BUDGETS
+            "batch_size": (
+                BATCH_SIZE
             ),
             "random_state": (
                 RANDOM_STATE
@@ -1079,15 +1601,269 @@ def run_active_learning_experiment() -> dict:
         },
 
         "classifier": {
-            "test_accuracy": float(
-                accuracy_score(
-                    test_labels,
-                    test_predictions,
+            "test_accuracy": prepared[
+                "classifier_accuracy"
+            ],
+        },
+
+        "selection": {
+            "expert_key": expert_key,
+            "expert_name": profile.name,
+            "expert_description": (
+                profile.description
+            ),
+            "strategy_key": strategy_key,
+            "strategy_name": STRATEGIES[
+                strategy_key
+            ],
+            "query_budget": int(
+                query_budget
+            ),
+        },
+
+        "strategy": strategy_result,
+    }
+
+    save_selected_active_learning_results(
+        result
+    )
+
+    return result
+
+# ---------------------------------------------------------------------------
+# Full comparison experiment
+# ---------------------------------------------------------------------------
+
+def run_active_learning_experiment() -> dict:
+    """
+    Compare all active-learning strategies for all simulated experts.
+
+    This is the scientific benchmark used by:
+    - Compare Strategies
+    - Advanced Analysis
+    - report generation
+
+    It intentionally remains separate from the user-selected experiment.
+    """
+
+    prepared = (
+        prepare_active_learning_data()
+    )
+
+    dataset = (
+        prepared[
+            "dataset"
+        ]
+    )
+
+    expert_results = {}
+
+    for (
+        profile_key,
+        profile,
+    ) in EXPERT_PROFILES.items():
+
+        train_expert_outputs = (
+            query_expert(
+                texts=(
+                    dataset.train[
+                        "text"
+                    ]
+                ),
+                true_labels=(
+                    dataset.train[
+                        "label"
+                    ]
+                ),
+                profile=(
+                    profile
+                ),
+                seed_offset=500,
+            )
+        )
+
+        test_expert_outputs = (
+            query_expert(
+                texts=(
+                    dataset.test[
+                        "text"
+                    ]
+                ),
+                true_labels=(
+                    dataset.test[
+                        "label"
+                    ]
+                ),
+                profile=(
+                    profile
+                ),
+                seed_offset=600,
+            )
+        )
+
+        strategy_results = {}
+
+        for strategy_key in STRATEGIES:
+
+            strategy_results[
+                strategy_key
+            ] = (
+                run_strategy_for_expert(
+                    strategy_key=(
+                        strategy_key
+                    ),
+                    profile=(
+                        profile
+                    ),
+                    train_texts=(
+                        prepared[
+                            "train_texts"
+                        ]
+                    ),
+                    train_labels=(
+                        prepared[
+                            "train_labels"
+                        ]
+                    ),
+                    train_features=(
+                        prepared[
+                            "train_features"
+                        ]
+                    ),
+                    train_classifier_entropy=(
+                        prepared[
+                            "train_entropy"
+                        ]
+                    ),
+                    test_features=(
+                        prepared[
+                            "test_features"
+                        ]
+                    ),
+                    test_labels=(
+                        prepared[
+                            "test_labels"
+                        ]
+                    ),
+                    test_classifier_predictions=(
+                        prepared[
+                            "test_predictions"
+                        ]
+                    ),
+                    test_classifier_confidence=(
+                        prepared[
+                            "test_confidence"
+                        ]
+                    ),
+                    test_expert_outputs=(
+                        test_expert_outputs
+                    ),
+                    train_expert_outputs=(
+                        train_expert_outputs
+                    ),
+                    query_budgets=(
+                        QUERY_BUDGETS
+                    ),
+                )
+            )
+
+        # -----------------------------------------------------------
+        # Determine best strategy by final Human-AI team accuracy.
+        # -----------------------------------------------------------
+
+        best_strategy_key = max(
+            strategy_results,
+            key=lambda key: (
+                strategy_results[
+                    key
+                ][
+                    "final"
+                ][
+                    "team_accuracy"
+                ]
+            ),
+        )
+
+        for (
+            strategy_key,
+            strategy,
+        ) in strategy_results.items():
+
+            strategy[
+                "is_best"
+            ] = (
+                strategy_key
+                == best_strategy_key
+            )
+
+        expert_results[
+            profile_key
+        ] = {
+            "name": (
+                profile.name
+            ),
+            "description": (
+                profile.description
+            ),
+            "best_strategy_key": (
+                best_strategy_key
+            ),
+            "best_strategy_name": (
+                strategy_results[
+                    best_strategy_key
+                ][
+                    "name"
+                ]
+            ),
+            "strategies": (
+                strategy_results
+            ),
+        }
+
+    result = {
+        "experiment": {
+            "name": (
+                "Active Learning for "
+                "Expert Competence Discovery"
+            ),
+            "initial_query_size": (
+                INITIAL_QUERY_SIZE
+            ),
+            "batch_size": (
+                BATCH_SIZE
+            ),
+            "query_budgets": (
+                QUERY_BUDGETS
+            ),
+            "random_state": (
+                RANDOM_STATE
+            ),
+        },
+
+        "dataset": {
+            "training_samples": int(
+                len(
+                    dataset.train
+                )
+            ),
+            "test_samples": int(
+                len(
+                    dataset.test
                 )
             ),
         },
 
-        "experts": expert_results,
+        "classifier": {
+            "test_accuracy": (
+                prepared[
+                    "classifier_accuracy"
+                ]
+            ),
+        },
+
+        "experts": (
+            expert_results
+        ),
     }
 
     save_active_learning_results(
@@ -1096,15 +1872,16 @@ def run_active_learning_experiment() -> dict:
 
     return result
 
+
 # ---------------------------------------------------------------------------
-# Persistence
+# Persistence - full benchmark
 # ---------------------------------------------------------------------------
 
 def save_active_learning_results(
     result: dict,
 ) -> None:
     """
-    Save active-learning experiment results atomically.
+    Save the complete Active Learning comparison artifact atomically.
     """
 
     ACTIVE_LEARNING_METRICS_DIR.mkdir(
@@ -1119,6 +1896,7 @@ def save_active_learning_results(
     )
 
     try:
+
         with temporary_path.open(
             "w",
             encoding="utf-8",
@@ -1137,7 +1915,9 @@ def save_active_learning_results(
 
     except Exception:
 
-        if temporary_path.exists():
+        if (
+            temporary_path.exists()
+        ):
             temporary_path.unlink()
 
         raise
@@ -1145,15 +1925,93 @@ def save_active_learning_results(
 
 def load_active_learning_results() -> dict | None:
     """
-    Load previously generated active-learning results.
+    Load the previously generated full Active Learning benchmark.
     """
 
-    if not ACTIVE_LEARNING_METRICS_PATH.exists():
+    if not (
+        ACTIVE_LEARNING_METRICS_PATH.exists()
+    ):
         return None
 
-    with ACTIVE_LEARNING_METRICS_PATH.open(
-        "r",
-        encoding="utf-8",
+    with (
+        ACTIVE_LEARNING_METRICS_PATH.open(
+            "r",
+            encoding="utf-8",
+        )
     ) as file:
 
-        return json.load(file)
+        return json.load(
+            file
+        )
+
+
+# ---------------------------------------------------------------------------
+# Persistence - selected interactive experiment
+# ---------------------------------------------------------------------------
+
+def save_selected_active_learning_results(
+    result: dict,
+) -> None:
+    """
+    Save the latest user-selected Active Learning experiment atomically.
+    """
+
+    ACTIVE_LEARNING_METRICS_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    temporary_path = (
+        SELECTED_ACTIVE_LEARNING_METRICS_PATH.with_suffix(
+            ".json.tmp"
+        )
+    )
+
+    try:
+
+        with temporary_path.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
+
+            json.dump(
+                result,
+                file,
+                indent=2,
+                ensure_ascii=False,
+            )
+
+        temporary_path.replace(
+            SELECTED_ACTIVE_LEARNING_METRICS_PATH
+        )
+
+    except Exception:
+
+        if (
+            temporary_path.exists()
+        ):
+            temporary_path.unlink()
+
+        raise
+
+
+def load_selected_active_learning_results() -> dict | None:
+    """
+    Load the latest user-selected Active Learning experiment.
+    """
+
+    if not (
+        SELECTED_ACTIVE_LEARNING_METRICS_PATH.exists()
+    ):
+        return None
+
+    with (
+        SELECTED_ACTIVE_LEARNING_METRICS_PATH.open(
+            "r",
+            encoding="utf-8",
+        )
+    ) as file:
+
+        return json.load(
+            file
+        )

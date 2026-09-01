@@ -24,8 +24,12 @@ from .services.learning_to_defer import (
 )
 
 from .services.active_learning import (
+    EXPERT_PROFILES,
+    QUERY_BUDGETS,
     load_active_learning_results,
+    load_selected_active_learning_results,
     run_active_learning_experiment,
+    run_selected_active_learning,
 )
 
 from .services.human_expert import (
@@ -139,51 +143,131 @@ def learning_to_defer(request):
 
 
 def active_learning(request):
+    """
+    Run the project's selected Active Learning strategy.
+
+    Classifier Entropy is fixed as the primary acquisition strategy.
+    The user controls the simulated expert and expert-query budget.
+    """
+
+    results = (
+        load_selected_active_learning_results()
+    )
+
+    selected_expert = (
+        request.POST.get("expert")
+        or (
+            results.get(
+                "selection",
+                {},
+            ).get(
+                "expert_key"
+            )
+            if results
+            else None
+        )
+        or next(
+            iter(EXPERT_PROFILES)
+        )
+    )
+
+    selected_budget_raw = (
+        request.POST.get(
+            "query_budget"
+        )
+    )
+
+    if selected_budget_raw is None:
+
+        if results:
+            selected_budget = (
+                results.get(
+                    "selection",
+                    {},
+                ).get(
+                    "query_budget",
+                    QUERY_BUDGETS[-1],
+                )
+            )
+        else:
+            selected_budget = (
+                QUERY_BUDGETS[-1]
+            )
+
+    else:
+
+        try:
+            selected_budget = int(
+                selected_budget_raw
+            )
+        except ValueError:
+            selected_budget = (
+                QUERY_BUDGETS[-1]
+            )
 
     if request.method == "POST":
 
         try:
-            run_active_learning_experiment()
+
+            results = (
+                run_selected_active_learning(
+                    expert_key=(
+                        selected_expert
+                    ),
+                    query_budget=(
+                        selected_budget
+                    ),
+                )
+            )
 
             messages.success(
                 request,
-                (
-                    "Active-learning experiment "
-                    "completed successfully."
-                ),
+                "Active Learning experiment completed.",
             )
 
         except Exception as exc:
 
             messages.error(
                 request,
-                (
-                    "Active-learning experiment "
-                    f"failed: {exc}"
-                ),
+                str(exc),
             )
 
-        return redirect(
-            "project3:active_learning"
-        )
-
-    result = (
-        load_active_learning_results()
-    )
+    expert_options = [
+        {
+            "key": key,
+            "name": profile.name,
+            "description": (
+                profile.description
+            ),
+        }
+        for key, profile
+        in EXPERT_PROFILES.items()
+    ]
 
     return render(
         request,
         "project3/active_learning.html",
         {
-            "result": result,
+            "results": results,
             "results_available": (
-                result is not None
+                results is not None
+            ),
+            "expert_options": (
+                expert_options
+            ),
+            "query_budgets": (
+                QUERY_BUDGETS
+            ),
+            "selected_expert": (
+                selected_expert
+            ),
+            "selected_budget": (
+                selected_budget
             ),
         },
     )
-
-
-
+    
+    
 def compare_results(request):
     baseline_result = load_baseline_results()
     expert_result = load_expert_results()
@@ -1110,6 +1194,89 @@ def advanced_analysis(request):
 
             "prerequisite_status": (
                 prerequisite_status
+            ),
+        },
+    )
+
+def active_learning_compare(request):
+    """
+    Compare all Active Learning strategies.
+
+    The complete benchmark is intentionally separated from the
+    user-controlled single-strategy workflow.
+    """
+
+    results = (
+        load_active_learning_results()
+    )
+
+    selected_expert = (
+        request.GET.get("expert")
+        or request.POST.get("expert")
+        or next(iter(EXPERT_PROFILES))
+    )
+
+    if selected_expert not in EXPERT_PROFILES:
+        selected_expert = next(
+            iter(EXPERT_PROFILES)
+        )
+
+    if request.method == "POST":
+
+        try:
+            results = (
+                run_active_learning_experiment()
+            )
+
+            messages.success(
+                request,
+                "Active Learning strategy comparison completed.",
+            )
+
+        except Exception as exc:
+
+            messages.error(
+                request,
+                str(exc),
+            )
+
+    selected_expert_result = None
+
+    if results:
+        selected_expert_result = (
+            results.get(
+                "experts",
+                {},
+            ).get(
+                selected_expert
+            )
+        )
+
+    expert_options = [
+        {
+            "key": key,
+            "name": profile.name,
+        }
+        for key, profile
+        in EXPERT_PROFILES.items()
+    ]
+
+    return render(
+        request,
+        "project3/active_learning_compare.html",
+        {
+            "results": results,
+            "results_available": (
+                results is not None
+            ),
+            "selected_expert": (
+                selected_expert
+            ),
+            "selected_expert_result": (
+                selected_expert_result
+            ),
+            "expert_options": (
+                expert_options
             ),
         },
     )
