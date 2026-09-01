@@ -1,0 +1,38 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="description"
+        content="Project 4 preference elicitation study for movie recommendations."
+    >
+    <title>{% block title %}Preference Elicitation{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'project4/css/style.css' %}">
+</head>
+<body class="p4-page">
+    <header class="p4-site-header">
+        <a class="p4-brand" href="{% url 'project4:index' %}">
+            <span class="p4-brand-kicker">HCAI · Project 4</span>
+            <span class="p4-brand-name">Preference Elicitation</span>
+        </a>
+
+        <nav class="p4-nav" aria-label="Project navigation">
+            <a href="{% url 'project4:index' %}">Overview</a>
+            <a href="{% url 'home:index' %}">All projects</a>
+        </nav>
+    </header>
+
+    <main class="p4-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="p4-footer">
+        <span>Human-Centric Artificial Intelligence</span>
+        <span>University study prototype</span>
+    </footer>
+</body>
+</html>
+
