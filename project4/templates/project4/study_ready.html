@@ -6,18 +6,28 @@
 <section class="p4-ready-card">
     <span class="p4-status-pill">
         <span aria-hidden="true"></span>
-        Study session ready
+        {% if has_completed_condition %}Progress saved{% else %}Study session ready{% endif %}
     </span>
-    <h1>Your movie tasks are prepared</h1>
+    <h1>
+        {% if has_completed_condition %}
+            Ready for your next activity
+        {% else %}
+            Your movie tasks are prepared
+        {% endif %}
+    </h1>
     <p class="p4-intro-lead">
-        Your movie sets and condition order have been assigned. Complete each
-        activity using your own viewing preferences rather than IMDb ratings
-        or what you think other people might choose.
+        {% if has_completed_condition %}
+            Your previous responses have been saved. Continue when you are ready.
+        {% else %}
+            Your movie sets and condition order have been assigned. Complete each
+            activity using your own viewing preferences rather than IMDb ratings
+            or what you think other people might choose.
+        {% endif %}
     </p>
 
     <div class="p4-sequence" aria-label="Assigned study sequence">
         {% for condition in condition_order %}
-            <article class="p4-sequence-step{% if forloop.first %} p4-sequence-current{% endif %}">
+            <article class="p4-sequence-step{% if condition.is_current %} p4-sequence-current{% endif %}{% if condition.is_complete %} p4-sequence-complete{% endif %}">
                 <span class="p4-sequence-number">{{ forloop.counter }}</span>
                 <div>
                     <strong>{{ condition.label }}</strong>
@@ -27,7 +37,7 @@
             <span class="p4-sequence-arrow" aria-hidden="true">&rarr;</span>
         {% endfor %}
 
-        <article class="p4-sequence-step">
+        <article class="p4-sequence-step{% if validation_is_current %} p4-sequence-current{% endif %}">
             <span class="p4-sequence-number">3</span>
             <div>
                 <strong>Validation choices</strong>
@@ -38,8 +48,8 @@
 
     <div class="p4-ready-summary">
         <div>
-            <span>First activity</span>
-            <strong>{{ first_condition.label }}</strong>
+            <span>Next activity</span>
+            <strong>{{ current_condition.label }}</strong>
         </div>
         <div>
             <span>Estimated duration</span>
@@ -52,23 +62,39 @@
     </div>
 
     <div class="p4-notice">
-        <strong>Before the first recorded task</strong>
+        <strong>How this activity works</strong>
         <p>
-            The next screen will provide a short practice example for your
-            first activity. Practice responses are not included in the model.
+            {% if current_condition.key == "pairwise" %}
+                Two movies will appear at a time. Select the one you would rather
+                watch; your choice is then saved and the next pair appears.
+            {% elif current_condition.key == "ranking" %}
+                You will order ten movies from most to least preferred in each task.
+            {% else %}
+                You will make choices between new movie pairs to validate the models.
+            {% endif %}
         </p>
     </div>
 
     <div class="p4-actions">
-        <span class="p4-button p4-button-primary p4-button-disabled" aria-disabled="true">
-            Begin {{ first_condition.label|lower }}
-        </span>
+        {% if current_condition.key == "pairwise" %}
+            <a class="p4-button p4-button-primary" href="{% url 'project4:pairwise_task' %}">
+                {% if resume_pairwise %}Resume{% else %}Begin{% endif %}
+                {{ current_condition.label|lower }}
+                <span aria-hidden="true">&rarr;</span>
+            </a>
+        {% else %}
+            <span class="p4-button p4-button-primary p4-button-disabled" aria-disabled="true">
+                Begin {{ current_condition.label|lower }}
+            </span>
+        {% endif %}
         <a class="p4-text-link" href="{% url 'project4:study' %}">
             Return to instructions
         </a>
     </div>
-    <p class="p4-action-note">
-        The first interactive condition will be connected in the next implementation step.
-    </p>
+    {% if current_condition.key != "pairwise" %}
+        <p class="p4-action-note">
+            This activity will be connected in the next implementation step.
+        </p>
+    {% endif %}
 </section>
 {% endblock %}

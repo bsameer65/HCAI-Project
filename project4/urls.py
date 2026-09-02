@@ -10,4 +10,5 @@ urlpatterns = [
     path("study/", views.study_intro, name="study"),
     path("study/start/", views.start_study, name="start_study"),
     path("study/session/", views.study_session, name="study_session"),
+    path("study/pairwise/", views.pairwise_task, name="pairwise_task"),
 ]
