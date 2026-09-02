@@ -1,0 +1,30 @@
+<li class="p4-ranking-row" draggable="true" data-ranking-item>
+    <input type="hidden" name="movie_order" value="{{ movie.movie_id }}">
+
+    <span class="p4-drag-handle" aria-hidden="true">&#8942;&#8942;</span>
+    <span class="p4-ranking-position" data-rank-number>{{ movie.position }}</span>
+
+    <span class="p4-ranking-movie">
+        <strong>{{ movie.title }}</strong>
+        <small>
+            {{ movie.year }} &middot; {{ movie.duration }} &middot;
+            {{ movie.content_rating }} &middot; {{ movie.language }}
+        </small>
+        <small>{{ movie.genres }} &middot; Directed by {{ movie.director }}</small>
+    </span>
+
+    <span class="p4-ranking-controls">
+        <button
+            type="button"
+            data-move="up"
+            aria-label="Move {{ movie.title }} up"
+            title="Move up"
+        >&uarr;</button>
+        <button
+            type="button"
+            data-move="down"
+            aria-label="Move {{ movie.title }} down"
+            title="Move down"
+        >&darr;</button>
+    </span>
+</li>

@@ -16,6 +16,14 @@ class Project4PageTests(SimpleTestCase):
                 {"consent": "yes"},
             )
 
+    def _start_ranking_first_study(self):
+        # This seed maps to counterbalancing cell 2: ranking, then pairwise.
+        with mock.patch("project4.views.secrets.randbits", return_value=12345):
+            return self.client.post(
+                reverse("project4:start_study"),
+                {"consent": "yes"},
+            )
+
     def test_landing_page_loads(self):
         response = self.client.get(reverse("project4:index"))
 
@@ -174,6 +182,9 @@ class Project4PageTests(SimpleTestCase):
         self.assertEqual(study_state["status"], "ready")
         self.assertEqual(len(study_state["responses"]["pairwise"]), 27)
 
+        next_response = self.client.get(reverse("project4:ranking_task"))
+        self.assertEqual(next_response.status_code, 200)
+
     @mock.patch("project4.views.secrets.randbits", return_value=12345)
     def test_pairwise_page_does_not_bypass_assigned_ranking_condition(
         self, _mock_seed
@@ -184,6 +195,123 @@ class Project4PageTests(SimpleTestCase):
         )
 
         response = self.client.get(reverse("project4:pairwise_task"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("project4:study_session"))
+
+    def test_ranking_first_session_can_begin_from_ready_page(self):
+        self._start_ranking_first_study()
+
+        response = self.client.get(reverse("project4:study_session"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse("project4:ranking_task"))
+        self.assertContains(response, "Begin")
+        self.assertContains(response, "ten-movie rankings")
+
+    def test_ranking_page_shows_all_ten_movies_and_progress(self):
+        self._start_ranking_first_study()
+        first_ranking = self.client.session["project4_study"]["ranking_tasks"][0]
+
+        response = self.client.get(reverse("project4:ranking_task"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Order the movies from most to least preferred",
+        )
+        self.assertContains(response, "1 of 3")
+        self.assertEqual(len(response.context["movies"]), 10)
+        for movie_id in first_ranking:
+            self.assertContains(response, f'value="{movie_id}"')
+
+        displayed_movie = response.context["movies"][0]
+        self.assertNotIn("imdb_score", displayed_movie)
+        self.assertNotIn("num_voted_users", displayed_movie)
+        self.assertNotIn("gross", displayed_movie)
+
+    def test_complete_ranking_is_recorded_in_submitted_order(self):
+        self._start_ranking_first_study()
+        first_ranking = self.client.session["project4_study"]["ranking_tasks"][0]
+        submitted_order = list(reversed(first_ranking))
+
+        response = self.client.post(
+            reverse("project4:ranking_task"),
+            {
+                "task_index": 0,
+                "movie_order": submitted_order,
+                "response_time_ms": 18750,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("project4:ranking_task"))
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["task_index"], 1)
+        self.assertEqual(study_state["status"], "ranking")
+        saved_response = study_state["responses"]["ranking"][0]
+        self.assertEqual(saved_response["presented_movie_ids"], first_ranking)
+        self.assertEqual(saved_response["ranked_movie_ids"], submitted_order)
+        self.assertEqual(saved_response["response_time_ms"], 18750)
+
+    def test_incomplete_or_duplicate_ranking_is_rejected(self):
+        self._start_ranking_first_study()
+        first_ranking = self.client.session["project4_study"]["ranking_tasks"][0]
+        invalid_orders = (
+            first_ranking[:-1],
+            first_ranking[:-1] + [first_ranking[0]],
+        )
+
+        for invalid_order in invalid_orders:
+            with self.subTest(invalid_order=invalid_order):
+                response = self.client.post(
+                    reverse("project4:ranking_task"),
+                    {"task_index": 0, "movie_order": invalid_order},
+                )
+                self.assertEqual(response.status_code, 400)
+
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["task_index"], 0)
+        self.assertEqual(study_state["responses"]["ranking"], [])
+
+    def test_stale_ranking_submission_is_not_recorded_twice(self):
+        self._start_ranking_first_study()
+        first_ranking = self.client.session["project4_study"]["ranking_tasks"][0]
+        submission = {"task_index": 0, "movie_order": first_ranking}
+
+        self.client.post(reverse("project4:ranking_task"), submission)
+        response = self.client.post(reverse("project4:ranking_task"), submission)
+
+        self.assertEqual(response.status_code, 302)
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["task_index"], 1)
+        self.assertEqual(len(study_state["responses"]["ranking"]), 1)
+
+    def test_finishing_ranking_condition_opens_pairwise_condition(self):
+        self._start_ranking_first_study()
+        tasks = self.client.session["project4_study"]["ranking_tasks"]
+
+        for task_index, ranking in enumerate(tasks):
+            response = self.client.post(
+                reverse("project4:ranking_task"),
+                {"task_index": task_index, "movie_order": ranking},
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("project4:study_session"))
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["condition_index"], 1)
+        self.assertEqual(study_state["task_index"], 0)
+        self.assertEqual(study_state["status"], "ready")
+        self.assertEqual(len(study_state["responses"]["ranking"]), 3)
+
+        next_response = self.client.get(reverse("project4:pairwise_task"))
+        self.assertEqual(next_response.status_code, 200)
+
+    def test_ranking_page_does_not_bypass_assigned_pairwise_condition(self):
+        self._start_pairwise_first_study()
+
+        response = self.client.get(reverse("project4:ranking_task"))
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("project4:study_session"))

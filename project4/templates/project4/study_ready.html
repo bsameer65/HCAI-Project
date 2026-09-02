@@ -82,6 +82,12 @@
                 {{ current_condition.label|lower }}
                 <span aria-hidden="true">&rarr;</span>
             </a>
+        {% elif current_condition.key == "ranking" %}
+            <a class="p4-button p4-button-primary" href="{% url 'project4:ranking_task' %}">
+                {% if resume_ranking %}Resume{% else %}Begin{% endif %}
+                {{ current_condition.label|lower }}
+                <span aria-hidden="true">&rarr;</span>
+            </a>
         {% else %}
             <span class="p4-button p4-button-primary p4-button-disabled" aria-disabled="true">
                 Begin {{ current_condition.label|lower }}
@@ -91,7 +97,7 @@
             Return to instructions
         </a>
     </div>
-    {% if current_condition.key != "pairwise" %}
+    {% if current_condition.key == "validation" %}
         <p class="p4-action-note">
             This activity will be connected in the next implementation step.
         </p>

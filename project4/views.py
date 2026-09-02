@@ -43,9 +43,11 @@ def _format_movie_for_display(movie_row, position):
     }
 
 
-def _load_display_movies(movie_ids):
+def _load_display_movies(movie_ids, positions=None):
     catalog = load_movie_catalog().set_index("movie_id", drop=False)
-    positions = ("A", "B")
+    positions = positions or [str(index + 1) for index in range(len(movie_ids))]
+    if len(positions) != len(movie_ids):
+        raise ValueError("Every displayed movie needs one position label.")
     try:
         return [
             _format_movie_for_display(catalog.loc[movie_id], positions[index])
@@ -152,6 +154,7 @@ def study_session(request):
             "current_condition": current_condition,
             "has_completed_condition": condition_index > 0,
             "resume_pairwise": study_state["status"] == "pairwise",
+            "resume_ranking": study_state["status"] == "ranking",
             "validation_task_count": len(study_state["validation_tasks"]),
             "validation_is_current": condition_index >= len(condition_order),
         },
@@ -231,7 +234,10 @@ def pairwise_task(request):
         request.session[STUDY_SESSION_KEY] = study_state
 
     try:
-        left_movie, right_movie = _load_display_movies(current_pair)
+        left_movie, right_movie = _load_display_movies(
+            current_pair,
+            positions=("A", "B"),
+        )
     except ValueError as error:
         return HttpResponseBadRequest(str(error))
 
@@ -242,6 +248,99 @@ def pairwise_task(request):
         {
             "left_movie": left_movie,
             "right_movie": right_movie,
+            "task_index": task_index,
+            "task_number": task_index + 1,
+            "total_tasks": total_tasks,
+            "progress_percent": round((task_index + 1) / total_tasks * 100),
+        },
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def ranking_task(request):
+    """Show ten movies and record a validated most-to-least ranking."""
+    study_state = request.session.get(STUDY_SESSION_KEY)
+    if study_state is None:
+        return redirect("project4:study")
+
+    condition_index = study_state["condition_index"]
+    condition_order = study_state["condition_order"]
+    if (
+        condition_index >= len(condition_order)
+        or condition_order[condition_index] != "ranking"
+    ):
+        return redirect("project4:study_session")
+
+    task_index = study_state["task_index"]
+    tasks = study_state["ranking_tasks"]
+    if task_index >= len(tasks):
+        study_state["condition_index"] += 1
+        study_state["task_index"] = 0
+        study_state["status"] = "ready"
+        request.session[STUDY_SESSION_KEY] = study_state
+        return redirect("project4:study_session")
+
+    presented_movie_ids = tasks[task_index]
+    if request.method == "POST":
+        try:
+            submitted_task_index = int(request.POST.get("task_index", ""))
+        except (TypeError, ValueError):
+            return HttpResponseBadRequest("Invalid ranking task number.")
+
+        if submitted_task_index != task_index:
+            return redirect("project4:ranking_task")
+
+        ranked_movie_ids = request.POST.getlist("movie_order")
+        submitted_is_complete_ranking = (
+            len(ranked_movie_ids) == len(presented_movie_ids)
+            and len(set(ranked_movie_ids)) == len(presented_movie_ids)
+            and set(ranked_movie_ids) == set(presented_movie_ids)
+        )
+        if not submitted_is_complete_ranking:
+            return HttpResponseBadRequest(
+                "Rank every displayed movie exactly once before continuing."
+            )
+
+        study_state["responses"]["ranking"].append(
+            {
+                "task_index": task_index,
+                "presented_movie_ids": list(presented_movie_ids),
+                "ranked_movie_ids": ranked_movie_ids,
+                "response_time_ms": _response_time_ms(
+                    request.POST.get("response_time_ms")
+                ),
+                "submitted_at": timezone.now().isoformat(),
+            }
+        )
+        study_state["task_index"] += 1
+
+        if study_state["task_index"] == len(tasks):
+            study_state["condition_index"] += 1
+            study_state["task_index"] = 0
+            study_state["status"] = "ready"
+            next_page = "project4:study_session"
+        else:
+            study_state["status"] = "ranking"
+            next_page = "project4:ranking_task"
+
+        request.session[STUDY_SESSION_KEY] = study_state
+        return redirect(next_page)
+
+    if study_state["status"] != "ranking":
+        study_state["status"] = "ranking"
+        request.session[STUDY_SESSION_KEY] = study_state
+
+    try:
+        movies = _load_display_movies(presented_movie_ids)
+    except ValueError as error:
+        return HttpResponseBadRequest(str(error))
+
+    total_tasks = len(tasks)
+    return render(
+        request,
+        "project4/ranking_task.html",
+        {
+            "movies": movies,
             "task_index": task_index,
             "task_number": task_index + 1,
             "total_tasks": total_tasks,

@@ -1,0 +1,82 @@
+{% extends "project4/base.html" %}
+{% load static %}
+
+{% block title %}Movie Ranking | Preference Elicitation{% endblock %}
+
+{% block content %}
+<section class="p4-task-shell p4-ranking-shell">
+    <header class="p4-task-header">
+        <div>
+            <span class="p4-section-label">Ten-movie ranking</span>
+            <h1>Order the movies from most to least preferred</h1>
+            <p>
+                Drag the rows or use the arrow buttons. Put the movie you would
+                most like to watch at the top and your least preferred at the bottom.
+            </p>
+        </div>
+        <div class="p4-progress-copy" aria-label="Ranking task progress">
+            <strong>{{ task_number }} of {{ total_tasks }}</strong>
+            <span>movie rankings</span>
+        </div>
+    </header>
+
+    <div
+        class="p4-progress-track"
+        role="progressbar"
+        aria-valuemin="1"
+        aria-valuemax="{{ total_tasks }}"
+        aria-valuenow="{{ task_number }}"
+        aria-label="Ranking task {{ task_number }} of {{ total_tasks }}"
+    >
+        <span style="--p4-progress: {{ progress_percent }}%;"></span>
+    </div>
+
+    <noscript>
+        <p class="p4-form-error" role="alert">
+            JavaScript must be enabled to reorder the movies in this activity.
+        </p>
+    </noscript>
+
+    <form
+        class="p4-ranking-form"
+        action="{% url 'project4:ranking_task' %}"
+        method="post"
+        data-ranking-form
+    >
+        {% csrf_token %}
+        <input type="hidden" name="task_index" value="{{ task_index }}">
+        <input type="hidden" name="response_time_ms" value="" data-response-time>
+
+        <div class="p4-ranking-boundary p4-ranking-boundary-top">
+            <strong>Most preferred</strong>
+            <span>Movie you would most like to watch</span>
+        </div>
+
+        <ol class="p4-ranking-list" data-ranking-list>
+            {% for movie in movies %}
+                {% include "project4/includes/ranking_movie_row.html" with movie=movie %}
+            {% endfor %}
+        </ol>
+
+        <div class="p4-ranking-boundary p4-ranking-boundary-bottom">
+            <strong>Least preferred</strong>
+            <span>Movie you would least like to watch</span>
+        </div>
+
+        <p class="p4-sr-only" aria-live="polite" data-ranking-status></p>
+
+        <div class="p4-ranking-submit">
+            <p>
+                Review the complete order before saving. All ten positions are
+                recorded as one ranking.
+            </p>
+            <button class="p4-button p4-button-primary" type="submit">
+                Save this ranking
+                <span aria-hidden="true">&rarr;</span>
+            </button>
+        </div>
+    </form>
+</section>
+
+<script src="{% static 'project4/js/ranking.js' %}" defer></script>
+{% endblock %}
