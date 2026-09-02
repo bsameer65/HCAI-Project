@@ -1,0 +1,74 @@
+{% extends "project4/base.html" %}
+
+{% block title %}Study Ready | Preference Elicitation{% endblock %}
+
+{% block content %}
+<section class="p4-ready-card">
+    <span class="p4-status-pill">
+        <span aria-hidden="true"></span>
+        Study session ready
+    </span>
+    <h1>Your movie tasks are prepared</h1>
+    <p class="p4-intro-lead">
+        Your movie sets and condition order have been assigned. Complete each
+        activity using your own viewing preferences rather than IMDb ratings
+        or what you think other people might choose.
+    </p>
+
+    <div class="p4-sequence" aria-label="Assigned study sequence">
+        {% for condition in condition_order %}
+            <article class="p4-sequence-step{% if forloop.first %} p4-sequence-current{% endif %}">
+                <span class="p4-sequence-number">{{ forloop.counter }}</span>
+                <div>
+                    <strong>{{ condition.label }}</strong>
+                    <small>{{ condition.task_count }} recorded task{{ condition.task_count|pluralize }}</small>
+                </div>
+            </article>
+            <span class="p4-sequence-arrow" aria-hidden="true">&rarr;</span>
+        {% endfor %}
+
+        <article class="p4-sequence-step">
+            <span class="p4-sequence-number">3</span>
+            <div>
+                <strong>Validation choices</strong>
+                <small>{{ validation_task_count }} unseen movie pairs</small>
+            </div>
+        </article>
+    </div>
+
+    <div class="p4-ready-summary">
+        <div>
+            <span>First activity</span>
+            <strong>{{ first_condition.label }}</strong>
+        </div>
+        <div>
+            <span>Estimated duration</span>
+            <strong>15&ndash;20 minutes</strong>
+        </div>
+        <div>
+            <span>Progress</span>
+            <strong>Saved between pages</strong>
+        </div>
+    </div>
+
+    <div class="p4-notice">
+        <strong>Before the first recorded task</strong>
+        <p>
+            The next screen will provide a short practice example for your
+            first activity. Practice responses are not included in the model.
+        </p>
+    </div>
+
+    <div class="p4-actions">
+        <span class="p4-button p4-button-primary p4-button-disabled" aria-disabled="true">
+            Begin {{ first_condition.label|lower }}
+        </span>
+        <a class="p4-text-link" href="{% url 'project4:study' %}">
+            Return to instructions
+        </a>
+    </div>
+    <p class="p4-action-note">
+        The first interactive condition will be connected in the next implementation step.
+    </p>
+</section>
+{% endblock %}
