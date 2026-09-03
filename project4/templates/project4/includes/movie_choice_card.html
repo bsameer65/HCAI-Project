@@ -1,0 +1,37 @@
+<button
+    class="p4-movie-choice"
+    type="submit"
+    name="chosen_movie_id"
+    value="{{ movie.movie_id }}"
+    aria-label="Choose {{ movie.title }}"
+>
+    <span class="p4-movie-card-topline">
+        <span class="p4-movie-letter" aria-hidden="true">{{ movie.position }}</span>
+        <span class="p4-movie-prompt">Choose this movie</span>
+    </span>
+
+    <span class="p4-movie-title">{{ movie.title }}</span>
+
+    <span class="p4-movie-facts">
+        <span>{{ movie.year }}</span>
+        <span>{{ movie.duration }}</span>
+        <span>{{ movie.content_rating }}</span>
+    </span>
+
+    <span class="p4-movie-detail">
+        <small>Genres</small>
+        <strong>{{ movie.genres }}</strong>
+    </span>
+    <span class="p4-movie-detail">
+        <small>Language</small>
+        <strong>{{ movie.language }}</strong>
+    </span>
+    <span class="p4-movie-detail">
+        <small>Director</small>
+        <strong>{{ movie.director }}</strong>
+    </span>
+    <span class="p4-movie-detail">
+        <small>Lead cast</small>
+        <strong>{{ movie.cast }}</strong>
+    </span>
+</button>

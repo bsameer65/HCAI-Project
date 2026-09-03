@@ -1,0 +1,84 @@
+{% extends "project4/base.html" %}
+
+{% block title %}Study Information | Preference Elicitation{% endblock %}
+
+{% block content %}
+<section class="p4-intro-card">
+    <span class="p4-eyebrow">Study information</span>
+    <h1>Before you begin</h1>
+    <p class="p4-intro-lead">
+        You will be asked which movies you would rather watch. There are no
+        correct answers&mdash;we are interested in your personal preferences.
+    </p>
+
+    {% if has_active_study %}
+        <div class="p4-resume-banner">
+            <div>
+                <strong>You already have a study session on this browser.</strong>
+                <span>You can resume it or begin again with a new movie selection.</span>
+            </div>
+            <a class="p4-text-link" href="{% url 'project4:study_session' %}">
+                Resume session
+            </a>
+        </div>
+    {% endif %}
+
+    <div class="p4-intro-grid">
+        <div class="p4-intro-item">
+            <span class="p4-intro-icon" aria-hidden="true">01</span>
+            <div>
+                <h2>Choose between movies</h2>
+                <p>Select one movie from each pair.</p>
+            </div>
+        </div>
+        <div class="p4-intro-item">
+            <span class="p4-intro-icon" aria-hidden="true">02</span>
+            <div>
+                <h2>Rank groups of ten</h2>
+                <p>Order every movie from most to least preferred.</p>
+            </div>
+        </div>
+        <div class="p4-intro-item">
+            <span class="p4-intro-icon" aria-hidden="true">03</span>
+            <div>
+                <h2>Give brief feedback</h2>
+                <p>Tell us how each method felt to use.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="p4-notice">
+        <strong>Voluntary participation and privacy</strong>
+        <p>
+            You may stop at any time. The prototype uses an anonymous study
+            identifier and does not ask for your name or email address.
+        </p>
+    </div>
+
+    <form class="p4-consent-form" action="{% url 'project4:start_study' %}" method="post">
+        {% csrf_token %}
+
+        {% if consent_error %}
+            <p class="p4-form-error" role="alert">{{ consent_error }}</p>
+        {% endif %}
+
+        <label class="p4-checkbox-row">
+            <input type="checkbox" name="consent" value="yes" required>
+            <span>
+                I am at least 18 years old, I have read the information above,
+                and I voluntarily agree to take part in this study prototype.
+            </span>
+        </label>
+
+        <div class="p4-actions">
+            <button class="p4-button p4-button-primary" type="submit">
+                Create my study session
+                <span aria-hidden="true">&rarr;</span>
+            </button>
+            <a class="p4-text-link" href="{% url 'project4:index' %}">
+                Return to overview
+            </a>
+        </div>
+    </form>
+</section>
+{% endblock %}

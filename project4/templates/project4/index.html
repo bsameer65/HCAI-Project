@@ -1,0 +1,111 @@
+{% extends "project4/base.html" %}
+{% load static %}
+
+{% block title %}Project 4 | Preference Elicitation{% endblock %}
+
+{% block content %}
+<section class="p4-hero">
+    <div class="p4-hero-copy">
+        <span class="p4-eyebrow">Movie preference study</span>
+        <h1>How should a recommender learn what you like?</h1>
+        <p class="p4-hero-text">
+            This project compares two ways of learning a new user's movie
+            preferences: making quick choices between pairs and arranging
+            groups of ten movies into a complete ranking.
+        </p>
+
+        <div class="p4-actions">
+            <a class="p4-button p4-button-primary" href="{% url 'project4:study' %}">
+                Start the study
+                <span aria-hidden="true">&rarr;</span>
+            </a>
+            <a
+                class="p4-button p4-button-secondary"
+                href="{% static 'project4/report/project4_report.pdf' %}"
+                download
+            >
+                Download report
+            </a>
+        </div>
+    </div>
+
+    <div class="p4-ranking-preview" aria-hidden="true">
+        <div class="p4-preview-heading">
+            <span>Your ranking</span>
+            <span class="p4-preview-count">3 movies</span>
+        </div>
+        <div class="p4-preview-row p4-preview-row-first">
+            <span class="p4-rank-number">1</span>
+            <div>
+                <strong>Movie A</strong>
+                <small>Adventure &middot; 2010s</small>
+            </div>
+            <span class="p4-drag-mark">&#8942;&#8942;</span>
+        </div>
+        <div class="p4-preview-row">
+            <span class="p4-rank-number">2</span>
+            <div>
+                <strong>Movie B</strong>
+                <small>Comedy &middot; 2000s</small>
+            </div>
+            <span class="p4-drag-mark">&#8942;&#8942;</span>
+        </div>
+        <div class="p4-preview-row">
+            <span class="p4-rank-number">3</span>
+            <div>
+                <strong>Movie C</strong>
+                <small>Drama &middot; 1990s</small>
+            </div>
+            <span class="p4-drag-mark">&#8942;&#8942;</span>
+        </div>
+    </div>
+</section>
+
+<section class="p4-section" aria-labelledby="methods-heading">
+    <div class="p4-section-heading">
+        <span class="p4-section-label">The comparison</span>
+        <h2 id="methods-heading">Two interfaces, one preference model</h2>
+        <p>
+            Both methods provide evidence about which movie characteristics
+            matter to a participant, but they ask for that evidence in
+            different ways.
+        </p>
+    </div>
+
+    <div class="p4-method-grid">
+        <article class="p4-method-card">
+            <span class="p4-method-number">01</span>
+            <div class="p4-method-icon" aria-hidden="true">A / B</div>
+            <h3>Pairwise choices</h3>
+            <p>
+                View two movies at a time and select the one you would rather
+                watch. Each decision is quick and focused.
+            </p>
+            <span class="p4-method-tag">Two movies per task</span>
+        </article>
+
+        <article class="p4-method-card">
+            <span class="p4-method-number">02</span>
+            <div class="p4-method-icon" aria-hidden="true">1 &mdash; 10</div>
+            <h3>Complete rankings</h3>
+            <p>
+                Arrange ten movies from most preferred to least preferred.
+                One task gives a richer ordering but requires more thought.
+            </p>
+            <span class="p4-method-tag">Ten movies per task</span>
+        </article>
+    </div>
+</section>
+
+<section class="p4-info-panel">
+    <div>
+        <span class="p4-section-label">About this project</span>
+        <h2>A proposed study, not reported results</h2>
+    </div>
+    <p>
+        The application demonstrates the participant experience for a
+        rigorous study design. The coursework does not claim that the study
+        has already been conducted.
+    </p>
+</section>
+{% endblock %}

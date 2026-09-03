@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project 4: Preference Elicitation</title>
+  <style>
+    @page { size: A4; margin: 18mm 18mm 20mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #242033;
+      font: 10.3pt/1.46 Arial, Helvetica, sans-serif;
+    }
+    h1, h2, h3 { color: #33276f; line-height: 1.18; page-break-after: avoid; }
+    h1 { margin: 0; font-size: 30pt; letter-spacing: -0.7pt; }
+    h2 {
+      margin: 25pt 0 9pt;
+      padding-bottom: 5pt;
+      border-bottom: 1.2pt solid #d9d3ef;
+      font-size: 18pt;
+    }
+    h3 { margin: 17pt 0 5pt; font-size: 12.5pt; }
+    p { margin: 0 0 8pt; }
+    ul, ol { margin: 5pt 0 9pt; padding-left: 20pt; }
+    li { margin-bottom: 3.5pt; }
+    a { color: #5137b7; text-decoration: none; }
+    table {
+      width: 100%;
+      margin: 10pt 0 13pt;
+      border-collapse: collapse;
+      font-size: 9.2pt;
+      page-break-inside: avoid;
+    }
+    th, td { padding: 6pt 7pt; border: 0.7pt solid #d9d5e5; text-align: left; vertical-align: top; }
+    th { background: #eeeafb; color: #33276f; }
+    code { font: 9pt Consolas, monospace; }
+    .cover {
+      min-height: 255mm;
+      padding: 30mm 14mm 15mm;
+      display: flex;
+      flex-direction: column;
+      page-break-after: always;
+    }
+    .kicker { color: #7657d8; font-size: 9pt; font-weight: 700; letter-spacing: 1.5pt; text-transform: uppercase; }
+    .subtitle { max-width: 135mm; margin-top: 12pt; color: #625b72; font-size: 15pt; line-height: 1.4; }
+    .cover-rule { width: 42mm; height: 4pt; margin: 24pt 0; background: #efa33b; }
+    .author { margin-top: auto; padding-top: 22pt; border-top: 1pt solid #ddd8e9; }
+    .author strong, .author span { display: block; }
+    .author span { margin-top: 2pt; color: #686175; }
+    .summary-box, .note {
+      margin: 11pt 0;
+      padding: 10pt 12pt;
+      border-left: 3pt solid #7657d8;
+      background: #f3f0fc;
+      page-break-inside: avoid;
+    }
+    .note { border-left-color: #efa33b; background: #fff7eb; }
+    .formula {
+      margin: 10pt 0;
+      padding: 9pt 12pt;
+      border: 1pt solid #ded8ef;
+      border-radius: 4pt;
+      background: #faf9fd;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 11pt;
+      text-align: center;
+      page-break-inside: avoid;
+    }
+    .flow { margin: 12pt 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 5pt; page-break-inside: avoid; }
+    .flow div { padding: 7pt 4pt; border-radius: 4pt; background: #eeeafb; color: #33276f; font-size: 8.2pt; font-weight: 700; text-align: center; }
+    .small { color: #686175; font-size: 8.8pt; }
+    .keep { page-break-inside: avoid; }
+    .toc a { color: inherit; }
+    .references li { margin-bottom: 6pt; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <span class="kicker">Human-Centric Artificial Intelligence</span>
+    <h1>Project 4:<br>Preference Elicitation</h1>
+    <p class="subtitle">
+      Feature representation, a Plackett–Luce extension of Bradley–Terry,
+      and a proposed within-participant study of pairwise choice and
+      ten-movie ranking interfaces.
+    </p>
+    <div class="cover-rule"></div>
+    <p><strong>PDF report for Tasks 1–3</strong></p>
+    <p class="small">The corresponding participant interface implements Task 4.</p>
+    <div class="author">
+      <strong>Muhammad Haseeb</strong>
+      <span>Matriculation number: 642790</span>
+      <span>Technische Universität Hamburg</span>
+      <span>September 2026</span>
+    </div>
+  </section>
+
+  <main>
+    <h2>Scope and summary</h2>
+    <div class="summary-box">
+      This project designs—but does not conduct—a study comparing two cold-start
+      preference elicitation methods. Each participant completes 27 binary movie
+      choices and three complete rankings of ten movies. A separate linear utility
+      model is fitted from each method, and both models make predictions for the
+      same 20 unseen validation pairs.
+    </div>
+    <p>
+      The implementation uses the supplied IMDb 5000 Movie Dataset, which contains
+      movie metadata but no preference labels for the new participant. Task 1 defines
+      a 53-dimensional content representation. Task 2 models a complete ranking with
+      the Plackett–Luce sequential-choice likelihood, which reduces to Bradley–Terry
+      for two items. Task 3 proposes a counterbalanced within-participant protocol,
+      recruitment plan, outcomes, analysis, ethics, and validity controls. Task 4 is
+      represented by the working Django participant interface linked to this report.
+    </p>
+
+    <div class="toc keep">
+      <h3>Report structure</h3>
+      <ol>
+        <li>Task 1 — dataset processing and movie features</li>
+        <li>Task 2 — Bradley–Terry and the ranking likelihood</li>
+        <li>Task 3 — proposed comparative user study</li>
+        <li>Implementation traceability and limitations</li>
+      </ol>
+    </div>
+
+    <h2>Task 1 — Feature representation</h2>
+    <h3>1.1 Design objective</h3>
+    <p>
+      The model assigns movie <em>i</em> utility <em>u</em><sub>i</sub> =
+      <strong>w</strong><sup>T</sup><strong>x</strong><sub>i</sub>. Therefore,
+      <strong>x</strong><sub>i</sub> should describe attributes a person might
+      genuinely prefer, should work for unseen movies, and should remain small
+      enough to estimate <strong>w</strong> from few interactions. The representation
+      deliberately uses content rather than aggregate audience behaviour.
+    </p>
+
+    <h3>1.2 Cleaning</h3>
+    <p>
+      The source CSV has 5,043 rows and 28 columns. IMDb identifiers are extracted
+      from the URL, whitespace is normalised, numeric year and duration fields are
+      parsed, and missing display text receives an explicit “Unknown” value. Rows are
+      deduplicated by IMDb identifier using the first source row as a deterministic
+      rule. This produces 4,919 unique movies. Required columns are checked and an
+      invalid IMDb link, title, or genre raises an error instead of silently creating
+      a malformed item.
+    </p>
+
+    <h3>1.3 The 53 features</h3>
+    <table>
+      <thead>
+        <tr><th>Group</th><th>Count</th><th>Encoding</th><th>Reason</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Genres</td><td>26</td><td>Multi-hot indicators</td>
+          <td>A movie may belong to several genres; genre is a direct and interpretable preference signal.</td>
+        </tr>
+        <tr>
+          <td>Release era</td><td>9</td><td>One-hot decade groups, including Unknown</td>
+          <td>Captures preference for older or newer films without treating calendar year as a strictly linear effect.</td>
+        </tr>
+        <tr>
+          <td>Language</td><td>7</td><td>English, French, Spanish, Hindi, Mandarin, Other, Unknown</td>
+          <td>Preserves frequent languages while avoiding unstable columns for rare categories.</td>
+        </tr>
+        <tr>
+          <td>Content certificate</td><td>9</td><td>Common certificates plus Other and Unknown</td>
+          <td>Represents suitability and content-intensity preferences; it is not an audience score.</td>
+        </tr>
+        <tr>
+          <td>Duration</td><td>2</td><td>Standardised duration and missing-value indicator</td>
+          <td>Allows preference for shorter or longer movies while preserving information that duration was absent.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Duration is median-imputed (the cleaned catalogue median is 103 minutes),
+      clipped to the 1st and 99th percentiles, and standardised using statistics from
+      the full catalogue. A separate binary flag marks the 15 missing durations. When
+      a subset is transformed, the full catalogue remains the scaling reference, so
+      the same movie has the same vector in elicitation and validation.
+    </p>
+
+    <h3>1.4 Excluded attributes and leakage control</h3>
+    <p>
+      IMDb score, vote count, critic reviews, Facebook likes, gross, and budget are
+      excluded. Those fields describe crowd response, exposure, or commercial success;
+      using them could make the model reproduce popularity rather than learn the new
+      participant’s preference. Titles and URLs are identifiers, not transferable
+      content features. Director and actor names are shown to participants but excluded
+      from the vector because thousands of sparse identity columns cannot be estimated
+      reliably from only 27 likelihood contributions. Country is similarly omitted to
+      keep the cold-start model compact; language and genre retain more direct signals.
+    </p>
+    <div class="note">
+      This is a transparent baseline, not a claim that 53 hand-designed features are
+      universally optimal. Text embeddings or adaptive feature selection could be
+      evaluated later, but would add opacity and substantially more parameters.
+    </div>
+
+    <h3>1.5 Extraction method</h3>
+    <p>
+      <code>load_movie_catalog()</code> performs validation, cleaning, and
+      deduplication. <code>extract_movie_features()</code> creates the fixed schema,
+      and <code>prepare_movie_data()</code> returns aligned metadata and feature rows.
+      Automated tests check shape, finiteness, category coverage, subset stability,
+      representative values, and the absence of popularity and financial fields.
+    </p>
+
+    <h2>Task 2 — Model for complete rankings</h2>
+    <h3>2.1 Pairwise Bradley–Terry model</h3>
+    <p>
+      For participant vector <strong>w</strong> and movie feature vector
+      <strong>x</strong><sub>i</sub>, define
+      <em>u</em><sub>i</sub> = <strong>w</strong><sup>T</sup><strong>x</strong><sub>i</sub>.
+      Bradley–Terry gives the probability that movie <em>i</em> is preferred to
+      movie <em>j</em> as:
+    </p>
+    <div class="formula">
+      P(i ≻ j | <strong>w</strong>) = exp(u<sub>i</sub>) /
+      [exp(u<sub>i</sub>) + exp(u<sub>j</sub>)] = σ(u<sub>i</sub> − u<sub>j</sub>).
+    </div>
+
+    <h3>2.2 Plackett–Luce extension</h3>
+    <p>
+      A complete ranking <em>i</em><sub>1</sub> ≻ <em>i</em><sub>2</sub> ≻ … ≻
+      <em>i</em><sub>n</sub> is treated as a sequence of choices. At position
+      <em>r</em>, the participant selects <em>i</em><sub>r</sub> from the movies not
+      yet placed. Multiplying these conditional choices gives:
+    </p>
+    <div class="formula">
+      P(i<sub>1</sub> ≻ … ≻ i<sub>n</sub> | <strong>w</strong>) =
+      ∏<sub>r=1</sub><sup>n−1</sup>
+      exp(u<sub>i<sub>r</sub></sub>) /
+      Σ<sub>s=r</sub><sup>n</sup> exp(u<sub>i<sub>s</sub></sub>).
+    </div>
+    <p>
+      For <em>n</em> = 2, the product contains one term and is exactly the
+      Bradley–Terry probability. The extension therefore preserves the same latent
+      utility interpretation instead of inventing unrelated pair labels. It defines a
+      valid probability distribution over all permutations and uses the information in
+      the complete ordering. A ten-movie ranking contributes nine sequential choice
+      terms; three rankings contribute 27 terms, matching the 27 binary comparisons.
+    </p>
+
+    <h3>2.3 Estimation</h3>
+    <p>
+      The two interfaces are fitted separately. Pairwise observations are stored as
+      winner–loser index pairs, while ranking observations are best-to-worst index
+      sequences. For either dataset <em>D</em>, the implementation minimises the
+      negative regularised log likelihood:
+    </p>
+    <div class="formula">
+      L(<strong>w</strong>) = − Σ<sub>y∈D</sub> log P(y | <strong>w</strong>)
+      + (λ/2) ‖<strong>w</strong>‖<sub>2</sub><sup>2</sup>, &nbsp; λ = 1.
+    </div>
+    <p>
+      Positive L2 regularisation is important because the feature representation is
+      larger than the interaction budget and includes correlated indicators. The code
+      uses analytic gradients, stable log-sum-exp computations, and L-BFGS-B. Tests
+      verify numerical stability, gradients, fitting behaviour, and that a two-item
+      Plackett–Luce ranking reduces to Bradley–Terry.
+    </p>
+
+    <h3>2.4 Assumptions</h3>
+    <ul>
+      <li>A single linear preference vector represents a participant during the session.</li>
+      <li>Conditional choices follow Luce’s independence-of-irrelevant-alternatives assumption.</li>
+      <li>Displayed metadata is sufficient for the participant to form a preference.</li>
+      <li>Errors are stochastic; the highest-utility movie need not always be chosen.</li>
+    </ul>
+    <p>
+      The IIA assumption is convenient and makes the model a defensible direct extension,
+      but can be unrealistic for near-duplicate movies. A future study could compare a
+      context-dependent ranking model or introduce random coefficients.
+    </p>
+
+    <h2>Task 3 — Proposed user study</h2>
+    <h3>3.1 Research questions and hypotheses</h3>
+    <p>
+      The study asks whether repeated pairwise choice or complete ten-movie ranking is a
+      better way to learn a new user’s movie preferences under a similar modelling
+      budget. The primary confirmatory hypothesis is two-sided:
+    </p>
+    <ul>
+      <li><strong>H1:</strong> held-out prediction agreement differs between models trained from pairwise choices and ten-movie rankings.</li>
+      <li><strong>H2:</strong> pairwise choice produces lower reported mental demand and shorter total interaction time.</li>
+      <li><strong>H3:</strong> complete ranking receives higher preference-expression ratings because it allows relative placement of more items.</li>
+    </ul>
+    <p>
+      H1 is two-sided because a richer ranking could provide more information, while its
+      higher cognitive burden could also introduce noise. Directional expectations for
+      H2 and H3 are secondary and would be declared before data collection.
+    </p>
+
+    <h3>3.2 Experimental design</h3>
+    <p>
+      This is a within-participant crossover design: every participant uses both
+      interfaces. This controls for between-person differences in movie knowledge and
+      preference consistency. Order and movie-pool assignment are counterbalanced in
+      four cells:
+    </p>
+    <table>
+      <thead><tr><th>Cell</th><th>First condition</th><th>Second condition</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Pairwise on pool A</td><td>Ranking on pool B</td></tr>
+        <tr><td>2</td><td>Ranking on pool B</td><td>Pairwise on pool A</td></tr>
+        <tr><td>3</td><td>Pairwise on pool B</td><td>Ranking on pool A</td></tr>
+        <tr><td>4</td><td>Ranking on pool A</td><td>Pairwise on pool B</td></tr>
+      </tbody>
+    </table>
+    <p>
+      The prototype maps its random seed uniformly to one of the four cells and makes
+      each plan reproducible. In real recruitment, a concealed permuted-block schedule
+      with one assignment to each cell per block should maintain equal cell sizes.
+      Counterbalancing separates interface effects from order, fatigue, practice, and
+      the particular movies assigned to a method.
+    </p>
+
+    <h3>3.3 Movie sampling and task budget</h3>
+    <p>
+      For each participant, 100 unique movies are sampled uniformly without replacement:
+      30 in pool A, 30 in pool B, and 40 in a disjoint validation pool. Pairwise tasks
+      comprise 27 distinct pairs. All 30 pairwise-pool movies appear at least once, 24
+      appear twice, and six appear once; left/right orientation and task order are
+      randomised. Ranking comprises three disjoint sets of ten, so every movie in its
+      30-item pool appears exactly once. Validation has 20 pairs and uses each of its 40
+      movies once. No validation movie is used to estimate either model.
+    </p>
+    <div class="flow">
+      <div>Consent</div><div>Method 1</div><div>Feedback</div><div>Method 2 + feedback</div><div>Blind validation + debrief</div>
+    </div>
+
+    <h3>3.4 Participants and recruitment</h3>
+    <p>
+      Recruit adults through university mailing lists and local community channels.
+      Inclusion criteria are age 18 or older, sufficient English to understand the
+      interface, and watching at least one movie per month. Recruitment material should
+      describe a 15–20 minute movie-preference interface study without advertising a
+      preferred method. Compensation should be fixed and not depend on responses.
+    </p>
+    <p>
+      A final sample of 80 completed participants (20 per counterbalancing cell) is a
+      practical target. As a rough planning calculation, a paired standardised effect
+      of 0.35 at two-sided α = .05 and 80% power requires approximately 67 participants;
+      the target of 80 also balances the four cells. Recruit about 88 participants to
+      allow roughly 10% incomplete sessions. Before a real study, this approximation
+      should be replaced by a simulation-based power analysis for the prespecified
+      mixed-effects primary model.
+    </p>
+
+    <h3>3.5 Procedure</h3>
+    <ol>
+      <li>Show purpose, duration, voluntary-participation statement, anonymity information, age criterion, and consent checkbox.</li>
+      <li>Create an anonymous identifier and uniformly sample the participant’s disjoint movie pools and counterbalancing cell.</li>
+      <li>Present the first elicitation method with clear instructions and visible progress. Hide IMDb score, votes, popularity, and financial data.</li>
+      <li>Immediately collect the same four 1–7 items: ease, preference expression, response confidence, and mental demand, plus an optional comment.</li>
+      <li>Repeat Steps 3–4 for the second method using the other movie pool.</li>
+      <li>Fit one regularised model from the 27 pairwise observations and another from the three rankings. Freeze both sets of 20 validation predictions.</li>
+      <li>Present the 20 unseen pairs without revealing either prediction and record the participant’s choice and response time.</li>
+      <li>Show a debrief and a descriptive personal match summary. Make clear that it is not evidence that one interface is generally superior.</li>
+    </ol>
+
+    <h3>3.6 Measures</h3>
+    <table>
+      <thead><tr><th>Type</th><th>Measure</th><th>Operational definition</th></tr></thead>
+      <tbody>
+        <tr><td>Primary</td><td>Held-out agreement</td><td>Whether each frozen model predicts the participant’s choice on each of 20 unseen pairs; summarised per participant.</td></tr>
+        <tr><td>Secondary</td><td>Probabilistic prediction</td><td>Log loss and Brier score from each model’s frozen probability for the chosen movie.</td></tr>
+        <tr><td>Efficiency</td><td>Time</td><td>Total response time per condition and time per elementary likelihood contribution.</td></tr>
+        <tr><td>Experience</td><td>Four 1–7 items</td><td>Ease, preference expression, confidence, and mental demand, collected after each method.</td></tr>
+        <tr><td>Quality control</td><td>Completion/integrity</td><td>Complete task count, exact ranking permutations, duplicate-submission checks, and technical-error logs.</td></tr>
+      </tbody>
+    </table>
+    <p>
+      “Agreement” is used instead of “accuracy” when communicating to participants:
+      their validation choice is a behavioural criterion, not an objectively correct
+      label. Predictions are frozen before validation to prevent leakage.
+    </p>
+
+    <h3>3.7 Analysis plan</h3>
+    <ul>
+      <li>Analyse all consenting participants who complete both methods, both questionnaires, and validation. Report attrition and reasons.</li>
+      <li>For H1, fit a mixed-effects logistic model to validation match (yes/no), with elicitation method as the main fixed effect, participant as a random intercept, and order and pool assignment as prespecified fixed controls.</li>
+      <li>As a participant-level robustness analysis, compare the two 20-pair match rates with a paired permutation test and bootstrap the mean paired difference with a 95% confidence interval.</li>
+      <li>Compare log loss and Brier score as paired probabilistic outcomes. These retain confidence information that thresholded match rate discards.</li>
+      <li>For H2, compare paired total condition times and mental-demand ratings. Inspect skew; use a paired t-test only when reasonable, otherwise a Wilcoxon signed-rank test.</li>
+      <li>For H3 and other ordinal questionnaire items, use paired Wilcoxon tests and report matched-pairs effect sizes and confidence intervals.</li>
+      <li>Check method-by-order interaction as a carryover diagnostic. Correct the family of secondary questionnaire tests with Holm’s method; keep H1 as the single primary test.</li>
+    </ul>
+    <p>
+      The analysis script and exclusion rules should be fixed before inspecting condition
+      differences. Report estimates, uncertainty, and raw distributions, not only
+      p-values. No imputation is planned for an incomplete primary outcome; incomplete
+      sessions are described separately.
+    </p>
+
+    <h3>3.8 Exclusions, ethics, and data handling</h3>
+    <p>
+      Predefined exclusions are: under 18 or no consent, duplicate participation,
+      failure to finish the required sequence, a documented technical failure, or
+      implausible timing according to a threshold fixed during piloting. Exclusions must
+      not depend on which method performs better. Sensitivity analyses should include
+      all otherwise usable sessions.
+    </p>
+    <p>
+      The prototype asks for no name or email and uses an anonymous UUID. A real study
+      requires institutional ethics review where applicable, a controller/contact and
+      retention period in the information sheet, encrypted transport, access controls,
+      and a persistent research database separated from identifying recruitment records.
+      Participants may stop at any time and must still receive compensation according to
+      the approved policy. The current Django session storage demonstrates interaction
+      recording; production collection would export pseudonymous records under the
+      approved data-management plan.
+    </p>
+
+    <h3>3.9 Validity threats and mitigations</h3>
+    <ul>
+      <li><strong>Unknown movies:</strong> metadata may not be enough to form a preference. Record uncertainty in piloting and consider a “not familiar, judge from metadata” instruction or richer neutral descriptions.</li>
+      <li><strong>Cognitive burden:</strong> ranking ten items can cause satisficing. Progress indicators, move buttons, and only three ranking tasks limit burden.</li>
+      <li><strong>Order and fatigue:</strong> the crossover is counterbalanced and order is included in analysis.</li>
+      <li><strong>Movie-set difficulty:</strong> A/B pool assignment is crossed with order, while validation is shared by both fitted models within participant.</li>
+      <li><strong>Uniform sampling:</strong> it is unbiased with respect to model beliefs but may show obscure items. Adaptive sampling is a future comparison, not mixed into this interface study.</li>
+      <li><strong>Model misspecification:</strong> linear utility and IIA may not capture context, diversity, or interactions. Conclusions concern these two interfaces under the specified model.</li>
+      <li><strong>Convenience sample:</strong> university/community recruitment limits generalisability; report participant characteristics and avoid claims about all movie users.</li>
+    </ul>
+
+    <h2>Implementation traceability</h2>
+    <table>
+      <thead><tr><th>Requirement</th><th>Implementation</th></tr></thead>
+      <tbody>
+        <tr><td>Task 1 extraction</td><td><code>project4/services/movie_data.py</code> and focused data tests</td></tr>
+        <tr><td>Task 2 models</td><td><code>project4/services/preference_model.py</code>, analytic likelihood/gradient tests</td></tr>
+        <tr><td>Task 3 protocol</td><td>Four counterbalancing cells, disjoint pools, balanced exposure, timing, questionnaires, frozen validation predictions</td></tr>
+        <tr><td>Task 4 interface</td><td>Consent, pairwise cards, reorderable ten-movie lists, feedback, validation, progress, session persistence, and debrief</td></tr>
+        <tr><td>Landing page</td><td>Start-study action and downloadable copy of this PDF</td></tr>
+      </tbody>
+    </table>
+    <p>
+      The implementation is a study prototype. It demonstrates the full participant
+      sequence and computes a personal descriptive result, but no participants were
+      recruited and no group-level experimental results are reported.
+    </p>
+
+    <h2>References</h2>
+    <ol class="references">
+      <li>
+        Bradley, R. A., &amp; Terry, M. E. (1952). Rank analysis of incomplete block
+        designs: I. The method of paired comparisons. <em>Biometrika, 39</em>(3/4),
+        324–345. <a href="https://doi.org/10.1093/biomet/39.3-4.324">https://doi.org/10.1093/biomet/39.3-4.324</a>
+      </li>
+      <li>
+        Plackett, R. L. (1975). The analysis of permutations. <em>Applied Statistics,
+        24</em>(2), 193–202. <a href="https://doi.org/10.2307/2346567">https://doi.org/10.2307/2346567</a>
+      </li>
+      <li>
+        IMDb 5000 Movie Dataset. Dataset supplied for the course project; public
+        catalogue listing: <a href="https://www.kaggle.com/datasets/carolzhangdc/imdb-5000-movie-dataset">Kaggle dataset page</a>.
+      </li>
+    </ol>
+  </main>
+</body>
+</html>

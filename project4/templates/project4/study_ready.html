@@ -1,0 +1,107 @@
+{% extends "project4/base.html" %}
+
+{% block title %}Study Ready | Preference Elicitation{% endblock %}
+
+{% block content %}
+<section class="p4-ready-card">
+    <span class="p4-status-pill">
+        <span aria-hidden="true"></span>
+        {% if has_completed_condition %}Progress saved{% else %}Study session ready{% endif %}
+    </span>
+    <h1>
+        {% if has_completed_condition %}
+            Ready for your next activity
+        {% else %}
+            Your movie tasks are prepared
+        {% endif %}
+    </h1>
+    <p class="p4-intro-lead">
+        {% if has_completed_condition %}
+            Your previous responses have been saved. Continue when you are ready.
+        {% else %}
+            Your movie sets and condition order have been assigned. Complete each
+            activity using your own viewing preferences rather than IMDb ratings
+            or what you think other people might choose.
+        {% endif %}
+    </p>
+
+    <div class="p4-sequence" aria-label="Assigned study sequence">
+        {% for condition in condition_order %}
+            <article class="p4-sequence-step{% if condition.is_current %} p4-sequence-current{% endif %}{% if condition.is_complete %} p4-sequence-complete{% endif %}">
+                <span class="p4-sequence-number">{{ forloop.counter }}</span>
+                <div>
+                    <strong>{{ condition.label }}</strong>
+                    <small>{{ condition.task_count }} recorded task{{ condition.task_count|pluralize }}</small>
+                </div>
+            </article>
+            <span class="p4-sequence-arrow" aria-hidden="true">&rarr;</span>
+        {% endfor %}
+
+        <article class="p4-sequence-step{% if validation_is_current %} p4-sequence-current{% endif %}">
+            <span class="p4-sequence-number">3</span>
+            <div>
+                <strong>Validation choices</strong>
+                <small>{{ validation_task_count }} unseen movie pairs</small>
+            </div>
+        </article>
+    </div>
+
+    <div class="p4-ready-summary">
+        <div>
+            <span>Next activity</span>
+            <strong>{{ current_condition.label }}</strong>
+        </div>
+        <div>
+            <span>Estimated duration</span>
+            <strong>15&ndash;20 minutes</strong>
+        </div>
+        <div>
+            <span>Progress</span>
+            <strong>Saved between pages</strong>
+        </div>
+    </div>
+
+    <div class="p4-notice">
+        <strong>How this activity works</strong>
+        <p>
+            {% if current_condition.key == "pairwise" %}
+                Two movies will appear at a time. Select the one you would rather
+                watch; your choice is then saved and the next pair appears.
+            {% elif current_condition.key == "ranking" %}
+                You will order ten movies from most to least preferred in each task.
+            {% else %}
+                You will make choices between new movie pairs to validate the models.
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="p4-actions">
+        {% if current_condition.key == "pairwise" %}
+            <a class="p4-button p4-button-primary" href="{% url 'project4:pairwise_task' %}">
+                {% if resume_pairwise %}Resume{% else %}Begin{% endif %}
+                {{ current_condition.label|lower }}
+                <span aria-hidden="true">&rarr;</span>
+            </a>
+        {% elif current_condition.key == "ranking" %}
+            <a class="p4-button p4-button-primary" href="{% url 'project4:ranking_task' %}">
+                {% if resume_ranking %}Resume{% else %}Begin{% endif %}
+                {{ current_condition.label|lower }}
+                <span aria-hidden="true">&rarr;</span>
+            </a>
+        {% elif current_condition.key == "validation" %}
+            <a class="p4-button p4-button-primary" href="{% url 'project4:validation_task' %}">
+                {% if resume_validation %}Resume{% else %}Begin{% endif %}
+                validation choices
+                <span aria-hidden="true">&rarr;</span>
+            </a>
+        {% else %}
+            <span class="p4-button p4-button-primary p4-button-disabled" aria-disabled="true">
+                Begin {{ current_condition.label|lower }}
+            </span>
+        {% endif %}
+        <a class="p4-text-link" href="{% url 'project4:study' %}">
+            Return to instructions
+        </a>
+    </div>
+</section>
+{% endblock %}

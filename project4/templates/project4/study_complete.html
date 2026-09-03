@@ -1,0 +1,50 @@
+{% extends "project4/base.html" %}
+
+{% block title %}Study Complete | Preference Elicitation{% endblock %}
+
+{% block content %}
+<section class="p4-complete-card">
+    <span class="p4-status-pill">
+        <span aria-hidden="true"></span>
+        Study complete
+    </span>
+    <h1>Thank you for taking part</h1>
+    <p class="p4-intro-lead">
+        All responses have been saved under anonymous study code
+        <strong>{{ study_code }}</strong>. The comparison below describes only
+        this prototype session and is not a result from a conducted user study.
+    </p>
+
+    <div class="p4-result-grid">
+        <article class="p4-result-card">
+            <span>Trained from pairwise choices</span>
+            <strong>{{ pairwise_matches }}/{{ task_count }}</strong>
+            <small>{{ pairwise_percent }}% match with your validation choices</small>
+        </article>
+        <article class="p4-result-card">
+            <span>Trained from ten-movie rankings</span>
+            <strong>{{ ranking_matches }}/{{ task_count }}</strong>
+            <small>{{ ranking_percent }}% match with your validation choices</small>
+        </article>
+    </div>
+
+    <div class="p4-notice">
+        <strong>How to interpret this</strong>
+        <p>
+            A match means a model predicted the movie you selected in an unseen
+            pair. The two models predicted the same movie in
+            {{ model_agreements }} of {{ task_count }} pairs. This personal summary
+            is descriptive and does not establish that one method is generally better.
+        </p>
+    </div>
+
+    <div class="p4-actions">
+        <a class="p4-button p4-button-primary" href="{% url 'project4:index' %}">
+            Return to project overview
+        </a>
+        <a class="p4-text-link" href="{% url 'project4:study' %}">
+            Start a new session
+        </a>
+    </div>
+</section>
+{% endblock %}
