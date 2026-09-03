@@ -15,6 +15,6 @@ The loader:
 Popularity, financial, review-count, social-media, and IMDb-score fields are
 not included in the participant preference vector.
 
-The exact download source and dataset licence should be recorded in the final
-report before the project is submitted or redistributed.
-
+The report records that the file was supplied for the course and cites its
+public catalogue listing. Redistribution permissions should be verified with
+the dataset provider before using the file outside this coursework submission.
