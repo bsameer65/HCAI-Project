@@ -18,6 +18,21 @@ REPORT_PDF_PATH = (
 
 
 @override_settings(
+    ROOT_URLCONF="project4.standalone_urls",
+    SESSION_ENGINE="django.contrib.sessions.backends.signed_cookies",
+)
+class Project4StandaloneConfigTests(SimpleTestCase):
+    def test_standalone_root_redirects_to_project_landing_page(self):
+        response = self.client.get("/")
+
+        self.assertRedirects(
+            response,
+            reverse("project4:index"),
+            fetch_redirect_response=False,
+        )
+
+
+@override_settings(
     SESSION_ENGINE="django.contrib.sessions.backends.signed_cookies"
 )
 class Project4PageTests(SimpleTestCase):
