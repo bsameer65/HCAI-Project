@@ -13,6 +13,34 @@ from .services.study_flow import CONDITION_LABELS, create_study_plan
 
 STUDY_SESSION_KEY = "project4_study"
 MAX_RESPONSE_TIME_MS = 60 * 60 * 1000
+QUESTIONNAIRE_ITEMS = (
+    {
+        "key": "ease_of_use",
+        "prompt": "This activity was easy to use.",
+        "low_label": "Strongly disagree",
+        "high_label": "Strongly agree",
+    },
+    {
+        "key": "preference_expression",
+        "prompt": "This activity let me express my movie preferences accurately.",
+        "low_label": "Strongly disagree",
+        "high_label": "Strongly agree",
+    },
+    {
+        "key": "response_confidence",
+        "prompt": "I feel confident about the responses I gave.",
+        "low_label": "Strongly disagree",
+        "high_label": "Strongly agree",
+    },
+    {
+        "key": "mental_demand",
+        "prompt": "How mentally demanding was this activity?",
+        "low_label": "Very low",
+        "high_label": "Very high",
+    },
+)
+LIKERT_VALUES = tuple(range(1, 8))
+MAX_COMMENT_LENGTH = 1000
 
 
 def _format_movie_for_display(movie_row, position):
@@ -64,6 +92,14 @@ def _response_time_ms(raw_value):
     except (TypeError, ValueError):
         return None
     return value if 0 <= value <= MAX_RESPONSE_TIME_MS else None
+
+
+def _finish_condition(study_state, condition):
+    """Advance the study but require feedback before starting the next stage."""
+    study_state["condition_index"] += 1
+    study_state["task_index"] = 0
+    study_state["pending_questionnaire"] = condition
+    study_state["status"] = "questionnaire"
 
 
 def index(request):
@@ -120,6 +156,11 @@ def study_session(request):
     study_state = request.session.get(STUDY_SESSION_KEY)
     if study_state is None:
         return redirect("project4:study")
+    if (
+        study_state.get("status") == "questionnaire"
+        and study_state.get("pending_questionnaire") in CONDITION_LABELS
+    ):
+        return redirect("project4:condition_questionnaire")
 
     condition_index = study_state["condition_index"]
     condition_order = [
@@ -167,6 +208,8 @@ def pairwise_task(request):
     study_state = request.session.get(STUDY_SESSION_KEY)
     if study_state is None:
         return redirect("project4:study")
+    if study_state.get("status") == "questionnaire":
+        return redirect("project4:condition_questionnaire")
 
     condition_index = study_state["condition_index"]
     condition_order = study_state["condition_order"]
@@ -179,11 +222,9 @@ def pairwise_task(request):
     task_index = study_state["task_index"]
     tasks = study_state["pairwise_tasks"]
     if task_index >= len(tasks):
-        study_state["condition_index"] += 1
-        study_state["task_index"] = 0
-        study_state["status"] = "ready"
+        _finish_condition(study_state, "pairwise")
         request.session[STUDY_SESSION_KEY] = study_state
-        return redirect("project4:study_session")
+        return redirect("project4:condition_questionnaire")
 
     current_pair = tasks[task_index]
     if request.method == "POST":
@@ -218,10 +259,8 @@ def pairwise_task(request):
         study_state["task_index"] += 1
 
         if study_state["task_index"] == len(tasks):
-            study_state["condition_index"] += 1
-            study_state["task_index"] = 0
-            study_state["status"] = "ready"
-            next_page = "project4:study_session"
+            _finish_condition(study_state, "pairwise")
+            next_page = "project4:condition_questionnaire"
         else:
             study_state["status"] = "pairwise"
             next_page = "project4:pairwise_task"
@@ -262,6 +301,8 @@ def ranking_task(request):
     study_state = request.session.get(STUDY_SESSION_KEY)
     if study_state is None:
         return redirect("project4:study")
+    if study_state.get("status") == "questionnaire":
+        return redirect("project4:condition_questionnaire")
 
     condition_index = study_state["condition_index"]
     condition_order = study_state["condition_order"]
@@ -274,11 +315,9 @@ def ranking_task(request):
     task_index = study_state["task_index"]
     tasks = study_state["ranking_tasks"]
     if task_index >= len(tasks):
-        study_state["condition_index"] += 1
-        study_state["task_index"] = 0
-        study_state["status"] = "ready"
+        _finish_condition(study_state, "ranking")
         request.session[STUDY_SESSION_KEY] = study_state
-        return redirect("project4:study_session")
+        return redirect("project4:condition_questionnaire")
 
     presented_movie_ids = tasks[task_index]
     if request.method == "POST":
@@ -315,10 +354,8 @@ def ranking_task(request):
         study_state["task_index"] += 1
 
         if study_state["task_index"] == len(tasks):
-            study_state["condition_index"] += 1
-            study_state["task_index"] = 0
-            study_state["status"] = "ready"
-            next_page = "project4:study_session"
+            _finish_condition(study_state, "ranking")
+            next_page = "project4:condition_questionnaire"
         else:
             study_state["status"] = "ranking"
             next_page = "project4:ranking_task"
@@ -345,5 +382,74 @@ def ranking_task(request):
             "task_number": task_index + 1,
             "total_tasks": total_tasks,
             "progress_percent": round((task_index + 1) / total_tasks * 100),
+        },
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def condition_questionnaire(request):
+    """Collect the same short subjective measures after each method."""
+    study_state = request.session.get(STUDY_SESSION_KEY)
+    if study_state is None:
+        return redirect("project4:study")
+
+    condition = study_state.get("pending_questionnaire")
+    if (
+        study_state.get("status") != "questionnaire"
+        or condition not in CONDITION_LABELS
+    ):
+        return redirect("project4:study_session")
+
+    if request.method == "POST":
+        if request.POST.get("condition") != condition:
+            return HttpResponseBadRequest("This questionnaire is no longer active.")
+
+        scores = {}
+        for item in QUESTIONNAIRE_ITEMS:
+            try:
+                score = int(request.POST.get(item["key"], ""))
+            except (TypeError, ValueError):
+                return HttpResponseBadRequest("Answer every questionnaire item.")
+            if score not in LIKERT_VALUES:
+                return HttpResponseBadRequest(
+                    "Questionnaire answers must use the scale from 1 to 7."
+                )
+            scores[item["key"]] = score
+
+        comment = request.POST.get("comment", "").strip()
+        if len(comment) > MAX_COMMENT_LENGTH:
+            return HttpResponseBadRequest(
+                f"The optional comment must be {MAX_COMMENT_LENGTH} characters or fewer."
+            )
+
+        study_state["responses"]["questionnaires"].append(
+            {
+                "condition": condition,
+                "condition_order_position": study_state["condition_index"],
+                "scores": scores,
+                "comment": comment,
+                "response_time_ms": _response_time_ms(
+                    request.POST.get("response_time_ms")
+                ),
+                "submitted_at": timezone.now().isoformat(),
+            }
+        )
+        study_state.pop("pending_questionnaire", None)
+        study_state["status"] = "ready"
+        request.session[STUDY_SESSION_KEY] = study_state
+        return redirect("project4:study_session")
+
+    return render(
+        request,
+        "project4/condition_questionnaire.html",
+        {
+            "condition": condition,
+            "condition_label": CONDITION_LABELS[condition],
+            "questionnaire_items": QUESTIONNAIRE_ITEMS,
+            "likert_values": LIKERT_VALUES,
+            "is_final_condition": (
+                study_state["condition_index"]
+                >= len(study_state["condition_order"])
+            ),
         },
     )

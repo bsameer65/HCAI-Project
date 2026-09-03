@@ -24,6 +24,19 @@ class Project4PageTests(SimpleTestCase):
                 {"consent": "yes"},
             )
 
+    def _questionnaire_answers(self, condition, **overrides):
+        answers = {
+            "condition": condition,
+            "ease_of_use": 6,
+            "preference_expression": 5,
+            "response_confidence": 6,
+            "mental_demand": 3,
+            "comment": "",
+            "response_time_ms": 4200,
+        }
+        answers.update(overrides)
+        return answers
+
     def test_landing_page_loads(self):
         response = self.client.get(reverse("project4:index"))
 
@@ -175,13 +188,27 @@ class Project4PageTests(SimpleTestCase):
             )
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("project4:study_session"))
+        self.assertEqual(
+            response.url,
+            reverse("project4:condition_questionnaire"),
+        )
         study_state = self.client.session["project4_study"]
         self.assertEqual(study_state["condition_index"], 1)
         self.assertEqual(study_state["task_index"], 0)
-        self.assertEqual(study_state["status"], "ready")
+        self.assertEqual(study_state["status"], "questionnaire")
+        self.assertEqual(study_state["pending_questionnaire"], "pairwise")
         self.assertEqual(len(study_state["responses"]["pairwise"]), 27)
 
+        questionnaire_page = self.client.get(
+            reverse("project4:condition_questionnaire")
+        )
+        self.assertEqual(questionnaire_page.status_code, 200)
+        self.assertContains(questionnaire_page, "pairwise choices activity feel")
+
+        self.client.post(
+            reverse("project4:condition_questionnaire"),
+            self._questionnaire_answers("pairwise"),
+        )
         next_response = self.client.get(reverse("project4:ranking_task"))
         self.assertEqual(next_response.status_code, 200)
 
@@ -298,12 +325,39 @@ class Project4PageTests(SimpleTestCase):
             )
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("project4:study_session"))
+        self.assertEqual(
+            response.url,
+            reverse("project4:condition_questionnaire"),
+        )
         study_state = self.client.session["project4_study"]
         self.assertEqual(study_state["condition_index"], 1)
         self.assertEqual(study_state["task_index"], 0)
-        self.assertEqual(study_state["status"], "ready")
+        self.assertEqual(study_state["status"], "questionnaire")
+        self.assertEqual(study_state["pending_questionnaire"], "ranking")
         self.assertEqual(len(study_state["responses"]["ranking"]), 3)
+
+        questionnaire_response = self.client.post(
+            reverse("project4:condition_questionnaire"),
+            self._questionnaire_answers(
+                "ranking",
+                comment="  Moving rows was clear.  ",
+            ),
+        )
+        self.assertEqual(questionnaire_response.status_code, 302)
+        self.assertEqual(
+            questionnaire_response.url,
+            reverse("project4:study_session"),
+        )
+
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["status"], "ready")
+        self.assertNotIn("pending_questionnaire", study_state)
+        saved_feedback = study_state["responses"]["questionnaires"][0]
+        self.assertEqual(saved_feedback["condition"], "ranking")
+        self.assertEqual(saved_feedback["condition_order_position"], 1)
+        self.assertEqual(saved_feedback["scores"]["mental_demand"], 3)
+        self.assertEqual(saved_feedback["comment"], "Moving rows was clear.")
+        self.assertEqual(saved_feedback["response_time_ms"], 4200)
 
         next_response = self.client.get(reverse("project4:pairwise_task"))
         self.assertEqual(next_response.status_code, 200)
@@ -315,3 +369,97 @@ class Project4PageTests(SimpleTestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("project4:study_session"))
+
+    def test_questionnaire_cannot_be_opened_before_a_condition_finishes(self):
+        self._start_ranking_first_study()
+
+        response = self.client.get(reverse("project4:condition_questionnaire"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("project4:study_session"))
+
+    def test_questionnaire_requires_all_four_valid_scale_answers(self):
+        self._start_ranking_first_study()
+        tasks = self.client.session["project4_study"]["ranking_tasks"]
+        for task_index, ranking in enumerate(tasks):
+            self.client.post(
+                reverse("project4:ranking_task"),
+                {"task_index": task_index, "movie_order": ranking},
+            )
+
+        missing_answer = self._questionnaire_answers("ranking")
+        missing_answer.pop("response_confidence")
+        missing_response = self.client.post(
+            reverse("project4:condition_questionnaire"),
+            missing_answer,
+        )
+        invalid_response = self.client.post(
+            reverse("project4:condition_questionnaire"),
+            self._questionnaire_answers("ranking", mental_demand=8),
+        )
+
+        self.assertEqual(missing_response.status_code, 400)
+        self.assertEqual(invalid_response.status_code, 400)
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["status"], "questionnaire")
+        self.assertEqual(study_state["responses"]["questionnaires"], [])
+
+    def test_stale_questionnaire_is_not_recorded_twice(self):
+        self._start_ranking_first_study()
+        tasks = self.client.session["project4_study"]["ranking_tasks"]
+        for task_index, ranking in enumerate(tasks):
+            self.client.post(
+                reverse("project4:ranking_task"),
+                {"task_index": task_index, "movie_order": ranking},
+            )
+
+        answers = self._questionnaire_answers("ranking")
+        self.client.post(reverse("project4:condition_questionnaire"), answers)
+        response = self.client.post(
+            reverse("project4:condition_questionnaire"),
+            answers,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("project4:study_session"))
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(len(study_state["responses"]["questionnaires"]), 1)
+
+    def test_feedback_after_both_conditions_opens_validation_stage(self):
+        self._start_ranking_first_study()
+        ranking_tasks = self.client.session["project4_study"]["ranking_tasks"]
+        for task_index, ranking in enumerate(ranking_tasks):
+            self.client.post(
+                reverse("project4:ranking_task"),
+                {"task_index": task_index, "movie_order": ranking},
+            )
+        self.client.post(
+            reverse("project4:condition_questionnaire"),
+            self._questionnaire_answers("ranking"),
+        )
+
+        pairwise_tasks = self.client.session["project4_study"]["pairwise_tasks"]
+        for task_index, pair in enumerate(pairwise_tasks):
+            self.client.post(
+                reverse("project4:pairwise_task"),
+                {"task_index": task_index, "chosen_movie_id": pair[0]},
+            )
+        self.client.post(
+            reverse("project4:condition_questionnaire"),
+            self._questionnaire_answers("pairwise"),
+        )
+
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["condition_index"], 2)
+        self.assertEqual(study_state["status"], "ready")
+        self.assertEqual(
+            [
+                response["condition"]
+                for response in study_state["responses"]["questionnaires"]
+            ],
+            ["ranking", "pairwise"],
+        )
+
+        response = self.client.get(reverse("project4:study_session"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Validation choices")

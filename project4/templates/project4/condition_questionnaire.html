@@ -1,0 +1,86 @@
+{% extends "project4/base.html" %}
+{% load static %}
+
+{% block title %}Activity Feedback | Preference Elicitation{% endblock %}
+
+{% block content %}
+<section class="p4-questionnaire-shell">
+    <header class="p4-questionnaire-header">
+        <span class="p4-status-pill">
+            <span aria-hidden="true"></span>
+            Activity complete
+        </span>
+        <h1>How did the {{ condition_label|lower }} activity feel?</h1>
+        <p>
+            Please answer these four short questions while the activity is fresh
+            in your mind. Use your overall experience across all its tasks.
+        </p>
+    </header>
+
+    <form
+        class="p4-questionnaire-form"
+        action="{% url 'project4:condition_questionnaire' %}"
+        method="post"
+        data-questionnaire-form
+    >
+        {% csrf_token %}
+        <input type="hidden" name="condition" value="{{ condition }}">
+        <input type="hidden" name="response_time_ms" value="" data-response-time>
+
+        {% for item in questionnaire_items %}
+            <fieldset class="p4-likert-question">
+                <legend>
+                    <span>{{ forloop.counter|stringformat:"02d" }}</span>
+                    {{ item.prompt }}
+                </legend>
+                <div class="p4-likert-scale">
+                    {% for value in likert_values %}
+                        <label>
+                            <input
+                                type="radio"
+                                name="{{ item.key }}"
+                                value="{{ value }}"
+                                required
+                            >
+                            <span>{{ value }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+                <div class="p4-likert-labels" aria-hidden="true">
+                    <span>{{ item.low_label }}</span>
+                    <span>{{ item.high_label }}</span>
+                </div>
+            </fieldset>
+        {% endfor %}
+
+        <label class="p4-comment-field">
+            <span>Optional comment</span>
+            <small>
+                Was anything particularly helpful, difficult, or frustrating?
+            </small>
+            <textarea
+                name="comment"
+                rows="4"
+                maxlength="1000"
+                placeholder="Share any additional thoughts..."
+            ></textarea>
+        </label>
+
+        <div class="p4-ranking-submit">
+            <p>
+                {% if is_final_condition %}
+                    Next, you will make choices between unseen movie pairs.
+                {% else %}
+                    Next, you will begin the other preference activity.
+                {% endif %}
+            </p>
+            <button class="p4-button p4-button-primary" type="submit">
+                Save feedback and continue
+                <span aria-hidden="true">&rarr;</span>
+            </button>
+        </div>
+    </form>
+</section>
+
+<script src="{% static 'project4/js/questionnaire.js' %}" defer></script>
+{% endblock %}

@@ -12,4 +12,9 @@ urlpatterns = [
     path("study/session/", views.study_session, name="study_session"),
     path("study/pairwise/", views.pairwise_task, name="pairwise_task"),
     path("study/ranking/", views.ranking_task, name="ranking_task"),
+    path(
+        "study/questionnaire/",
+        views.condition_questionnaire,
+        name="condition_questionnaire",
+    ),
 ]
