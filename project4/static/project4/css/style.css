@@ -1169,6 +1169,62 @@ a.p4-button-primary:hover {
   outline: 3px solid rgba(101, 70, 215, 0.13);
 }
 
+.p4-complete-card {
+  max-width: 900px;
+  margin: 45px auto 70px;
+  padding: clamp(30px, 6vw, 60px);
+  border: 1px solid var(--p4-border);
+  border-radius: 24px;
+  background: var(--p4-surface);
+  box-shadow: var(--p4-shadow);
+}
+
+.p4-complete-card > h1 {
+  margin: 15px 0 16px;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.p4-result-grid {
+  margin: 34px 0 27px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.p4-result-card {
+  padding: 24px;
+  border: 1px solid var(--p4-border);
+  border-radius: 16px;
+  background: #faf9fc;
+}
+
+.p4-result-card > span,
+.p4-result-card > strong,
+.p4-result-card > small {
+  display: block;
+}
+
+.p4-result-card > span {
+  color: var(--p4-primary-dark);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.p4-result-card > strong {
+  margin: 10px 0 2px;
+  font-size: 2.3rem;
+  line-height: 1;
+}
+
+.p4-result-card > small {
+  color: var(--p4-muted);
+  font-size: 0.78rem;
+}
+
 .p4-footer {
   width: min(1120px, calc(100% - 40px));
   margin: 0 auto;
@@ -1347,5 +1403,9 @@ a.p4-button-primary:hover {
 
   .p4-likert-scale label > span {
     height: 38px;
+  }
+
+  .p4-result-grid {
+    grid-template-columns: 1fr;
   }
 }

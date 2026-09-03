@@ -17,4 +17,6 @@ urlpatterns = [
         views.condition_questionnaire,
         name="condition_questionnaire",
     ),
+    path("study/validation/", views.validation_task, name="validation_task"),
+    path("study/complete/", views.study_complete, name="study_complete"),
 ]

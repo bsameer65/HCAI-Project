@@ -3,6 +3,9 @@ from unittest import mock
 from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 
+from project4.services.movie_data import load_movie_catalog
+from project4.services.study_flow import create_study_plan
+
 
 @override_settings(
     SESSION_ENGINE="django.contrib.sessions.backends.signed_cookies"
@@ -36,6 +39,43 @@ class Project4PageTests(SimpleTestCase):
         }
         answers.update(overrides)
         return answers
+
+    def _start_compact_study(self):
+        """Use one task per method and two validation pairs in flow tests."""
+        movie_ids = load_movie_catalog()["movie_id"].tolist()
+        plan = create_study_plan(movie_ids, seed=12344, cell=1)
+        plan["pairwise_tasks"] = plan["pairwise_tasks"][:1]
+        plan["ranking_tasks"] = plan["ranking_tasks"][:1]
+        plan["validation_tasks"] = plan["validation_tasks"][:2]
+
+        with mock.patch("project4.views.create_study_plan", return_value=plan):
+            return self.client.post(
+                reverse("project4:start_study"),
+                {"consent": "yes"},
+            )
+
+    def _complete_compact_study_conditions(self):
+        self._start_compact_study()
+        state = self.client.session["project4_study"]
+        pair = state["pairwise_tasks"][0]
+        self.client.post(
+            reverse("project4:pairwise_task"),
+            {"task_index": 0, "chosen_movie_id": pair[0]},
+        )
+        self.client.post(
+            reverse("project4:condition_questionnaire"),
+            self._questionnaire_answers("pairwise"),
+        )
+
+        ranking = self.client.session["project4_study"]["ranking_tasks"][0]
+        self.client.post(
+            reverse("project4:ranking_task"),
+            {"task_index": 0, "movie_order": ranking},
+        )
+        self.client.post(
+            reverse("project4:condition_questionnaire"),
+            self._questionnaire_answers("ranking"),
+        )
 
     def test_landing_page_loads(self):
         response = self.client.get(reverse("project4:index"))
@@ -463,3 +503,109 @@ class Project4PageTests(SimpleTestCase):
         response = self.client.get(reverse("project4:study_session"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Validation choices")
+        self.assertContains(response, reverse("project4:validation_task"))
+
+    def test_validation_cannot_start_before_both_conditions(self):
+        self._start_pairwise_first_study()
+
+        response = self.client.get(reverse("project4:validation_task"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("project4:study_session"))
+
+    def test_validation_page_fits_models_and_keeps_predictions_hidden(self):
+        self._complete_compact_study_conditions()
+        first_pair = self.client.session["project4_study"]["validation_tasks"][0]
+
+        response = self.client.get(reverse("project4:validation_task"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "These are new movie pairs")
+        self.assertContains(response, "1 of 2")
+        self.assertNotContains(response, "pairwise_predicted_movie_id")
+        self.assertNotContains(response, "ranking_predicted_movie_id")
+        for movie_id in first_pair:
+            self.assertContains(response, f'value="{movie_id}"')
+
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["status"], "validation")
+        self.assertEqual(
+            len(study_state["model_results"]["validation_predictions"]),
+            2,
+        )
+
+    def test_validation_choice_is_checked_recorded_and_advances(self):
+        self._complete_compact_study_conditions()
+        pair = self.client.session["project4_study"]["validation_tasks"][0]
+
+        invalid_response = self.client.post(
+            reverse("project4:validation_task"),
+            {"task_index": 0, "chosen_movie_id": "tt-not-displayed"},
+        )
+        valid_response = self.client.post(
+            reverse("project4:validation_task"),
+            {
+                "task_index": 0,
+                "chosen_movie_id": pair[1],
+                "response_time_ms": 2100,
+            },
+        )
+
+        self.assertEqual(invalid_response.status_code, 400)
+        self.assertEqual(valid_response.status_code, 302)
+        self.assertEqual(valid_response.url, reverse("project4:validation_task"))
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["task_index"], 1)
+        self.assertEqual(len(study_state["responses"]["validation"]), 1)
+        saved_response = study_state["responses"]["validation"][0]
+        self.assertEqual(saved_response["chosen_movie_id"], pair[1])
+        self.assertEqual(saved_response["chosen_position"], "right")
+        self.assertEqual(saved_response["response_time_ms"], 2100)
+
+        stale_response = self.client.post(
+            reverse("project4:validation_task"),
+            {
+                "task_index": 0,
+                "chosen_movie_id": pair[1],
+            },
+        )
+        self.assertEqual(stale_response.status_code, 302)
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["task_index"], 1)
+        self.assertEqual(len(study_state["responses"]["validation"]), 1)
+
+    def test_finishing_validation_scores_models_and_shows_debrief(self):
+        self._complete_compact_study_conditions()
+        tasks = self.client.session["project4_study"]["validation_tasks"]
+
+        for task_index, pair in enumerate(tasks):
+            response = self.client.post(
+                reverse("project4:validation_task"),
+                {"task_index": task_index, "chosen_movie_id": pair[0]},
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("project4:study_complete"))
+        study_state = self.client.session["project4_study"]
+        self.assertEqual(study_state["status"], "complete")
+        self.assertIn("completed_at", study_state)
+        self.assertEqual(study_state["validation_summary"]["task_count"], 2)
+
+        completion_page = self.client.get(reverse("project4:study_complete"))
+        self.assertEqual(completion_page.status_code, 200)
+        self.assertContains(completion_page, "Thank you for taking part")
+        self.assertContains(completion_page, "not a result from a conducted user study")
+        self.assertContains(completion_page, "Trained from pairwise choices")
+        self.assertContains(completion_page, "Trained from ten-movie rankings")
+
+        resume_response = self.client.get(reverse("project4:study_session"))
+        self.assertEqual(resume_response.status_code, 302)
+        self.assertEqual(resume_response.url, reverse("project4:study_complete"))
+
+    def test_completion_page_requires_a_finished_validation_stage(self):
+        self._start_pairwise_first_study()
+
+        response = self.client.get(reverse("project4:study_complete"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("project4:study_session"))

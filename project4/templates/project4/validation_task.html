@@ -1,0 +1,60 @@
+{% extends "project4/base.html" %}
+{% load static %}
+
+{% block title %}Validation Choice | Preference Elicitation{% endblock %}
+
+{% block content %}
+<section class="p4-task-shell">
+    <header class="p4-task-header">
+        <div>
+            <span class="p4-section-label">Validation choices</span>
+            <h1>Which movie would you rather watch?</h1>
+            <p>
+                These are new movie pairs. Continue choosing only according to
+                your personal preference; there are no correct answers.
+            </p>
+        </div>
+        <div class="p4-progress-copy" aria-label="Validation task progress">
+            <strong>{{ task_number }} of {{ total_tasks }}</strong>
+            <span>unseen pairs</span>
+        </div>
+    </header>
+
+    <div
+        class="p4-progress-track"
+        role="progressbar"
+        aria-valuemin="1"
+        aria-valuemax="{{ total_tasks }}"
+        aria-valuenow="{{ task_number }}"
+        aria-label="Validation task {{ task_number }} of {{ total_tasks }}"
+    >
+        <span style="--p4-progress: {{ progress_percent }}%;"></span>
+    </div>
+
+    <form
+        class="p4-pairwise-form"
+        action="{% url 'project4:validation_task' %}"
+        method="post"
+        data-pairwise-form
+    >
+        {% csrf_token %}
+        <input type="hidden" name="task_index" value="{{ task_index }}">
+        <input type="hidden" name="response_time_ms" value="" data-response-time>
+
+        <div class="p4-pair-grid">
+            {% include "project4/includes/movie_choice_card.html" with movie=left_movie %}
+
+            <div class="p4-versus" aria-hidden="true">or</div>
+
+            {% include "project4/includes/movie_choice_card.html" with movie=right_movie %}
+        </div>
+    </form>
+
+    <p class="p4-task-footnote">
+        Predictions from both models were created before this activity and are
+        hidden while you choose. Your answers do not retrain either model.
+    </p>
+</section>
+
+<script src="{% static 'project4/js/pairwise.js' %}" defer></script>
+{% endblock %}

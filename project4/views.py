@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from .services.movie_data import load_movie_catalog
 from .services.study_flow import CONDITION_LABELS, create_study_plan
+from .services.study_results import fit_study_models, summarize_validation
 
 
 STUDY_SESSION_KEY = "project4_study"
@@ -102,6 +103,15 @@ def _finish_condition(study_state, condition):
     study_state["status"] = "questionnaire"
 
 
+def _finish_validation(study_state):
+    study_state["validation_summary"] = summarize_validation(
+        study_state["model_results"],
+        study_state["responses"]["validation"],
+    )
+    study_state["status"] = "complete"
+    study_state["completed_at"] = timezone.now().isoformat()
+
+
 def index(request):
     """Show the Project 4 landing page."""
     return render(request, "project4/index.html")
@@ -161,6 +171,8 @@ def study_session(request):
         and study_state.get("pending_questionnaire") in CONDITION_LABELS
     ):
         return redirect("project4:condition_questionnaire")
+    if study_state.get("status") == "complete":
+        return redirect("project4:study_complete")
 
     condition_index = study_state["condition_index"]
     condition_order = [
@@ -196,6 +208,7 @@ def study_session(request):
             "has_completed_condition": condition_index > 0,
             "resume_pairwise": study_state["status"] == "pairwise",
             "resume_ranking": study_state["status"] == "ranking",
+            "resume_validation": study_state["status"] == "validation",
             "validation_task_count": len(study_state["validation_tasks"]),
             "validation_is_current": condition_index >= len(condition_order),
         },
@@ -451,5 +464,127 @@ def condition_questionnaire(request):
                 study_state["condition_index"]
                 >= len(study_state["condition_order"])
             ),
+        },
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def validation_task(request):
+    """Collect blind choices on held-out movies for both fitted models."""
+    study_state = request.session.get(STUDY_SESSION_KEY)
+    if study_state is None:
+        return redirect("project4:study")
+    if study_state.get("status") == "questionnaire":
+        return redirect("project4:condition_questionnaire")
+    if study_state.get("status") == "complete":
+        return redirect("project4:study_complete")
+    if study_state["condition_index"] < len(study_state["condition_order"]):
+        return redirect("project4:study_session")
+
+    if "model_results" not in study_state:
+        try:
+            study_state["model_results"] = fit_study_models(study_state)
+        except (RuntimeError, ValueError) as error:
+            return HttpResponseBadRequest(f"Could not prepare validation: {error}")
+        request.session[STUDY_SESSION_KEY] = study_state
+
+    task_index = study_state["task_index"]
+    tasks = study_state["validation_tasks"]
+    if task_index >= len(tasks):
+        try:
+            _finish_validation(study_state)
+        except ValueError as error:
+            return HttpResponseBadRequest(str(error))
+        request.session[STUDY_SESSION_KEY] = study_state
+        return redirect("project4:study_complete")
+
+    current_pair = tasks[task_index]
+    if request.method == "POST":
+        try:
+            submitted_task_index = int(request.POST.get("task_index", ""))
+        except (TypeError, ValueError):
+            return HttpResponseBadRequest("Invalid validation task number.")
+
+        if submitted_task_index != task_index:
+            return redirect("project4:validation_task")
+
+        chosen_movie_id = request.POST.get("chosen_movie_id")
+        if chosen_movie_id not in current_pair:
+            return HttpResponseBadRequest("Choose one of the two displayed movies.")
+
+        study_state["responses"]["validation"].append(
+            {
+                "task_index": task_index,
+                "left_movie_id": current_pair[0],
+                "right_movie_id": current_pair[1],
+                "chosen_movie_id": chosen_movie_id,
+                "chosen_position": (
+                    "left" if chosen_movie_id == current_pair[0] else "right"
+                ),
+                "response_time_ms": _response_time_ms(
+                    request.POST.get("response_time_ms")
+                ),
+                "submitted_at": timezone.now().isoformat(),
+            }
+        )
+        study_state["task_index"] += 1
+
+        if study_state["task_index"] == len(tasks):
+            _finish_validation(study_state)
+            next_page = "project4:study_complete"
+        else:
+            study_state["status"] = "validation"
+            next_page = "project4:validation_task"
+
+        request.session[STUDY_SESSION_KEY] = study_state
+        return redirect(next_page)
+
+    if study_state["status"] != "validation":
+        study_state["status"] = "validation"
+        request.session[STUDY_SESSION_KEY] = study_state
+
+    try:
+        left_movie, right_movie = _load_display_movies(
+            current_pair,
+            positions=("A", "B"),
+        )
+    except ValueError as error:
+        return HttpResponseBadRequest(str(error))
+
+    total_tasks = len(tasks)
+    return render(
+        request,
+        "project4/validation_task.html",
+        {
+            "left_movie": left_movie,
+            "right_movie": right_movie,
+            "task_index": task_index,
+            "task_number": task_index + 1,
+            "total_tasks": total_tasks,
+            "progress_percent": round((task_index + 1) / total_tasks * 100),
+        },
+    )
+
+
+def study_complete(request):
+    """Debrief the participant and show descriptive personal match rates."""
+    study_state = request.session.get(STUDY_SESSION_KEY)
+    if study_state is None:
+        return redirect("project4:study")
+    if study_state.get("status") != "complete":
+        return redirect("project4:study_session")
+
+    summary = study_state["validation_summary"]
+    return render(
+        request,
+        "project4/study_complete.html",
+        {
+            "study_code": study_state["study_id"].split("-")[0].upper(),
+            "task_count": summary["task_count"],
+            "pairwise_matches": summary["pairwise_matches"],
+            "ranking_matches": summary["ranking_matches"],
+            "pairwise_percent": round(summary["pairwise_accuracy"] * 100),
+            "ranking_percent": round(summary["ranking_accuracy"] * 100),
+            "model_agreements": summary["model_agreements"],
         },
     )
