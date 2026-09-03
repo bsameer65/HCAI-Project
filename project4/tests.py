@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest import mock
 
 from django.test import SimpleTestCase, override_settings
@@ -5,6 +6,15 @@ from django.urls import reverse
 
 from project4.services.movie_data import load_movie_catalog
 from project4.services.study_flow import create_study_plan
+
+
+REPORT_PDF_PATH = (
+    Path(__file__).resolve().parent
+    / "static"
+    / "project4"
+    / "report"
+    / "project4_report.pdf"
+)
 
 
 @override_settings(
@@ -83,6 +93,19 @@ class Project4PageTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Preference Elicitation")
         self.assertContains(response, "Start the study")
+
+    def test_landing_page_links_a_valid_pdf_report(self):
+        response = self.client.get(reverse("project4:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "/static/project4/report/project4_report.pdf",
+        )
+        self.assertContains(response, "Download report")
+        self.assertContains(response, "download")
+        self.assertTrue(REPORT_PDF_PATH.is_file())
+        self.assertEqual(REPORT_PDF_PATH.read_bytes()[:5], b"%PDF-")
 
     def test_study_intro_page_loads(self):
         response = self.client.get(reverse("project4:study"))

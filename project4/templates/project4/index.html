@@ -1,4 +1,5 @@
 {% extends "project4/base.html" %}
+{% load static %}
 
 {% block title %}Project 4 | Preference Elicitation{% endblock %}
 
@@ -16,20 +17,16 @@
         <div class="p4-actions">
             <a class="p4-button p4-button-primary" href="{% url 'project4:study' %}">
                 Start the study
-                <span aria-hidden="true">→</span>
+                <span aria-hidden="true">&rarr;</span>
             </a>
-            <span
-                class="p4-button p4-button-secondary p4-button-disabled"
-                aria-disabled="true"
-                title="The report will be connected in a later implementation step."
+            <a
+                class="p4-button p4-button-secondary"
+                href="{% static 'project4/report/project4_report.pdf' %}"
+                download
             >
                 Download report
-            </span>
+            </a>
         </div>
-
-        <p class="p4-action-note">
-            The report download will be enabled when the Tasks 1–3 report is added.
-        </p>
     </div>
 
     <div class="p4-ranking-preview" aria-hidden="true">
@@ -41,25 +38,25 @@
             <span class="p4-rank-number">1</span>
             <div>
                 <strong>Movie A</strong>
-                <small>Adventure · 2010s</small>
+                <small>Adventure &middot; 2010s</small>
             </div>
-            <span class="p4-drag-mark">⋮⋮</span>
+            <span class="p4-drag-mark">&#8942;&#8942;</span>
         </div>
         <div class="p4-preview-row">
             <span class="p4-rank-number">2</span>
             <div>
                 <strong>Movie B</strong>
-                <small>Comedy · 2000s</small>
+                <small>Comedy &middot; 2000s</small>
             </div>
-            <span class="p4-drag-mark">⋮⋮</span>
+            <span class="p4-drag-mark">&#8942;&#8942;</span>
         </div>
         <div class="p4-preview-row">
             <span class="p4-rank-number">3</span>
             <div>
                 <strong>Movie C</strong>
-                <small>Drama · 1990s</small>
+                <small>Drama &middot; 1990s</small>
             </div>
-            <span class="p4-drag-mark">⋮⋮</span>
+            <span class="p4-drag-mark">&#8942;&#8942;</span>
         </div>
     </div>
 </section>
@@ -89,7 +86,7 @@
 
         <article class="p4-method-card">
             <span class="p4-method-number">02</span>
-            <div class="p4-method-icon" aria-hidden="true">1 — 10</div>
+            <div class="p4-method-icon" aria-hidden="true">1 &mdash; 10</div>
             <h3>Complete rankings</h3>
             <p>
                 Arrange ten movies from most preferred to least preferred.
@@ -112,4 +109,3 @@
     </p>
 </section>
 {% endblock %}
-
