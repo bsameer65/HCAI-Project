@@ -1,33 +1,3 @@
-"""
-Pool-based Active Learning for Expert Competence Discovery.
-
-The classifier has access to all AG News training labels, as required by
-the project. Expert predictions, however, are initially unknown.
-
-The active learner selectively queries expert responses and trains a
-competence model that estimates:
-
-    P(expert is correct | article, classifier information)
-
-Two workflows are supported:
-
-1. Selected Active Learning
-   The user chooses one expert, one query strategy, and one query budget.
-
-2. Strategy Comparison
-   All four query strategies are evaluated for all simulated experts under
-   the same experimental conditions.
-
-Query strategies:
-
-1. Random Sampling
-2. Classifier Entropy
-3. Expert-Competence Uncertainty
-4. Hybrid Competence-Uncertainty + Diversity
-
-The official AG News test set is used only for final evaluation.
-"""
-
 from __future__ import annotations
 
 from dataclasses import replace
@@ -66,6 +36,12 @@ from .simulated_expert import (
     ExpertProfile,
     simulate_expert_predictions,
 )
+
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +132,26 @@ NUMERIC_FEATURES = [
 CATEGORICAL_FEATURES = [
     "predicted_class",
 ]
+
+PROJECT3_DIR = Path(__file__).resolve().parent.parent
+
+ACTIVE_LEARNING_FIGURE_DIR = (
+    PROJECT3_DIR
+    / "static"
+    / "project3"
+    / "figures"
+    / "active_learning"
+)
+
+ACTIVE_LEARNING_FIGURE_PATH = (
+    ACTIVE_LEARNING_FIGURE_DIR
+    / "classifier_entropy_learning_curve.png"
+)
+
+ACTIVE_LEARNING_FIGURE_STATIC_PATH = (
+    "project3/figures/active_learning/"
+    "classifier_entropy_learning_curve.png"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -2015,3 +2011,164 @@ def load_selected_active_learning_results() -> dict | None:
         return json.load(
             file
         )
+        
+
+def create_classifier_entropy_learning_curve(result):
+    """
+    Create the learning curve for the selected Classifier Entropy
+    active-learning experiment.
+
+    The figure shows how Human-AI team accuracy changes as more
+    expert responses are acquired.
+    """
+
+    if not result:
+        return None
+
+    strategy = result.get("strategy", {})
+    learning_curve = strategy.get("learning_curve", [])
+
+    if not learning_curve:
+        return None
+
+    selection = result.get("selection", {})
+
+    expert_name = selection.get(
+        "expert_name",
+        "Selected Simulated Expert",
+    )
+
+    query_budgets = []
+    team_accuracies = []
+
+    for point in learning_curve:
+
+        query_budget = point.get("query_budget")
+        team_accuracy = point.get("team_accuracy")
+
+        if query_budget is None or team_accuracy is None:
+            continue
+
+        query_budgets.append(
+            int(query_budget)
+        )
+
+        team_accuracies.append(
+            float(team_accuracy) * 100
+        )
+
+    if not query_budgets:
+        return None
+
+    ACTIVE_LEARNING_FIGURE_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    fig, ax = plt.subplots(
+        figsize=(8.5, 5.2)
+    )
+
+    ax.plot(
+        query_budgets,
+        team_accuracies,
+        marker="o",
+        linewidth=2,
+    )
+
+    ax.set_title(
+        "Classifier Entropy Learning Curve\n"
+        f"{expert_name}",
+        fontsize=13,
+        pad=12,
+    )
+
+    ax.set_xlabel(
+        "Expert Queries"
+    )
+
+    ax.set_ylabel(
+        "Human-AI Team Accuracy (%)"
+    )
+
+    ax.grid(
+        axis="y",
+        alpha=0.25,
+    )
+
+    # Keep some visual space around the observed values without
+    # exaggerating small differences.
+    minimum_accuracy = min(team_accuracies)
+    maximum_accuracy = max(team_accuracies)
+
+    lower_limit = max(
+        0,
+        minimum_accuracy - 0.5,
+    )
+
+    upper_limit = min(
+        100,
+        maximum_accuracy + 0.5,
+    )
+
+    if upper_limit - lower_limit < 1.0:
+        midpoint = (
+            minimum_accuracy + maximum_accuracy
+        ) / 2
+
+        lower_limit = max(
+            0,
+            midpoint - 0.5,
+        )
+
+        upper_limit = min(
+            100,
+            midpoint + 0.5,
+        )
+
+    ax.set_ylim(
+        lower_limit,
+        upper_limit,
+    )
+
+    for x_value, y_value in zip(
+        query_budgets,
+        team_accuracies,
+    ):
+
+        ax.annotate(
+            f"{y_value:.2f}%",
+            (x_value, y_value),
+            textcoords="offset points",
+            xytext=(0, 8),
+            ha="center",
+            fontsize=9,
+        )
+
+    fig.tight_layout()
+
+    fig.savefig(
+        ACTIVE_LEARNING_FIGURE_PATH,
+        dpi=160,
+        bbox_inches="tight",
+    )
+
+    plt.close(fig)
+
+    return ACTIVE_LEARNING_FIGURE_STATIC_PATH
+
+
+def ensure_classifier_entropy_learning_curve(result):
+    """
+    Ensure that the Classifier Entropy learning-curve figure exists.
+
+    The figure is recreated because the selected expert or query
+    budget may have changed.
+    """
+
+    if not result:
+        return None
+
+    return create_classifier_entropy_learning_curve(
+        result
+    )

@@ -172,3 +172,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Generated Project 3 advanced-analysis results
+project3/artifacts/metrics/advanced_analysis_metrics.json

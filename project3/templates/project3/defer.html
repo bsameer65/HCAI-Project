@@ -1,4 +1,5 @@
 {% extends "project3/base.html" %}
+{% load static %}
 
 {% block title %}
     Learning to Defer
@@ -59,6 +60,10 @@
 
 
 {% if results_available %}
+
+<!-- ============================================================= -->
+<!-- Overall Strategy Comparison                                   -->
+<!-- ============================================================= -->
 
 <section class="p3-card">
 
@@ -161,6 +166,77 @@
 </section>
 
 
+<!-- ============================================================= -->
+<!-- Coverage-Accuracy Trade-off                                   -->
+<!-- ============================================================= -->
+
+<section class="p3-card">
+
+    <h2>Coverage–Accuracy Trade-off</h2>
+
+    <p class="p3-muted">
+        These curves show how Human-AI team accuracy changes as a larger
+        share of articles is deferred to each simulated expert.
+    </p>
+
+
+    {% if coverage_figures %}
+
+        <div class="p3-coverage-grid">
+
+            {% for item in coverage_figures %}
+
+                <div class="p3-result-figure">
+
+
+
+                    <img
+                        src="{% static item.figure %}"
+                        alt="Coverage-accuracy trade-off for {{ item.name }}"
+                        class="p3-result-figure-image"
+                    >
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+
+        <div class="p3-info-box p3-coverage-finding">
+            <strong>Interpretation:</strong>
+            Selective deferral can slightly improve Human-AI team
+            performance, while excessive deferral reduces accuracy because
+            the simulated experts are weaker than the classifier outside
+            their specialist regions.
+        </div>
+
+
+    {% elif coverage_figures_stale %}
+
+        <div class="p3-info-box">
+            The coverage-accuracy figures are outdated because one or more
+            core experiment results have changed. Run Advanced Analysis
+            again to refresh the figures.
+        </div>
+
+
+    {% else %}
+
+        <div class="p3-info-box">
+            Run Advanced Analysis once to generate the coverage-accuracy
+            figures for both simulated experts.
+        </div>
+
+    {% endif %}
+
+</section>
+
+
+<!-- ============================================================= -->
+<!-- Individual Expert Results                                     -->
+<!-- ============================================================= -->
+
 {% for expert_key, expert in result.experts.items %}
 
 <section class="p3-card">
@@ -219,6 +295,8 @@
 
 
     <div class="p3-method-grid">
+
+        <!-- Confidence Threshold -->
 
         <article class="p3-method-card">
 
@@ -287,6 +365,8 @@
 
         </article>
 
+
+        <!-- Competence-Aware -->
 
         <article class="p3-method-card">
 
@@ -493,6 +573,10 @@
 {% endfor %}
 
 
+<!-- ============================================================= -->
+<!-- Experiment Details                                            -->
+<!-- ============================================================= -->
+
 <details class="p3-card p3-details">
 
     <summary>
@@ -548,6 +632,10 @@
 {% endif %}
 
 
+<!-- ============================================================= -->
+<!-- Loading Overlay                                               -->
+<!-- ============================================================= -->
+
 <div
     id="defer-loading-overlay"
     class="p3-training-overlay"
@@ -579,6 +667,56 @@
 
 </div>
 
+
+<!-- ============================================================= -->
+<!-- Page-specific styling                                         -->
+<!-- ============================================================= -->
+
+<style>
+
+.p3-coverage-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.p3-result-figure {
+    min-width: 0;
+    text-align: center;
+}
+
+.p3-result-figure h3 {
+    margin-top: 0;
+    margin-bottom: 14px;
+}
+
+.p3-result-figure-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.p3-coverage-finding {
+    margin-top: 24px;
+}
+
+@media (max-width: 900px) {
+
+    .p3-coverage-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+</style>
+
+
+<!-- ============================================================= -->
+<!-- Loading JavaScript                                            -->
+<!-- ============================================================= -->
 
 <script>
 document.addEventListener(
@@ -619,6 +757,14 @@ document.addEventListener(
 
             if (button) {
                 button.disabled = false;
+
+                {% if results_available %}
+                    button.textContent =
+                        "Re-run Experiment";
+                {% else %}
+                    button.textContent =
+                        "Run Experiment";
+                {% endif %}
             }
 
             if (timer !== null) {

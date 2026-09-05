@@ -9,13 +9,21 @@ from .models import HumanExpertResponse
 from .services.data_loader import load_ag_news
 
 from .services.baseline import (
+    ensure_baseline_per_class_plot,
+    load_baseline_model,
     load_baseline_results,
     train_and_evaluate_baseline,
 )
 
 from .services.simulated_expert import (
+    ensure_expert_region_plot,
     evaluate_all_simulated_experts,
     load_expert_results,
+)
+
+from .services.advanced_analysis import (
+    advanced_analysis_is_stale,
+    load_advanced_analysis_results,
 )
 
 from .services.learning_to_defer import (
@@ -30,6 +38,7 @@ from .services.active_learning import (
     load_selected_active_learning_results,
     run_active_learning_experiment,
     run_selected_active_learning,
+    ensure_classifier_entropy_learning_curve,
 )
 
 from .services.human_expert import (
@@ -68,16 +77,38 @@ def baseline(request):
                 f"Baseline experiment failed: {exc}",
             )
 
-        return redirect("project3:baseline")
+        return redirect(
+            "project3:baseline"
+        )
 
     result = load_baseline_results()
+
+    baseline_plot = None
+
+    if result is not None:
+        try:
+            baseline_plot = (
+                ensure_baseline_per_class_plot(
+                    result
+                )
+            )
+        except Exception as exc:
+            messages.warning(
+                request,
+                f"Baseline results are available, "
+                f"but the performance figure "
+                f"could not be generated: {exc}",
+            )
 
     return render(
         request,
         "project3/baseline.html",
         {
             "result": result,
-            "results_available": result is not None,
+            "results_available": (
+                result is not None
+            ),
+            "baseline_plot": baseline_plot,
         },
     )
 
@@ -98,16 +129,41 @@ def expert(request):
                 f"Simulated expert evaluation failed: {exc}",
             )
 
-        return redirect("project3:expert")
+        return redirect(
+            "project3:expert"
+        )
 
     result = load_expert_results()
+
+    expert_region_plot = None
+
+    if result is not None:
+        try:
+            expert_region_plot = (
+                ensure_expert_region_plot(
+                    result
+                )
+            )
+
+        except Exception as exc:
+            messages.warning(
+                request,
+                "Expert results are available, "
+                "but the competence figure "
+                f"could not be generated: {exc}",
+            )
 
     return render(
         request,
         "project3/expert.html",
         {
             "result": result,
-            "results_available": result is not None,
+            "results_available": (
+                result is not None
+            ),
+            "expert_region_plot": (
+                expert_region_plot
+            ),
         },
     )
 
@@ -128,16 +184,77 @@ def learning_to_defer(request):
                 f"Learning-to-defer experiment failed: {exc}",
             )
 
-        return redirect("project3:learning_to_defer")
+        return redirect(
+            "project3:learning_to_defer"
+        )
 
+    # Load normal Learning-to-Defer results
     result = load_learning_to_defer_results()
+
+    # Load Advanced Analysis results because the
+    # coverage-accuracy graphs are generated there.
+    advanced_result = (
+        load_advanced_analysis_results()
+    )
+
+    coverage_figures = []
+    coverage_figures_stale = False
+
+    # Only try to use the figures if both result files exist.
+    if (
+        result is not None
+        and advanced_result is not None
+    ):
+
+        coverage_figures_stale = (
+            advanced_analysis_is_stale(
+                advanced_result
+            )
+        )
+
+        # Only show figures when the Advanced Analysis
+        # corresponds to the current experiment results.
+        if not coverage_figures_stale:
+
+            for expert_key, expert in result.get(
+                "experts",
+                {}
+            ).items():
+
+                advanced_expert = (
+                    advanced_result
+                    .get("experts", {})
+                    .get(expert_key, {})
+                )
+
+                figure = (
+                    advanced_expert.get(
+                        "coverage_accuracy_figure"
+                    )
+                )
+
+                if figure:
+                    coverage_figures.append(
+                        {
+                            "name": expert["name"],
+                            "figure": figure,
+                        }
+                    )
 
     return render(
         request,
         "project3/defer.html",
         {
             "result": result,
-            "results_available": result is not None,
+            "results_available": (
+                result is not None
+            ),
+            "coverage_figures": (
+                coverage_figures
+            ),
+            "coverage_figures_stale": (
+                coverage_figures_stale
+            ),
         },
     )
 
@@ -200,7 +317,9 @@ def active_learning(request):
             selected_budget = int(
                 selected_budget_raw
             )
+
         except ValueError:
+
             selected_budget = (
                 QUERY_BUDGETS[-1]
             )
@@ -211,12 +330,8 @@ def active_learning(request):
 
             results = (
                 run_selected_active_learning(
-                    expert_key=(
-                        selected_expert
-                    ),
-                    query_budget=(
-                        selected_budget
-                    ),
+                    expert_key=selected_expert,
+                    query_budget=selected_budget,
                 )
             )
 
@@ -244,6 +359,29 @@ def active_learning(request):
         in EXPERT_PROFILES.items()
     ]
 
+    # ---------------------------------------------------------
+    # Classifier Entropy learning curve
+    # ---------------------------------------------------------
+
+    active_learning_plot = None
+
+    if results is not None:
+
+        try:
+
+            active_learning_plot = (
+                ensure_classifier_entropy_learning_curve(
+                    results
+                )
+            )
+
+        except Exception as exc:
+
+            messages.warning(
+                request,
+                f"Could not generate Active Learning figure: {exc}",
+            )
+
     return render(
         request,
         "project3/active_learning.html",
@@ -263,6 +401,9 @@ def active_learning(request):
             ),
             "selected_budget": (
                 selected_budget
+            ),
+            "active_learning_plot": (
+                active_learning_plot
             ),
         },
     )

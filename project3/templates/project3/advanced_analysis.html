@@ -498,60 +498,7 @@ Advanced Human-AI Analysis
         </section>
 
 
-        <!-- ========================================================
-             COVERAGE-ACCURACY TRADE-OFF
-        ========================================================= -->
-
-        <section class="p3-card">
-
-            <h2>
-                Coverage-Accuracy Trade-off
-            </h2>
-
-            <p>
-                These curves show how team accuracy changes as more
-                predictions are deferred to the expert. This exposes the
-                trade-off between predictive performance and expert workload.
-            </p>
-
-
-            <div class="p3-expert-comparison-grid">
-
-                {% for expert_key, expert in results.experts.items %}
-
-                    <div class="p3-expert-analysis-card">
-
-                        <h3>
-                            {{ expert.name }}
-                        </h3>
-
-
-                        {% if expert.coverage_accuracy_figure %}
-
-                            <div class="p3-comparison-plot">
-
-                                <img
-                                    src="{% static expert.coverage_accuracy_figure %}"
-                                    alt="Coverage-accuracy trade-off for {{ expert.name }}"
-                                >
-
-                            </div>
-
-                        {% else %}
-
-                            <div class="p3-warning-box">
-                                Coverage-accuracy figure is unavailable.
-                            </div>
-
-                        {% endif %}
-
-                    </div>
-
-                {% endfor %}
-
-            </div>
-
-        </section>
+    
 
 
         <!-- ========================================================
@@ -872,78 +819,7 @@ Advanced Human-AI Analysis
         </section>
 
 
-        <!-- ========================================================
-             INTERPRETATION SUMMARY
-        ========================================================= -->
-
-        <section class="p3-card">
-
-            <h2>
-                Interpretation Summary
-            </h2>
-
-
-            <div class="p3-analysis-summary-grid">
-
-                <div class="p3-analysis-summary-card">
-                    <strong>Complementarity</strong>
-                    <p>
-                        Expert-only correct cases identify examples where
-                        human involvement can potentially correct AI errors.
-                    </p>
-                </div>
-
-
-                <div class="p3-analysis-summary-card">
-                    <strong>Deferral Quality</strong>
-                    <p>
-                        Collaboration headroom shows whether the current
-                        deferral strategy captures the available benefit
-                        from combining AI and expert decisions.
-                    </p>
-                </div>
-
-
-                <div class="p3-analysis-summary-card">
-                    <strong>Human Workload</strong>
-                    <p>
-                        Coverage-accuracy curves show how performance changes
-                        as the amount of expert involvement increases.
-                    </p>
-                </div>
-
-
-                <div class="p3-analysis-summary-card">
-                    <strong>Confidence Reliability</strong>
-                    <p>
-                        Calibration evaluates whether classifier confidence
-                        is reliable enough to support uncertainty-based
-                        deferral decisions.
-                    </p>
-                </div>
-
-
-                <div class="p3-analysis-summary-card">
-                    <strong>Query Efficiency</strong>
-                    <p>
-                        Active-learning curves evaluate how quickly useful
-                        information about expert competence can be discovered.
-                    </p>
-                </div>
-
-
-                <div class="p3-analysis-summary-card">
-                    <strong>Robustness</strong>
-                    <p>
-                        Stability and ablation experiments test whether the
-                        observed conclusions depend strongly on randomness
-                        or specific model features.
-                    </p>
-                </div>
-
-            </div>
-
-        </section>
+    
 
     {% endif %}
 

@@ -1,4 +1,5 @@
 {% extends "project3/base.html" %}
+{% load static %}
 
 {% block title %}
     Simulated Experts
@@ -6,36 +7,55 @@
 
 {% block content %}
 
+
+<!-- =========================================================
+     PAGE INTRODUCTION
+========================================================= -->
 <section class="p3-card">
+
     <h2>Simulated Experts</h2>
 
     <p>
         Two imperfect simulated experts represent different areas of
         expertise on AG News.
     </p>
+
 </section>
 
 
+<!-- =========================================================
+     EXPERT EVALUATION
+========================================================= -->
 <section class="p3-card">
+
     <div class="p3-expert-action-row">
+
         <div>
+
             <h2>Expert Evaluation</h2>
 
             {% if results_available %}
+
                 <p class="p3-muted">
                     Saved evaluation results are available for both experts.
                 </p>
+
             {% else %}
+
                 <p class="p3-muted">
                     Evaluate both experts on the AG News test set.
                 </p>
+
             {% endif %}
+
         </div>
+
 
         <form
             id="expert-evaluation-form"
             method="post"
         >
+
             {% csrf_token %}
 
             <button
@@ -43,78 +63,168 @@
                 class="p3-btn"
                 type="submit"
             >
+
                 {% if results_available %}
                     Re-evaluate Experts
                 {% else %}
                     Evaluate Experts
                 {% endif %}
+
             </button>
+
         </form>
+
     </div>
+
 </section>
 
 
 {% if results_available %}
 
+
+<!-- =========================================================
+     OVERALL COMPARISON
+========================================================= -->
 <section class="p3-card">
+
     <h2>Overall Comparison</h2>
 
     <div class="p3-table-scroll">
+
         <table class="p3-table">
+
             <thead>
+
                 <tr>
                     <th>Expert</th>
                     <th>Accuracy</th>
                     <th>Macro F1</th>
                 </tr>
+
             </thead>
 
+
             <tbody>
+
                 {% for expert_key, expert in result.experts.items %}
-                <tr class="{% if expert.is_best %}p3-row-best{% endif %}">
+
+                <tr
+                    class="{% if expert.is_best %}p3-row-best{% endif %}"
+                >
+
                     <td>
+
                         {{ expert.name }}
 
                         {% if expert.is_best %}
+
                             <span class="p3-best-badge">
                                 Best overall
                             </span>
+
                         {% endif %}
+
                     </td>
 
-                    <td>{{ expert.accuracy|floatformat:4 }}</td>
-                    <td>{{ expert.macro_f1|floatformat:4 }}</td>
+                    <td>
+                        {{ expert.accuracy|floatformat:4 }}
+                    </td>
+
+                    <td>
+                        {{ expert.macro_f1|floatformat:4 }}
+                    </td>
+
                 </tr>
+
                 {% endfor %}
+
             </tbody>
+
         </table>
+
     </div>
+
 </section>
 
+
+<!-- =========================================================
+     COMPETENCE FIGURE
+========================================================= -->
+<section class="p3-card">
+
+    <h2>Competence by Input Region</h2>
+
+    <p class="p3-muted">
+        The simulated experts are intentionally strong in selected
+        topic regions and substantially weaker on general articles.
+    </p>
+
+
+    {% if expert_region_plot %}
+
+        <div class="p3-result-figure">
+
+            <img
+                src="{% static expert_region_plot %}"
+                alt="Observed accuracy of both simulated experts across their competence regions"
+                class="p3-result-figure-image"
+            >
+
+            <p class="p3-figure-caption">
+                Observed test accuracy in each specialist region and
+                the general region for both simulated experts.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+</section>
+
+
+<!-- =========================================================
+     INDIVIDUAL EXPERT RESULTS
+========================================================= -->
 
 {% for expert_key, expert in result.experts.items %}
 
 <section class="p3-card">
 
+
+    <!-- Expert Heading -->
     <div class="p3-expert-heading-row">
+
         <div>
-            <h2>{{ expert.name }}</h2>
+
+            <h2>
+                {{ expert.name }}
+            </h2>
+
             <p class="p3-muted">
                 {{ expert.description }}
             </p>
+
         </div>
 
+
         {% if expert.is_best %}
-            <span class="p3-best-badge p3-best-badge-large">
+
+            <span
+                class="p3-best-badge p3-best-badge-large"
+            >
                 Best overall expert
             </span>
+
         {% endif %}
+
     </div>
 
 
+    <!-- Overall Expert Metrics -->
     <div class="p3-stat-row">
 
         <div class="p3-stat-box">
+
             <span class="p3-stat-number">
                 {{ expert.accuracy|floatformat:4 }}
             </span>
@@ -122,9 +232,12 @@
             <span class="p3-stat-label">
                 Test Accuracy
             </span>
+
         </div>
 
+
         <div class="p3-stat-box">
+
             <span class="p3-stat-number">
                 {{ expert.macro_f1|floatformat:4 }}
             </span>
@@ -132,9 +245,12 @@
             <span class="p3-stat-label">
                 Macro F1
             </span>
+
         </div>
 
+
         <div class="p3-stat-box">
+
             <span class="p3-stat-number">
                 {{ expert.test_samples }}
             </span>
@@ -142,6 +258,7 @@
             <span class="p3-stat-label">
                 Test Articles
             </span>
+
         </div>
 
     </div>
@@ -150,35 +267,68 @@
     <hr class="p3-divider">
 
 
+    <!-- =====================================================
+         STRENGTHS AND WEAKNESSES
+    ====================================================== -->
     <h3 class="p3-sub-heading">
         Strengths and Weaknesses
     </h3>
 
+
     <div class="p3-two-col">
 
+
         <div class="p3-expert-insight-card">
-            <h4>Strengths</h4>
+
+            <h4>
+                Strengths
+            </h4>
 
             <ul class="p3-feature-list">
+
                 {% for strength in expert.strengths %}
-                    <li>{{ strength }}</li>
+
+                    <li>
+                        {{ strength }}
+                    </li>
+
                 {% empty %}
-                    <li>No strength summary is available.</li>
+
+                    <li>
+                        No strength summary is available.
+                    </li>
+
                 {% endfor %}
+
             </ul>
+
         </div>
 
 
         <div class="p3-expert-insight-card">
-            <h4>Weaknesses</h4>
+
+            <h4>
+                Weaknesses
+            </h4>
 
             <ul class="p3-feature-list">
+
                 {% for weakness in expert.weaknesses %}
-                    <li>{{ weakness }}</li>
+
+                    <li>
+                        {{ weakness }}
+                    </li>
+
                 {% empty %}
-                    <li>No weakness summary is available.</li>
+
+                    <li>
+                        No weakness summary is available.
+                    </li>
+
                 {% endfor %}
+
             </ul>
+
         </div>
 
     </div>
@@ -187,13 +337,19 @@
     <hr class="p3-divider">
 
 
+    <!-- =====================================================
+         REGION DETAILS
+    ====================================================== -->
     <h3 class="p3-sub-heading">
-        Competence by Input Region
+        Region Details
     </h3>
 
     <p class="p3-muted">
-        Observed accuracy shows how reliably the expert performs in each region.
+        Observed accuracy measures the expert's actual performance,
+        while coverage shows how much of the test set belongs to
+        each region.
     </p>
+
 
     <div class="p3-region-grid">
 
@@ -201,30 +357,42 @@
 
         <article class="p3-region-card">
 
+
             <div class="p3-region-card-header">
-                <strong>{{ region.display_name }}</strong>
+
+                <strong>
+                    {{ region.display_name }}
+                </strong>
 
                 <span>
                     {{ region.samples }} articles
                 </span>
+
             </div>
 
 
             <div class="p3-region-metric">
 
                 <div class="p3-region-label-row">
-                    <span>Observed accuracy</span>
+
+                    <span>
+                        Observed accuracy
+                    </span>
 
                     <strong>
                         {{ region.observed_percent|floatformat:1 }}%
                     </strong>
+
                 </div>
 
+
                 <div class="p3-bar-track">
+
                     <div
                         class="p3-bar-fill p3-bar-observed"
                         style="width: {{ region.observed_percent }}%;"
                     ></div>
+
                 </div>
 
             </div>
@@ -258,6 +426,9 @@
     <hr class="p3-divider">
 
 
+    <!-- =====================================================
+         CONFUSION MATRIX
+    ====================================================== -->
     <h3 class="p3-sub-heading">
         Confusion Matrix
     </h3>
@@ -266,34 +437,53 @@
         Rows are true classes; columns are expert predictions.
     </p>
 
+
     <div class="p3-table-scroll">
 
         <table class="p3-table p3-confusion-table">
 
             <thead>
+
                 <tr>
-                    <th>True \ Predicted</th>
+
+                    <th>
+                        True \ Predicted
+                    </th>
 
                     {% for class_name in expert.class_names %}
-                        <th>{{ class_name }}</th>
+
+                        <th>
+                            {{ class_name }}
+                        </th>
+
                     {% endfor %}
+
                 </tr>
+
             </thead>
+
 
             <tbody>
 
                 {% for row in expert.confusion_matrix_rows %}
 
                 <tr>
-                    <th>{{ row.true_class }}</th>
+
+                    <th>
+                        {{ row.true_class }}
+                    </th>
+
 
                     {% for cell in row.cells %}
+
                         <td
                             class="{% if cell.predicted_class == row.true_class %}p3-confusion-correct{% endif %}"
                         >
                             {{ cell.count }}
                         </td>
+
                     {% endfor %}
+
                 </tr>
 
                 {% endfor %}
@@ -305,17 +495,22 @@
     </div>
 
 
+    <!-- =====================================================
+         DETAILED CLASS METRICS
+    ====================================================== -->
     <details class="p3-details">
 
         <summary>
             View detailed class metrics
         </summary>
 
+
         <div class="p3-table-scroll">
 
             <table class="p3-table">
 
                 <thead>
+
                     <tr>
                         <th>Class</th>
                         <th>Precision</th>
@@ -323,7 +518,9 @@
                         <th>F1-score</th>
                         <th>Support</th>
                     </tr>
+
                 </thead>
+
 
                 <tbody>
 
@@ -332,11 +529,27 @@
                         {% if class_name == "World" or class_name == "Sports" or class_name == "Business" or class_name == "Sci/Tech" %}
 
                         <tr>
-                            <td>{{ class_name }}</td>
-                            <td>{{ metrics.precision|floatformat:4 }}</td>
-                            <td>{{ metrics.recall|floatformat:4 }}</td>
-                            <td>{{ metrics.f1_score|floatformat:4 }}</td>
-                            <td>{{ metrics.support|floatformat:0 }}</td>
+
+                            <td>
+                                {{ class_name }}
+                            </td>
+
+                            <td>
+                                {{ metrics.precision|floatformat:4 }}
+                            </td>
+
+                            <td>
+                                {{ metrics.recall|floatformat:4 }}
+                            </td>
+
+                            <td>
+                                {{ metrics.f1_score|floatformat:4 }}
+                            </td>
+
+                            <td>
+                                {{ metrics.support|floatformat:0 }}
+                            </td>
+
                         </tr>
 
                         {% endif %}
@@ -358,6 +571,9 @@
 {% endif %}
 
 
+<!-- =========================================================
+     LOADING OVERLAY
+========================================================= -->
 <div
     id="expert-loading-overlay"
     class="p3-training-overlay"
@@ -365,6 +581,7 @@
     aria-live="polite"
     aria-hidden="true"
 >
+
     <div class="p3-training-dialog">
 
         <div
@@ -372,141 +589,223 @@
             aria-hidden="true"
         ></div>
 
+
         <h2>
             Evaluating Simulated Experts
         </h2>
+
 
         <p id="expert-status-text">
             Preparing both expert profiles...
         </p>
 
+
         <div
             class="p3-progress-track"
             aria-label="Expert evaluation in progress"
         >
+
             <div class="p3-progress-bar"></div>
+
         </div>
 
     </div>
+
 </div>
 
 
+<!-- =========================================================
+     PAGE-SPECIFIC FIGURE STYLING
+========================================================= -->
+<style>
+
+    .p3-result-figure {
+        margin: 22px 0 8px;
+        padding: 18px;
+
+        background: #ffffff;
+
+        border: 1px solid #dbe5ef;
+        border-radius: 10px;
+
+        text-align: center;
+    }
+
+
+    .p3-result-figure-image {
+        display: block;
+
+        width: 100%;
+        max-width: 1100px;
+        height: auto;
+
+        margin: 0 auto;
+    }
+
+
+    .p3-figure-caption {
+        max-width: 800px;
+
+        margin: 12px auto 0;
+
+        color: #6b7f92;
+
+        font-size: 0.82rem;
+        line-height: 1.5;
+
+        text-align: center;
+    }
+
+</style>
+
+
+<!-- =========================================================
+     EVALUATION LOADER SCRIPT
+========================================================= -->
 <script>
-document.addEventListener("DOMContentLoaded", function () {
 
-    const form = document.getElementById(
-        "expert-evaluation-form"
-    );
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
 
-    const button = document.getElementById(
-        "expert-evaluation-button"
-    );
-
-    const overlay = document.getElementById(
-        "expert-loading-overlay"
-    );
-
-    const statusText = document.getElementById(
-        "expert-status-text"
-    );
-
-    let messageTimer = null;
-
-
-    function hideOverlay() {
-
-        if (overlay) {
-            overlay.classList.remove(
-                "is-visible"
+        const form =
+            document.getElementById(
+                "expert-evaluation-form"
             );
 
-            overlay.setAttribute(
-                "aria-hidden",
-                "true"
-            );
-        }
-
-        if (button) {
-            button.disabled = false;
-        }
-
-        if (messageTimer !== null) {
-            window.clearInterval(
-                messageTimer
+        const button =
+            document.getElementById(
+                "expert-evaluation-button"
             );
 
-            messageTimer = null;
+        const overlay =
+            document.getElementById(
+                "expert-loading-overlay"
+            );
+
+        const statusText =
+            document.getElementById(
+                "expert-status-text"
+            );
+
+        let messageTimer = null;
+
+
+        function hideOverlay() {
+
+            if (overlay) {
+
+                overlay.classList.remove(
+                    "is-visible"
+                );
+
+                overlay.setAttribute(
+                    "aria-hidden",
+                    "true"
+                );
+            }
+
+
+            if (button) {
+                button.disabled = false;
+            }
+
+
+            if (messageTimer !== null) {
+
+                window.clearInterval(
+                    messageTimer
+                );
+
+                messageTimer = null;
+            }
         }
+
+
+        hideOverlay();
+
+
+        if (
+            !form
+            || !button
+            || !overlay
+            || !statusText
+        ) {
+            return;
+        }
+
+
+        form.addEventListener(
+            "submit",
+            function () {
+
+                button.disabled = true;
+
+                button.textContent =
+                    "Evaluating...";
+
+
+                overlay.classList.add(
+                    "is-visible"
+                );
+
+
+                overlay.setAttribute(
+                    "aria-hidden",
+                    "false"
+                );
+
+
+                const statusMessages = [
+
+                    "Preparing both expert profiles...",
+
+                    "Generating expert predictions...",
+
+                    "Measuring competence across input regions...",
+
+                    "Calculating evaluation metrics...",
+
+                    "Saving the comparison results...",
+
+                    "Generating the competence figure..."
+
+                ];
+
+
+                let messageIndex = 0;
+
+
+                messageTimer =
+                    window.setInterval(
+                        function () {
+
+                            messageIndex = (
+                                messageIndex + 1
+                            ) % statusMessages.length;
+
+
+                            statusText.textContent =
+                                statusMessages[
+                                    messageIndex
+                                ];
+
+                        },
+                        3000
+                    );
+
+            }
+        );
+
+
+        window.addEventListener(
+            "pageshow",
+            hideOverlay
+        );
 
     }
+);
 
-
-    hideOverlay();
-
-
-    if (
-        !form
-        || !button
-        || !overlay
-        || !statusText
-    ) {
-        return;
-    }
-
-
-    form.addEventListener(
-        "submit",
-        function () {
-
-            button.disabled = true;
-            button.textContent =
-                "Evaluating...";
-
-            overlay.classList.add(
-                "is-visible"
-            );
-
-            overlay.setAttribute(
-                "aria-hidden",
-                "false"
-            );
-
-            const statusMessages = [
-                "Preparing both expert profiles...",
-                "Generating expert predictions...",
-                "Measuring competence across input regions...",
-                "Calculating evaluation metrics...",
-                "Saving the comparison results..."
-            ];
-
-            let messageIndex = 0;
-
-            messageTimer = window.setInterval(
-                function () {
-
-                    messageIndex = (
-                        messageIndex + 1
-                    ) % statusMessages.length;
-
-                    statusText.textContent =
-                        statusMessages[
-                            messageIndex
-                        ];
-
-                },
-                3000
-            );
-
-        }
-    );
-
-
-    window.addEventListener(
-        "pageshow",
-        hideOverlay
-    );
-
-});
 </script>
 
 {% endblock %}

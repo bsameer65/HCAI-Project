@@ -1,5 +1,5 @@
 {% extends "project3/base.html" %}
-
+{% load static %}
 {% block title %}
     Project 3 | Active Learning for Learning-to-Defer
 {% endblock %}
@@ -17,17 +17,25 @@
 
     <p>
         Instead of always making an autonomous prediction, the system can
-        defer difficult or appropriate decisions to an expert. Active
-        learning is then used to discover the expert's competence using a
-        limited number of expert queries.
+        defer selected decisions to an expert. Active learning is then used
+        to learn about the expert's competence using a limited number of
+        expert queries.
     </p>
-
+    
     <div class="p3-info-box">
-        The central question is not only whether the classifier or expert is
-        accurate, but whether the system can learn who should make each
-        decision.
+        The main goal is to learn when the AI should rely on its own prediction
+        and when asking an expert can improve the final decision.
     </div>
+
+    <a
+        href="{% static 'project3/reports/Project3-report.pdf' %}"
+        class="p3-btn"
+        download
+    >
+        Download Project Report
+    </a>
 </section>
+
 
 
 <section class="p3-card">
@@ -146,21 +154,6 @@
 </section>
 
 
-<section class="p3-card">
-    <h2>Project Report</h2>
 
-    <p>
-        The final report will explain the experimental design, motivate the
-        selected methods, and present a detailed analysis of the results.
-    </p>
-
-    <button
-        class="p3-btn"
-        type="button"
-        disabled
-    >
-        Report available after completion
-    </button>
-</section>
 
 {% endblock %}
