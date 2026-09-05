@@ -1,0 +1,327 @@
+{% extends "project3/base.html" %}
+
+{% block title %}
+Compare Active Learning Strategies
+{% endblock %}
+
+{% block content %}
+
+<div class="p3-page">
+
+
+    <section class="p3-card">
+
+        <div class="p3-al-header-row">
+
+            <div>
+
+                <h2>
+                    Compare Active Learning Strategies
+                </h2>
+
+                <p>
+                    Benchmark all query strategies under the same experimental setup.
+                    Random Sampling acts as the baseline for judging whether informed
+                    querying provides a benefit.
+                </p>
+
+                <div class="p3-al-back-row">
+                    <a
+                        href="{% url 'project3:active_learning' %}"
+                        class="p3-secondary-btn"
+                    >
+                        Back to Active Learning
+                    </a>
+                </div>
+
+        </div>
+
+    </section>
+
+
+    <section class="p3-card">
+
+        <h2>
+            Strategy Comparison
+        </h2>
+
+
+        <div class="p3-al-compare-toolbar">
+
+
+            {% if results_available %}
+
+                <form method="get">
+
+                    <label for="compare-expert">
+                        Expert
+                    </label>
+
+                    <select
+                        id="compare-expert"
+                        name="expert"
+                        onchange="this.form.submit()"
+                    >
+
+                        {% for expert in expert_options %}
+
+                            <option
+                                value="{{ expert.key }}"
+                                {% if expert.key == selected_expert %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ expert.name }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </form>
+
+            {% endif %}
+
+
+            <form
+                method="post"
+                id="comparison-form"
+            >
+
+                {% csrf_token %}
+
+                <input
+                    type="hidden"
+                    name="expert"
+                    value="{{ selected_expert }}"
+                >
+
+                <button
+                    type="submit"
+                    id="comparison-button"
+                    class="p3-primary-btn"
+                >
+
+                    {% if results_available %}
+                        Re-run Comparison
+                    {% else %}
+                        Run Comparison
+                    {% endif %}
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </section>
+
+
+    {% if selected_expert_result %}
+
+        <section class="p3-card">
+
+            <h2>
+                {{ selected_expert_result.name }}
+            </h2>
+
+            <p>
+                {{ selected_expert_result.description }}
+            </p>
+
+
+            <div class="p3-al-best-box">
+
+                <span>
+                    Best strategy by final team accuracy
+                </span>
+
+                <strong>
+                    {{ selected_expert_result.best_strategy_name }}
+                </strong>
+
+            </div>
+
+
+            <div class="p3-table-wrap">
+
+                <table class="p3-table p3-al-table">
+
+                    <thead>
+
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Team Accuracy</th>
+                            <th>Competence AUROC</th>
+                            <th>Competence F1</th>
+                            <th>Deferral Rate</th>
+                            <th>Queries</th>
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for strategy_key, strategy in selected_expert_result.strategies.items %}
+
+                            <tr
+                                {% if strategy.is_best %}
+                                    class="p3-al-best-row"
+                                {% endif %}
+                            >
+
+                                <td>
+
+                                    <strong>
+                                        {{ strategy.name }}
+                                    </strong>
+
+                                    {% if strategy.is_best %}
+                                        <span class="p3-al-best-badge">
+                                            Best
+                                        </span>
+                                    {% endif %}
+
+                                </td>
+
+
+                                <td>
+                                    {{ strategy.final.team_accuracy|floatformat:4 }}
+                                </td>
+
+
+                                <td>
+
+                                    {% if strategy.final.competence_auroc != None %}
+                                        {{ strategy.final.competence_auroc|floatformat:4 }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+
+                                </td>
+
+
+                                <td>
+                                    {{ strategy.final.competence_f1|floatformat:4 }}
+                                </td>
+
+
+                                <td>
+                                    {% widthratio strategy.final.deferral_rate 1 100 %}%
+                                </td>
+
+
+                                <td>
+                                    {{ strategy.final.query_budget }}
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+        <section class="p3-card">
+
+            <h2>
+                Interpretation
+            </h2>
+
+            <div class="p3-info-box">
+
+                A strategy should not be judged from competence AUROC alone.
+                The primary collaboration outcome is team accuracy, while
+                deferral rate indicates the expert workload required to
+                obtain that performance. Random Sampling provides the
+                reference baseline for evaluating whether informed querying
+                is actually useful.
+
+            </div>
+
+        </section>
+
+    {% endif %}
+
+
+    <div
+        id="comparison-overlay"
+        class="p3-training-overlay"
+        hidden
+    >
+
+        <div class="p3-training-overlay-card">
+
+            <div class="p3-spinner"></div>
+
+            <h3>
+                Comparing Strategies
+            </h3>
+
+            <p>
+                Running all active-learning strategies under the same
+                experimental conditions.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        const form = document.getElementById(
+            "comparison-form"
+        );
+
+        const overlay = document.getElementById(
+            "comparison-overlay"
+        );
+
+        const button = document.getElementById(
+            "comparison-button"
+        );
+
+
+        if (!form) {
+            return;
+        }
+
+
+        form.addEventListener(
+            "submit",
+            function () {
+
+                if (overlay) {
+                    overlay.hidden = false;
+                }
+
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = (
+                        "Running Comparison..."
+                    );
+                }
+
+            }
+        );
+
+    }
+);
+
+</script>
+
+{% endblock %}

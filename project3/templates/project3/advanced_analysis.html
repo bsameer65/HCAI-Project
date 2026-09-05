@@ -1,0 +1,908 @@
+{% extends "project3/base.html" %}
+{% load static %}
+
+{% block title %}
+Advanced Human-AI Analysis
+{% endblock %}
+
+{% block content %}
+
+<div class="p3-page">
+
+    <!-- ============================================================
+        PAGE INTRODUCTION
+    ============================================================ -->
+
+    <section class="p3-card p3-analysis-intro">
+
+        <div class="p3-analysis-intro-header">
+
+            <h1>
+                Advanced Human-AI Analysis
+            </h1>
+
+        </div>
+
+        <p class="p3-analysis-intro-text">
+            Explore how the classifier and simulated experts collaborate beyond
+            overall accuracy. This page evaluates confidence reliability,
+            Human-AI complementarity, deferral quality, expert workload,
+            active-learning efficiency, and robustness.
+        </p>
+
+
+        <div class="p3-analysis-method-note">
+
+            <div class="p3-analysis-method-icon">
+                i
+            </div>
+
+            <div class="p3-analysis-method-content">
+
+                <strong>
+                    Evaluation methodology
+                </strong>
+
+                <p>
+                    Existing experiment results are reused wherever possible.
+                    The ablation study additionally trains a development
+                    classifier and lightweight deferral models using the same
+                    train-validation-test methodology.
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ============================================================
+         ANALYSIS CONTROL
+    ============================================================ -->
+
+    <section class="p3-card p3-analysis-status-card">
+
+        <div class="p3-analysis-status-header">
+
+            <div>
+
+                <h2>
+                    Analysis Results
+                </h2>
+
+                <p>
+                    Generate or refresh the additional evaluation using the
+                    latest saved experiment results.
+                </p>
+
+            </div>
+
+
+            {% if prerequisites_ready %}
+
+                <form
+                    method="post"
+                    id="advanced-analysis-form"
+                    class="p3-analysis-run-form"
+                >
+
+                    {% csrf_token %}
+
+                    <button
+                        type="submit"
+                        id="advanced-analysis-button"
+                        class="p3-analysis-run-button"
+                    >
+
+                        {% if results_stale %}
+                            Update Analysis
+                        {% elif results_available %}
+                            Re-run Analysis
+                        {% else %}
+                            Run Analysis
+                        {% endif %}
+
+                    </button>
+
+                </form>
+
+            {% endif %}
+
+        </div>
+
+
+        {% if not prerequisites_ready %}
+
+            <div class="p3-warning-box">
+
+                <strong>
+                    Required experiment results are missing.
+                </strong>
+
+                <p>
+                    Complete the following experiments before running
+                    Advanced Analysis:
+                </p>
+
+                <ul>
+
+                    {% for prerequisite in missing_prerequisites %}
+                        <li>
+                            {{ prerequisite }}
+                        </li>
+                    {% endfor %}
+
+                </ul>
+
+            </div>
+
+
+            <div class="p3-action-row">
+
+                <a
+                    href="{% url 'project3:baseline' %}"
+                    class="p3-secondary-btn"
+                >
+                    Baseline
+                </a>
+
+                <a
+                    href="{% url 'project3:expert' %}"
+                    class="p3-secondary-btn"
+                >
+                    Simulated Experts
+                </a>
+
+                <a
+                    href="{% url 'project3:learning_to_defer' %}"
+                    class="p3-secondary-btn"
+                >
+                    Learning to Defer
+                </a>
+
+                <a
+                    href="{% url 'project3:active_learning' %}"
+                    class="p3-secondary-btn"
+                >
+                    Active Learning
+                </a>
+
+            </div>
+
+        {% elif results_stale %}
+
+            <div class="p3-analysis-status-message p3-analysis-status-warning">
+
+                <span class="p3-analysis-status-dot"></span>
+
+                <div>
+
+                    <strong>
+                        Results need updating
+                    </strong>
+
+                    <p>
+                        One or more source experiments have changed since
+                        this analysis was generated.
+                    </p>
+
+                </div>
+
+            </div>
+
+        {% elif results_available %}
+
+            <div class="p3-analysis-status-message p3-analysis-status-ready">
+
+                <span class="p3-analysis-status-dot"></span>
+
+                <div>
+
+                    <strong>
+                        Advanced Analysis is ready
+                    </strong>
+
+                    <p>
+                        All derived metrics, figures, stability results,
+                        and ablation results are available.
+                    </p>
+
+                </div>
+
+            </div>
+
+        {% else %}
+
+            <div class="p3-analysis-status-message">
+
+                <span class="p3-analysis-status-dot"></span>
+
+                <div>
+
+                    <strong>
+                        Ready to run
+                    </strong>
+
+                    <p>
+                        All prerequisite experiments are available.
+                    </p>
+
+                </div>
+
+            </div>
+
+        {% endif %}
+
+    </section>
+
+
+    {% if results_available %}
+
+        <!-- ========================================================
+             CLASSIFIER CONFIDENCE CALIBRATION
+        ========================================================= -->
+
+        <section class="p3-card">
+
+            <h2>
+                Classifier Confidence Calibration
+            </h2>
+
+            <p>
+                Calibration measures whether the classifier's confidence reflects
+                how often its predictions are actually correct. A reliable
+                confidence estimate is particularly important when confidence is
+                used to decide whether a prediction should be deferred.
+            </p>
+
+
+            <div class="p3-calibration-grid">
+
+                <div class="p3-calibration-summary">
+
+                    <div class="p3-calibration-score-card">
+
+                        <span class="p3-calibration-score-label">
+                            Expected Calibration Error
+                        </span>
+
+                        <strong class="p3-calibration-score">
+                            {{ results.classifier.calibration.ece|floatformat:4 }}
+                        </strong>
+
+                        <span class="p3-calibration-score-hint">
+                            Lower is better
+                        </span>
+
+                    </div>
+
+
+                    <div class="p3-calibration-explanation">
+
+                        <strong>
+                            How to read the diagram
+                        </strong>
+
+                        <p>
+                            The dashed diagonal represents perfect calibration.
+                            Points close to this line indicate that predicted
+                            confidence closely matches observed accuracy.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                {% if results.classifier.calibration_figure %}
+
+                    <div class="p3-calibration-plot">
+
+                        <img
+                            src="{% static results.classifier.calibration_figure %}"
+                            alt="Classifier confidence calibration"
+                        >
+
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        </section>
+
+
+        <!-- ========================================================
+             HUMAN-AI COMPLEMENTARITY
+        ========================================================= -->
+
+        <section class="p3-card">
+
+            <h2>
+                Human-AI Complementarity
+            </h2>
+
+            <p>
+                Complementarity measures whether the classifier and expert
+                succeed on different examples. Expert-only correct examples
+                are especially important because they represent cases where
+                involving the expert could improve the final system.
+            </p>
+
+
+            <div class="p3-expert-comparison-grid">
+
+                {% for expert_key, expert in results.experts.items %}
+
+                    <div class="p3-expert-analysis-card">
+
+                        <h3>
+                            {{ expert.name }}
+                        </h3>
+
+
+                        <div class="p3-mini-stat-grid">
+
+                            <div class="p3-mini-stat">
+                                <span>Both Correct</span>
+                                <strong>
+                                    {{ expert.complementarity.both_correct_percent|floatformat:1 }}%
+                                </strong>
+                            </div>
+
+                            <div class="p3-mini-stat">
+                                <span>AI Only Correct</span>
+                                <strong>
+                                    {{ expert.complementarity.ai_only_correct_percent|floatformat:1 }}%
+                                </strong>
+                            </div>
+
+                            <div class="p3-mini-stat">
+                                <span>Expert Only Correct</span>
+                                <strong>
+                                    {{ expert.complementarity.expert_only_correct_percent|floatformat:1 }}%
+                                </strong>
+                            </div>
+
+                            <div class="p3-mini-stat">
+                                <span>Both Wrong</span>
+                                <strong>
+                                    {{ expert.complementarity.both_wrong_percent|floatformat:1 }}%
+                                </strong>
+                            </div>
+
+                        </div>
+
+
+                        {% if expert.complementarity_figure %}
+
+                            <div class="p3-comparison-plot">
+
+                                <img
+                                    src="{% static expert.complementarity_figure %}"
+                                    alt="Human-AI complementarity for {{ expert.name }}"
+                                >
+
+                            </div>
+
+                        {% endif %}
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </section>
+
+
+        <!-- ========================================================
+             COLLABORATION HEADROOM
+        ========================================================= -->
+
+        <section class="p3-card">
+
+            <h2>
+                Collaboration Headroom
+            </h2>
+
+            <p>
+                Oracle accuracy represents the theoretical upper bound
+                achievable if the system always knew whether the classifier
+                or expert would be correct. Comparing the current team
+                against this oracle shows how much collaboration potential
+                remains unused.
+            </p>
+
+
+            <div class="p3-expert-comparison-grid">
+
+                {% for expert_key, expert in results.experts.items %}
+
+                    <div class="p3-expert-analysis-card">
+
+                        <h3>
+                            {{ expert.name }}
+                        </h3>
+
+
+                        <div class="p3-mini-stat-grid">
+
+                            <div class="p3-mini-stat">
+                                <span>AI Alone</span>
+                                <strong>
+                                    {% widthratio expert.collaboration_headroom.ai_accuracy 1 100 %}%
+                                </strong>
+                            </div>
+
+                            <div class="p3-mini-stat">
+                                <span>Expert Alone</span>
+                                <strong>
+                                    {% widthratio expert.collaboration_headroom.expert_accuracy 1 100 %}%
+                                </strong>
+                            </div>
+
+                            <div class="p3-mini-stat">
+                                <span>Best Team</span>
+                                <strong>
+                                    {% widthratio expert.collaboration_headroom.team_accuracy 1 100 %}%
+                                </strong>
+                            </div>
+
+                            <div class="p3-mini-stat">
+                                <span>Oracle</span>
+                                <strong>
+                                    {% widthratio expert.collaboration_headroom.oracle_accuracy 1 100 %}%
+                                </strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="p3-compact-highlight">
+
+                            <strong>
+                                {{ expert.collaboration_headroom.gain_capture_percent|floatformat:1 }}%
+                            </strong>
+
+                            <span>
+                                collaboration gain captured
+                            </span>
+
+                        </div>
+
+
+                        <p class="p3-card-note">
+
+                            Best deferral strategy:
+
+                            <strong>
+
+                                {% if expert.collaboration_headroom.best_strategy_name %}
+                                    {{ expert.collaboration_headroom.best_strategy_name }}
+                                {% else %}
+                                    Not available
+                                {% endif %}
+
+                            </strong>
+
+                        </p>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </section>
+
+
+    
+
+
+        <!-- ========================================================
+             EXPERT SIMULATION STABILITY
+        ========================================================= -->
+
+        <section class="p3-card">
+
+            <h2>
+                Expert Simulation Stability
+            </h2>
+
+            <p>
+                Multiple random seeds are used to test whether simulated
+                expert performance remains stable rather than depending
+                on one particular stochastic realization.
+            </p>
+
+
+            <div class="p3-expert-comparison-grid">
+
+                {% for expert_key, expert in results.experts.items %}
+
+                    <div class="p3-expert-analysis-card">
+
+                        <h3>
+                            {{ expert.name }}
+                        </h3>
+
+
+                        <div class="p3-mini-stat-grid">
+
+                            <div class="p3-mini-stat">
+                                <span>Mean Accuracy</span>
+                                <strong>
+                                    {% widthratio expert.stability.mean_accuracy 1 100 %}%
+                                </strong>
+                            </div>
+
+                            <div class="p3-mini-stat">
+                                <span>Std. Deviation</span>
+                                <strong>
+                                    {{ expert.stability.std_accuracy|floatformat:4 }}
+                                </strong>
+                            </div>
+
+                            <div class="p3-mini-stat">
+                                <span>Minimum</span>
+                                <strong>
+                                    {% widthratio expert.stability.minimum_accuracy 1 100 %}%
+                                </strong>
+                            </div>
+
+                            <div class="p3-mini-stat">
+                                <span>Maximum</span>
+                                <strong>
+                                    {% widthratio expert.stability.maximum_accuracy 1 100 %}%
+                                </strong>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </section>
+
+
+        <!-- ========================================================
+             ACTIVE-LEARNING EFFICIENCY
+        ========================================================= -->
+
+        <section class="p3-card">
+
+            <h2>
+                Active-Learning Efficiency
+            </h2>
+
+            <p>
+                These learning curves show how efficiently different
+                querying strategies discover expert competence and improve
+                Human-AI collaboration as the expert-query budget increases.
+            </p>
+
+
+            <div class="p3-expert-comparison-grid">
+
+                {% for expert_key, expert in results.active_learning_figures.items %}
+
+                    <div class="p3-expert-analysis-card">
+
+                        <h3>
+                            {{ expert.name }}
+                        </h3>
+
+
+                        {% if expert.team_accuracy %}
+
+                            <div class="p3-small-analysis-plot">
+
+                                <div class="p3-plot-title">
+                                    Team Accuracy
+                                </div>
+
+                                <img
+                                    src="{% static expert.team_accuracy %}"
+                                    alt="Active-learning team accuracy for {{ expert.name }}"
+                                >
+
+                            </div>
+
+                        {% endif %}
+
+
+                        {% if expert.competence_auroc %}
+
+                            <div class="p3-small-analysis-plot">
+
+                                <div class="p3-plot-title">
+                                    Competence AUROC
+                                </div>
+
+                                <img
+                                    src="{% static expert.competence_auroc %}"
+                                    alt="Active-learning competence AUROC for {{ expert.name }}"
+                                >
+
+                            </div>
+
+                        {% endif %}
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </section>
+
+
+        <!-- ========================================================
+             ABLATION STUDY
+        ========================================================= -->
+
+        <section class="p3-card">
+
+            <h2>
+                Ablation Study
+            </h2>
+
+            <p>
+                The learned deferral policy uses several types of
+                information about the classifier, article, and expert.
+                The ablation study removes selected feature groups to
+                measure how much each contributes to final team performance.
+            </p>
+
+
+            <div class="p3-info-box">
+
+                The text-classification architecture remains fixed.
+                Only the lightweight binary deferral model changes
+                between ablation configurations.
+
+            </div>
+
+
+            {% if results.ablation %}
+
+                {% for expert_key, expert in results.ablation.experts.items %}
+
+                    <div class="p3-ablation-expert">
+
+                        <h3>
+                            {{ expert.name }}
+                        </h3>
+
+
+                        <div class="p3-table-wrap">
+
+                            <table class="p3-table p3-ablation-table">
+
+                                <thead>
+                                    <tr>
+                                        <th>Configuration</th>
+                                        <th>Team Accuracy</th>
+                                        <th>Δ vs Full</th>
+                                        <th>Deferral Rate</th>
+                                        <th>Beneficial</th>
+                                        <th>Harmful</th>
+                                    </tr>
+                                </thead>
+
+
+                                <tbody>
+
+                                    {% for variant_key, variant in expert.variants.items %}
+
+                                        <tr
+                                            {% if variant_key == expert.best_variant_key %}
+                                                class="p3-ablation-best"
+                                            {% endif %}
+                                        >
+
+                                            <td>
+
+                                                <strong>
+                                                    {{ variant.name }}
+                                                </strong>
+
+                                                <span class="p3-ablation-description">
+                                                    {{ variant.description }}
+                                                </span>
+
+                                            </td>
+
+
+                                            <td>
+                                                {{ variant.team_accuracy|floatformat:4 }}
+                                            </td>
+
+
+                                            <td>
+
+                                                {% if variant_key == "full" %}
+
+                                                    —
+
+                                                {% else %}
+
+                                                    {% if variant.accuracy_difference_from_full > 0 %}
+                                                        +
+                                                    {% endif %}
+
+                                                    {{ variant.accuracy_difference_from_full|floatformat:4 }}
+
+                                                {% endif %}
+
+                                            </td>
+
+
+                                            <td>
+                                                {{ variant.deferral_percent|floatformat:2 }}%
+                                            </td>
+
+                                            <td>
+                                                {{ variant.beneficial_deferrals }}
+                                            </td>
+
+                                            <td>
+                                                {{ variant.harmful_deferrals }}
+                                            </td>
+
+                                        </tr>
+
+                                    {% endfor %}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+
+                        <p class="p3-muted">
+
+                            Best configuration by team accuracy,
+                            using lower expert workload as the tie-breaker:
+
+                            <strong>
+                                {{ expert.best_variant_name }}
+                            </strong>
+
+                        </p>
+
+                    </div>
+
+                {% endfor %}
+
+
+                <div class="p3-info-box p3-ablation-interpretation">
+
+                    <strong>
+                        Interpretation
+                    </strong>
+
+                    <p>
+                        If performance decreases after removing
+                        expert-specific information, the result suggests
+                        that explicit knowledge of expert competence helps
+                        the deferral policy. If the results remain similar,
+                        most useful information is already available from
+                        classifier uncertainty and article-level features.
+                    </p>
+
+                </div>
+
+            {% else %}
+
+                <div class="p3-warning-box">
+
+                    <strong>
+                        Ablation results are unavailable.
+                    </strong>
+
+                    <p>
+                        Re-run Advanced Analysis to generate the ablation
+                        experiment.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </section>
+
+
+    
+
+    {% endif %}
+
+
+    <!-- ============================================================
+         LOADING OVERLAY
+    ============================================================ -->
+
+    <div
+        id="advanced-analysis-overlay"
+        class="p3-training-overlay"
+        hidden
+    >
+
+        <div class="p3-training-overlay-card">
+
+            <div class="p3-spinner"></div>
+
+            <h3>
+                Running Advanced Analysis
+            </h3>
+
+            <p>
+                Generating Human-AI metrics, plots, expert-stability
+                analysis, and ablation results. This may take a moment.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        const form = document.getElementById(
+            "advanced-analysis-form"
+        );
+
+        const overlay = document.getElementById(
+            "advanced-analysis-overlay"
+        );
+
+        const button = document.getElementById(
+            "advanced-analysis-button"
+        );
+
+
+        if (!form) {
+            return;
+        }
+
+
+        form.addEventListener(
+            "submit",
+            function () {
+
+                if (overlay) {
+                    overlay.hidden = false;
+                }
+
+
+                if (button) {
+
+                    button.disabled = true;
+
+                    button.textContent = (
+                        "Running Analysis..."
+                    );
+
+                }
+
+            }
+        );
+
+    }
+);
+
+</script>
+
+{% endblock %}

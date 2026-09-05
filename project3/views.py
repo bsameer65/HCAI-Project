@@ -1,17 +1,29 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render
+
 import random
+import uuid
+
 from .models import HumanExpertResponse
+
 from .services.data_loader import load_ag_news
 
-from .services.active_learning import load_active_learning_results
-from .services.baseline import load_baseline_results
-from .services.learning_to_defer import load_learning_to_defer_results
-from .services.simulated_expert import load_expert_results
-
 from .services.baseline import (
+    ensure_baseline_per_class_plot,
+    load_baseline_model,
     load_baseline_results,
     train_and_evaluate_baseline,
+)
+
+from .services.simulated_expert import (
+    ensure_expert_region_plot,
+    evaluate_all_simulated_experts,
+    load_expert_results,
+)
+
+from .services.advanced_analysis import (
+    advanced_analysis_is_stale,
+    load_advanced_analysis_results,
 )
 
 from .services.learning_to_defer import (
@@ -19,22 +31,30 @@ from .services.learning_to_defer import (
     run_learning_to_defer_experiment,
 )
 
-from .services.simulated_expert import (
-    evaluate_all_simulated_experts,
-    load_expert_results,
-)
-
 from .services.active_learning import (
+    EXPERT_PROFILES,
+    QUERY_BUDGETS,
     load_active_learning_results,
+    load_selected_active_learning_results,
     run_active_learning_experiment,
+    run_selected_active_learning,
+    ensure_classifier_entropy_learning_curve,
 )
 
 from .services.human_expert import (
     CLASS_NAMES,
     HUMAN_QUERY_STRATEGIES,
+    QUERY_COUNT_OPTIONS,
     calculate_human_competence,
+    calculate_query_statistics,
     prepare_human_expert_pool,
     select_human_query_indices,
+)
+
+from .services.advanced_analysis import (
+    advanced_analysis_is_stale,
+    load_advanced_analysis_results,
+    run_advanced_analysis,
 )
 
 def index(request):
@@ -57,16 +77,38 @@ def baseline(request):
                 f"Baseline experiment failed: {exc}",
             )
 
-        return redirect("project3:baseline")
+        return redirect(
+            "project3:baseline"
+        )
 
     result = load_baseline_results()
+
+    baseline_plot = None
+
+    if result is not None:
+        try:
+            baseline_plot = (
+                ensure_baseline_per_class_plot(
+                    result
+                )
+            )
+        except Exception as exc:
+            messages.warning(
+                request,
+                f"Baseline results are available, "
+                f"but the performance figure "
+                f"could not be generated: {exc}",
+            )
 
     return render(
         request,
         "project3/baseline.html",
         {
             "result": result,
-            "results_available": result is not None,
+            "results_available": (
+                result is not None
+            ),
+            "baseline_plot": baseline_plot,
         },
     )
 
@@ -87,16 +129,41 @@ def expert(request):
                 f"Simulated expert evaluation failed: {exc}",
             )
 
-        return redirect("project3:expert")
+        return redirect(
+            "project3:expert"
+        )
 
     result = load_expert_results()
+
+    expert_region_plot = None
+
+    if result is not None:
+        try:
+            expert_region_plot = (
+                ensure_expert_region_plot(
+                    result
+                )
+            )
+
+        except Exception as exc:
+            messages.warning(
+                request,
+                "Expert results are available, "
+                "but the competence figure "
+                f"could not be generated: {exc}",
+            )
 
     return render(
         request,
         "project3/expert.html",
         {
             "result": result,
-            "results_available": result is not None,
+            "results_available": (
+                result is not None
+            ),
+            "expert_region_plot": (
+                expert_region_plot
+            ),
         },
     )
 
@@ -117,66 +184,231 @@ def learning_to_defer(request):
                 f"Learning-to-defer experiment failed: {exc}",
             )
 
-        return redirect("project3:learning_to_defer")
+        return redirect(
+            "project3:learning_to_defer"
+        )
 
+    # Load normal Learning-to-Defer results
     result = load_learning_to_defer_results()
+
+    # Load Advanced Analysis results because the
+    # coverage-accuracy graphs are generated there.
+    advanced_result = (
+        load_advanced_analysis_results()
+    )
+
+    coverage_figures = []
+    coverage_figures_stale = False
+
+    # Only try to use the figures if both result files exist.
+    if (
+        result is not None
+        and advanced_result is not None
+    ):
+
+        coverage_figures_stale = (
+            advanced_analysis_is_stale(
+                advanced_result
+            )
+        )
+
+        # Only show figures when the Advanced Analysis
+        # corresponds to the current experiment results.
+        if not coverage_figures_stale:
+
+            for expert_key, expert in result.get(
+                "experts",
+                {}
+            ).items():
+
+                advanced_expert = (
+                    advanced_result
+                    .get("experts", {})
+                    .get(expert_key, {})
+                )
+
+                figure = (
+                    advanced_expert.get(
+                        "coverage_accuracy_figure"
+                    )
+                )
+
+                if figure:
+                    coverage_figures.append(
+                        {
+                            "name": expert["name"],
+                            "figure": figure,
+                        }
+                    )
 
     return render(
         request,
         "project3/defer.html",
         {
             "result": result,
-            "results_available": result is not None,
+            "results_available": (
+                result is not None
+            ),
+            "coverage_figures": (
+                coverage_figures
+            ),
+            "coverage_figures_stale": (
+                coverage_figures_stale
+            ),
         },
     )
 
 
 def active_learning(request):
+    """
+    Run the project's selected Active Learning strategy.
+
+    Classifier Entropy is fixed as the primary acquisition strategy.
+    The user controls the simulated expert and expert-query budget.
+    """
+
+    results = (
+        load_selected_active_learning_results()
+    )
+
+    selected_expert = (
+        request.POST.get("expert")
+        or (
+            results.get(
+                "selection",
+                {},
+            ).get(
+                "expert_key"
+            )
+            if results
+            else None
+        )
+        or next(
+            iter(EXPERT_PROFILES)
+        )
+    )
+
+    selected_budget_raw = (
+        request.POST.get(
+            "query_budget"
+        )
+    )
+
+    if selected_budget_raw is None:
+
+        if results:
+            selected_budget = (
+                results.get(
+                    "selection",
+                    {},
+                ).get(
+                    "query_budget",
+                    QUERY_BUDGETS[-1],
+                )
+            )
+        else:
+            selected_budget = (
+                QUERY_BUDGETS[-1]
+            )
+
+    else:
+
+        try:
+            selected_budget = int(
+                selected_budget_raw
+            )
+
+        except ValueError:
+
+            selected_budget = (
+                QUERY_BUDGETS[-1]
+            )
 
     if request.method == "POST":
 
         try:
-            run_active_learning_experiment()
+
+            results = (
+                run_selected_active_learning(
+                    expert_key=selected_expert,
+                    query_budget=selected_budget,
+                )
+            )
 
             messages.success(
                 request,
-                (
-                    "Active-learning experiment "
-                    "completed successfully."
-                ),
+                "Active Learning experiment completed.",
             )
 
         except Exception as exc:
 
             messages.error(
                 request,
-                (
-                    "Active-learning experiment "
-                    f"failed: {exc}"
-                ),
+                str(exc),
             )
 
-        return redirect(
-            "project3:active_learning"
-        )
+    expert_options = [
+        {
+            "key": key,
+            "name": profile.name,
+            "description": (
+                profile.description
+            ),
+        }
+        for key, profile
+        in EXPERT_PROFILES.items()
+    ]
 
-    result = (
-        load_active_learning_results()
-    )
+    # ---------------------------------------------------------
+    # Classifier Entropy learning curve
+    # ---------------------------------------------------------
+
+    active_learning_plot = None
+
+    if results is not None:
+
+        try:
+
+            active_learning_plot = (
+                ensure_classifier_entropy_learning_curve(
+                    results
+                )
+            )
+
+        except Exception as exc:
+
+            messages.warning(
+                request,
+                f"Could not generate Active Learning figure: {exc}",
+            )
 
     return render(
         request,
         "project3/active_learning.html",
         {
-            "result": result,
+            "results": results,
             "results_available": (
-                result is not None
+                results is not None
+            ),
+            "expert_options": (
+                expert_options
+            ),
+            "query_budgets": (
+                QUERY_BUDGETS
+            ),
+            "selected_expert": (
+                selected_expert
+            ),
+            "selected_budget": (
+                selected_budget
+            ),
+            "active_learning_plot": (
+                active_learning_plot
             ),
         },
     )
-
-
-
+    
+    
 def compare_results(request):
     baseline_result = load_baseline_results()
     expert_result = load_expert_results()
@@ -233,86 +465,130 @@ def compare_results(request):
 
 def human_expert(request):
     """
-    Optional interactive human-in-the-loop extension.
+    Optional Human Expert extension.
 
-    A user selects a query strategy, labels a sequence of selected AG News
-    articles, and receives an initial competence profile after completion.
+    Flow:
+        1. Choose query strategy and annotation budget.
+        2. System selects articles.
+        3. Human labels them without seeing AI predictions.
+        4. Human competence and AI metadata are revealed afterwards.
     """
 
-    if not request.session.session_key:
-        request.session.create()
+    # ------------------------------------------------------------------
+    # Human Expert session keys
+    # ------------------------------------------------------------------
 
-    session_key = request.session.session_key
-
-    responses = HumanExpertResponse.objects.filter(
-        session_key=session_key,
+    strategy_session_key = (
+        "human_expert_strategy"
     )
 
-    # ---------------------------------------------------------------
-    # Reset
-    # ---------------------------------------------------------------
+    indices_session_key = (
+        "human_expert_indices"
+    )
 
-    if (
-        request.method == "POST"
-        and request.POST.get("action") == "reset"
-    ):
-        responses.delete()
+    position_session_key = (
+        "human_expert_position"
+    )
 
-        for key in [
-            "human_expert_strategy",
-            "human_expert_indices",
-            "human_expert_position",
-            "human_expert_query_count",
-        ]:
+    count_session_key = (
+        "human_expert_query_count"
+    )
+
+    run_id_session_key = (
+        "human_expert_run_id"
+    )
+
+
+    # ------------------------------------------------------------------
+    # Fresh visit from navigation
+    # ------------------------------------------------------------------
+
+    if request.GET.get(
+        "new"
+    ) == "1":
+
+        keys_to_clear = [
+            strategy_session_key,
+            indices_session_key,
+            position_session_key,
+            count_session_key,
+            run_id_session_key,
+        ]
+
+        for key in keys_to_clear:
             request.session.pop(
                 key,
                 None,
             )
 
-        messages.success(
-            request,
-            "Human expert session was reset.",
-        )
+        request.session.modified = True
 
         return redirect(
             "project3:human_expert"
         )
 
-    # ---------------------------------------------------------------
-    # Start session
-    # ---------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Explicit reset button
+    # ------------------------------------------------------------------
 
     if (
         request.method == "POST"
-        and request.POST.get("action") == "start"
+        and request.POST.get(
+            "action"
+        ) == "reset"
     ):
-        strategy_key = request.POST.get(
-            "strategy"
-        )
 
-        try:
-            query_count = int(
-                request.POST.get(
-                    "query_count",
-                    12,
-                )
+        keys_to_clear = [
+            strategy_session_key,
+            indices_session_key,
+            position_session_key,
+            count_session_key,
+            run_id_session_key,
+        ]
+
+        for key in keys_to_clear:
+            request.session.pop(
+                key,
+                None,
             )
 
-        except ValueError:
-            query_count = 12
+        request.session.modified = True
 
-        query_count = max(
-            4,
-            min(
-                query_count,
-                40,
-            ),
+        return redirect(
+            "project3:human_expert"
         )
 
+
+    # ------------------------------------------------------------------
+    # Start a new annotation session
+    # ------------------------------------------------------------------
+
+    if (
+        request.method == "POST"
+        and request.POST.get(
+            "action"
+        ) == "start"
+    ):
+
+        strategy_key = (
+            request.POST.get(
+                "strategy"
+            )
+        )
+
+        query_count_raw = (
+            request.POST.get(
+                "query_count"
+            )
+        )
+
+        # Validate strategy
         if (
             strategy_key
             not in HUMAN_QUERY_STRATEGIES
         ):
+
             messages.error(
                 request,
                 "Please select a valid query strategy.",
@@ -322,101 +598,247 @@ def human_expert(request):
                 "project3:human_expert"
             )
 
-        prepared = (
-            prepare_human_expert_pool()
-        )
+        # Validate query count
+        try:
 
-        dataframe = prepared["data"]
-
-        indices = (
-            select_human_query_indices(
-                dataframe=dataframe,
-                strategy_key=strategy_key,
-                query_count=query_count,
+            query_count = int(
+                query_count_raw
             )
-        )
 
-        responses.delete()
+        except (
+            TypeError,
+            ValueError,
+        ):
+
+            messages.error(
+                request,
+                "Please select a valid number of queries.",
+            )
+
+            return redirect(
+                "project3:human_expert"
+            )
+
+        if (
+            query_count
+            not in QUERY_COUNT_OPTIONS
+        ):
+
+            messages.error(
+                request,
+                "Please select a supported query budget.",
+            )
+
+            return redirect(
+                "project3:human_expert"
+            )
+
+
+        # --------------------------------------------------------------
+        # Expensive preparation happens here once.
+        # Cached afterwards.
+        # --------------------------------------------------------------
+
+        try:
+
+            dataframe = (
+                prepare_human_expert_pool()
+            )
+
+            selected_indices = (
+                select_human_query_indices(
+                    dataframe=dataframe,
+                    strategy_key=(
+                        strategy_key
+                    ),
+                    query_count=(
+                        query_count
+                    ),
+                )
+            )
+
+        except Exception as exc:
+
+            messages.error(
+                request,
+                (
+                    "Could not prepare the Human Expert session: "
+                    f"{exc}"
+                ),
+            )
+
+            return redirect(
+                "project3:human_expert"
+            )
+
+
+        # Every annotation run gets its own ID.
+        run_id = uuid.uuid4().hex
+
 
         request.session[
-            "human_expert_strategy"
+            strategy_session_key
         ] = strategy_key
 
         request.session[
-            "human_expert_indices"
-        ] = indices
+            indices_session_key
+        ] = [
+            int(index)
+            for index in selected_indices
+        ]
 
         request.session[
-            "human_expert_position"
+            position_session_key
         ] = 0
 
         request.session[
-            "human_expert_query_count"
+            count_session_key
         ] = query_count
+
+        request.session[
+            run_id_session_key
+        ] = run_id
+
+        request.session.modified = True
+
 
         return redirect(
             "project3:human_expert"
         )
 
+
+    # ------------------------------------------------------------------
+    # Check whether a session currently exists
+    # ------------------------------------------------------------------
+
     strategy_key = request.session.get(
-        "human_expert_strategy"
+        strategy_session_key
     )
 
-    # ---------------------------------------------------------------
-    # No active session
-    # ---------------------------------------------------------------
+    selected_indices = request.session.get(
+        indices_session_key
+    )
 
-    if strategy_key is None:
+    position = request.session.get(
+        position_session_key
+    )
+
+    query_count = request.session.get(
+        count_session_key
+    )
+
+    run_id = request.session.get(
+        run_id_session_key
+    )
+
+
+    session_active = all(
+        [
+            strategy_key is not None,
+            selected_indices is not None,
+            position is not None,
+            query_count is not None,
+            run_id is not None,
+        ]
+    )
+
+
+    # ------------------------------------------------------------------
+    # No active session → show strategy selection
+    # ------------------------------------------------------------------
+
+    if not session_active:
+
         return render(
             request,
             "project3/human_expert.html",
             {
-                "session_started": False,
+                "session_active": False,
+
                 "strategies": (
                     HUMAN_QUERY_STRATEGIES
+                ),
+
+                "query_count_options": (
+                    QUERY_COUNT_OPTIONS
                 ),
             },
         )
 
-    prepared = prepare_human_expert_pool()
 
-    dataframe = prepared["data"]
+    # ------------------------------------------------------------------
+    # Load cached pool.
+    # This is instant after first preparation.
+    # ------------------------------------------------------------------
 
-    indices = request.session.get(
-        "human_expert_indices",
-        [],
+    dataframe = (
+        prepare_human_expert_pool()
     )
 
-    position = request.session.get(
-        "human_expert_position",
-        0,
-    )
 
-    query_count = request.session.get(
-        "human_expert_query_count",
-        len(indices),
-    )
-
-    # ---------------------------------------------------------------
-    # Submit annotation
-    # ---------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Handle one annotation
+    # ------------------------------------------------------------------
 
     if (
         request.method == "POST"
         and request.POST.get(
-            "selected_label"
-        )
-        is not None
+            "action"
+        ) == "annotate"
     ):
-        selected_label = int(
-            request.POST[
+
+        selected_label_raw = (
+            request.POST.get(
                 "selected_label"
-            ]
+            )
         )
 
+        try:
+
+            selected_label = int(
+                selected_label_raw
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+
+            messages.error(
+                request,
+                "Please select one of the four news categories.",
+            )
+
+            return redirect(
+                "project3:human_expert"
+            )
+
+
+        if selected_label not in CLASS_NAMES:
+
+            messages.error(
+                request,
+                "Invalid category selection.",
+            )
+
+            return redirect(
+                "project3:human_expert"
+            )
+
+
+        # Protect against duplicate browser submissions.
+        if position >= len(
+            selected_indices
+        ):
+
+            return redirect(
+                "project3:human_expert"
+            )
+
+
         article_index = int(
-            request.POST[
-                "article_index"
+            selected_indices[
+                position
             ]
         )
 
@@ -425,62 +847,120 @@ def human_expert(request):
         ]
 
         true_label = int(
-            article["label"]
+            article[
+                "label"
+            ]
         )
 
+        classifier_prediction = int(
+            article[
+                "classifier_prediction"
+            ]
+        )
+
+        classifier_confidence = float(
+            article[
+                "classifier_confidence"
+            ]
+        )
+
+        classifier_entropy = float(
+            article[
+                "classifier_entropy"
+            ]
+        )
+
+
+        # --------------------------------------------------------------
+        # Store human decision + AI metadata.
+        #
+        # AI metadata is NOT displayed while annotation is in progress.
+        # --------------------------------------------------------------
+
         HumanExpertResponse.objects.create(
-            article_index=article_index,
-            article_text=article["text"],
-            selected_label=selected_label,
-            true_label=true_label,
+            article_index=(
+                article_index
+            ),
+
+            article_text=str(
+                article[
+                    "text"
+                ]
+            ),
+
+            selected_label=(
+                selected_label
+            ),
+
+            true_label=(
+                true_label
+            ),
+
             is_correct=(
                 selected_label
                 == true_label
             ),
+
             query_strategy=(
-                HUMAN_QUERY_STRATEGIES[
-                    strategy_key
-                ]
+                strategy_key
             ),
-            classifier_prediction=int(
-                article[
-                    "classifier_prediction"
-                ]
+
+            classifier_prediction=(
+                classifier_prediction
             ),
-            classifier_confidence=float(
-                article[
-                    "classifier_confidence"
-                ]
+
+            classifier_confidence=(
+                classifier_confidence
             ),
-            classifier_entropy=float(
-                article[
-                    "classifier_entropy"
-                ]
+
+            classifier_entropy=(
+                classifier_entropy
             ),
-            session_key=session_key,
+
+            session_key=(
+                run_id
+            ),
         )
+
+
+        # --------------------------------------------------------------
+        # Advance one position
+        # --------------------------------------------------------------
 
         position += 1
 
         request.session[
-            "human_expert_position"
+            position_session_key
         ] = position
+
+        request.session.modified = True
+
 
         return redirect(
             "project3:human_expert"
         )
 
-    # ---------------------------------------------------------------
-    # Completed
-    # ---------------------------------------------------------------
 
-    if position >= len(indices):
-        responses = (
-            HumanExpertResponse.objects
-            .filter(
-                session_key=session_key
-            )
+    # ------------------------------------------------------------------
+    # Current session responses
+    # ------------------------------------------------------------------
+
+    responses = (
+        HumanExpertResponse.objects
+        .filter(
+            session_key=run_id
         )
+        .order_by(
+            "created_at"
+        )
+    )
+
+
+    # ------------------------------------------------------------------
+    # Completed session
+    # ------------------------------------------------------------------
+
+    if position >= query_count:
 
         competence = (
             calculate_human_competence(
@@ -488,90 +968,456 @@ def human_expert(request):
             )
         )
 
+        query_statistics = (
+            calculate_query_statistics(
+                responses
+            )
+        )
+
+
+        # --------------------------------------------------------------
+        # Prepare retrospective table.
+        #
+        # AI predictions are revealed only now.
+        # --------------------------------------------------------------
+
+        response_rows = []
+
+        for response in responses:
+
+            response_rows.append(
+                {
+                    "article_index": (
+                        response.article_index
+                    ),
+
+                    "article_text": (
+                        response.article_text
+                    ),
+
+                    "human_label": (
+                        CLASS_NAMES[
+                            response.selected_label
+                        ]
+                    ),
+
+                    "true_label": (
+                        CLASS_NAMES[
+                            response.true_label
+                        ]
+                    ),
+
+                    "classifier_label": (
+                        CLASS_NAMES[
+                            response.classifier_prediction
+                        ]
+                        if response.classifier_prediction
+                        is not None
+                        else "—"
+                    ),
+
+                    "classifier_confidence_percent": (
+                        response.classifier_confidence
+                        * 100
+                        if response.classifier_confidence
+                        is not None
+                        else None
+                    ),
+
+                    "classifier_entropy": (
+                        response.classifier_entropy
+                    ),
+
+                    "is_correct": (
+                        response.is_correct
+                    ),
+                }
+            )
+
+
         return render(
             request,
             "project3/human_expert.html",
             {
-                "session_started": True,
+                "session_active": True,
                 "completed": True,
-                "responses": responses,
-                "competence": competence,
-                "strategy_name": (
+
+                "strategy_key": (
+                    strategy_key
+                ),
+
+                "strategy": (
                     HUMAN_QUERY_STRATEGIES[
                         strategy_key
                     ]
                 ),
+
+                "query_count": (
+                    query_count
+                ),
+
+                "competence": (
+                    competence
+                ),
+
+                "query_statistics": (
+                    query_statistics
+                ),
+
+                "response_rows": (
+                    response_rows
+                ),
             },
         )
 
-    # ---------------------------------------------------------------
-    # Current query
-    # ---------------------------------------------------------------
 
-    article_index = indices[
-        position
-    ]
+    # ------------------------------------------------------------------
+    # Current article
+    # ------------------------------------------------------------------
+
+    article_index = int(
+        selected_indices[
+            position
+        ]
+    )
 
     article = dataframe.iloc[
         article_index
     ]
 
-    progress_percent = (
-        position / query_count
-    ) * 100
+
+    # Progress counts completed annotations,
+    # not the number of the currently visible article.
+    completed_count = position
+
+    progress_percent = int(
+        (
+            completed_count
+            / query_count
+        )
+        * 100
+    )
+
 
     return render(
         request,
         "project3/human_expert.html",
         {
-            "session_started": True,
+            "session_active": True,
             "completed": False,
-            "article_index": (
-                article_index
+
+            "strategy_key": (
+                strategy_key
             ),
-            "article_text": (
-                article["text"]
-            ),
-            "classifier_prediction": (
-                CLASS_NAMES[
-                    int(
-                        article[
-                            "classifier_prediction"
-                        ]
-                    )
-                ]
-            ),
-            "classifier_confidence": (
-                float(
-                    article[
-                        "classifier_confidence"
-                    ]
-                )
-            ),
-            "classifier_entropy": (
-                float(
-                    article[
-                        "classifier_entropy"
-                    ]
-                )
-            ),
-            "strategy_name": (
+
+            "strategy": (
                 HUMAN_QUERY_STRATEGIES[
                     strategy_key
                 ]
             ),
-            "position": position + 1,
-            "target_annotations": (
+
+            "query_count": (
                 query_count
             ),
+
+            "position": (
+                position
+            ),
+
+            "annotation_number": (
+                position + 1
+            ),
+
+            "completed_count": (
+                completed_count
+            ),
+
             "progress_percent": (
                 progress_percent
             ),
-            "class_choices": [
-                (0, "World"),
-                (1, "Sports"),
-                (2, "Business"),
-                (3, "Sci/Tech"),
-            ],
+
+            # IMPORTANT:
+            # only article text is exposed during annotation.
+            "article": {
+                "text": str(
+                    article[
+                        "text"
+                    ]
+                ),
+            },
+
+            "class_names": (
+                CLASS_NAMES
+            ),
+        },
+    )
+    
+    
+def advanced_analysis(request):
+    """
+    Display or regenerate the Advanced Human-AI Analysis.
+
+    Existing results are displayed immediately when available. If one of the
+    source experiments has changed, the previous analysis remains visible but
+    is clearly marked as stale until the user regenerates it.
+    """
+
+    # ------------------------------------------------------------------
+    # Check prerequisite experiment artifacts
+    # ------------------------------------------------------------------
+
+    prerequisite_status = {
+        "baseline": (
+            load_baseline_results()
+            is not None
+        ),
+
+        "experts": (
+            load_expert_results()
+            is not None
+        ),
+
+        "learning_to_defer": (
+            load_learning_to_defer_results()
+            is not None
+        ),
+
+        "active_learning": (
+            load_active_learning_results()
+            is not None
+        ),
+    }
+
+
+    missing_prerequisites = []
+
+    if not prerequisite_status[
+        "baseline"
+    ]:
+
+        missing_prerequisites.append(
+            "Baseline"
+        )
+
+
+    if not prerequisite_status[
+        "experts"
+    ]:
+
+        missing_prerequisites.append(
+            "Simulated Experts"
+        )
+
+
+    if not prerequisite_status[
+        "learning_to_defer"
+    ]:
+
+        missing_prerequisites.append(
+            "Learning to Defer"
+        )
+
+
+    if not prerequisite_status[
+        "active_learning"
+    ]:
+
+        missing_prerequisites.append(
+            "Active Learning"
+        )
+
+
+    prerequisites_ready = (
+        len(
+            missing_prerequisites
+        )
+        == 0
+    )
+
+
+    # ------------------------------------------------------------------
+    # Generate / regenerate analysis
+    # ------------------------------------------------------------------
+
+    if request.method == "POST":
+
+        if not prerequisites_ready:
+
+            messages.error(
+                request,
+                (
+                    "Advanced Analysis cannot be run yet. "
+                    "Please complete: "
+                    + ", ".join(
+                        missing_prerequisites
+                    )
+                    + "."
+                ),
+            )
+
+            return redirect(
+                "project3:advanced_analysis"
+            )
+
+
+        try:
+
+            run_advanced_analysis()
+
+            messages.success(
+                request,
+                (
+                    "Advanced Analysis completed "
+                    "successfully."
+                ),
+            )
+
+        except Exception as exc:
+
+            messages.error(
+                request,
+                (
+                    "Advanced Analysis could not "
+                    "be completed: "
+                    f"{exc}"
+                ),
+            )
+
+        return redirect(
+            "project3:advanced_analysis"
+        )
+
+
+    # ------------------------------------------------------------------
+    # Load previous saved analysis
+    # ------------------------------------------------------------------
+
+    results = (
+        load_advanced_analysis_results()
+    )
+
+
+    # ------------------------------------------------------------------
+    # Check whether those saved results are still current
+    # ------------------------------------------------------------------
+
+    results_stale = (
+        advanced_analysis_is_stale(
+            results
+        )
+    )
+
+
+    return render(
+        request,
+        "project3/advanced_analysis.html",
+        {
+            "results": (
+                results
+            ),
+
+            "results_available": (
+                results
+                is not None
+            ),
+
+            "results_stale": (
+                results_stale
+            ),
+
+            "prerequisites_ready": (
+                prerequisites_ready
+            ),
+
+            "missing_prerequisites": (
+                missing_prerequisites
+            ),
+
+            "prerequisite_status": (
+                prerequisite_status
+            ),
+        },
+    )
+
+def active_learning_compare(request):
+    """
+    Compare all Active Learning strategies.
+
+    The complete benchmark is intentionally separated from the
+    user-controlled single-strategy workflow.
+    """
+
+    results = (
+        load_active_learning_results()
+    )
+
+    selected_expert = (
+        request.GET.get("expert")
+        or request.POST.get("expert")
+        or next(iter(EXPERT_PROFILES))
+    )
+
+    if selected_expert not in EXPERT_PROFILES:
+        selected_expert = next(
+            iter(EXPERT_PROFILES)
+        )
+
+    if request.method == "POST":
+
+        try:
+            results = (
+                run_active_learning_experiment()
+            )
+
+            messages.success(
+                request,
+                "Active Learning strategy comparison completed.",
+            )
+
+        except Exception as exc:
+
+            messages.error(
+                request,
+                str(exc),
+            )
+
+    selected_expert_result = None
+
+    if results:
+        selected_expert_result = (
+            results.get(
+                "experts",
+                {},
+            ).get(
+                selected_expert
+            )
+        )
+
+    expert_options = [
+        {
+            "key": key,
+            "name": profile.name,
+        }
+        for key, profile
+        in EXPERT_PROFILES.items()
+    ]
+
+    return render(
+        request,
+        "project3/active_learning_compare.html",
+        {
+            "results": results,
+            "results_available": (
+                results is not None
+            ),
+            "selected_expert": (
+                selected_expert
+            ),
+            "selected_expert_result": (
+                selected_expert_result
+            ),
+            "expert_options": (
+                expert_options
+            ),
         },
     )

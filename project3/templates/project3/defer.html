@@ -1,4 +1,5 @@
 {% extends "project3/base.html" %}
+{% load static %}
 
 {% block title %}
     Learning to Defer
@@ -10,110 +11,587 @@
     <h2>Learning to Defer</h2>
 
     <p>
-        The classifier does not need to make every decision independently.
-        A deferral strategy decides whether the AI should return its own
-        prediction or query a simulated expert.
+        The system decides whether to return the classifier prediction
+        or defer the article to a simulated expert.
     </p>
-
-    <div class="p3-info-box">
-        A useful deferral occurs when the classifier would be wrong but the
-        selected expert is correct. The objective is therefore not simply to
-        defer difficult examples, but to defer examples where human expertise
-        is likely to improve the final decision.
-    </div>
 </section>
 
-<section class="p3-card">
-    <h2>Deferral Strategies</h2>
-
-    <div class="p3-method-grid">
-
-        <article class="p3-method-card">
-            <h3>Confidence-Threshold Deferral</h3>
-
-            <p>
-                The AI defers when its largest class probability falls below
-                a selected threshold.
-            </p>
-
-            <div class="p3-info-box">
-                This strategy is transparent and easy to interpret, but it
-                considers only AI uncertainty. It does not explicitly model
-                whether the expert is competent on that article.
-            </div>
-        </article>
-
-        <article class="p3-method-card">
-            <h3>Competence-Aware Learned Deferral</h3>
-
-            <p>
-                A separate binary model estimates whether querying the expert
-                is likely to correct a classifier error.
-            </p>
-
-            <div class="p3-info-box">
-                The model uses classifier confidence, entropy, probability
-                margin, article length, predicted class, expert region, and
-                expected expert reliability.
-            </div>
-        </article>
-
-    </div>
-</section>
 
 <section class="p3-card">
-    <h2>Run Experiment</h2>
+    <div class="p3-expert-action-row">
 
-    {% if results_available %}
-        <div class="p3-success-box">
-            Saved learning-to-defer results are available. Run the experiment
-            again after changing the classifier, expert profiles, or
-            deferral configuration.
-        </div>
-    {% else %}
-        <div class="p3-warning-box">
-            No learning-to-defer results are available yet.
-        </div>
-    {% endif %}
+        <div>
+            <h2>Run Experiment</h2>
 
-    <p class="p3-muted">
-        Thresholds and the competence model are developed using only the
-        official AG News training split. The official test split is reserved
-        for final evaluation.
-    </p>
-
-    <form
-        id="defer-experiment-form"
-        method="post"
-    >
-        {% csrf_token %}
-
-        <button
-            id="defer-experiment-button"
-            class="p3-btn"
-            type="submit"
-        >
             {% if results_available %}
-                Re-run Deferral Experiment
+                <p class="p3-muted">
+                    Saved results are available for both experts and both
+                    deferral strategies.
+                </p>
             {% else %}
-                Run Deferral Experiment
+                <p class="p3-muted">
+                    Compare a transparent confidence baseline with a
+                    competence-aware learned deferral strategy.
+                </p>
             {% endif %}
-        </button>
-    </form>
+        </div>
+
+        <form
+            id="defer-experiment-form"
+            method="post"
+        >
+            {% csrf_token %}
+
+            <button
+                id="defer-experiment-button"
+                class="p3-btn"
+                type="submit"
+            >
+                {% if results_available %}
+                    Re-run Experiment
+                {% else %}
+                    Run Experiment
+                {% endif %}
+            </button>
+        </form>
+
+    </div>
 </section>
+
 
 {% if results_available %}
 
+<!-- ============================================================= -->
+<!-- Overall Strategy Comparison                                   -->
+<!-- ============================================================= -->
+
 <section class="p3-card">
-    <h2>Development Split</h2>
+
+    <h2>Overall Strategy Comparison</h2>
+
+    <div class="p3-table-scroll">
+
+        <table class="p3-table">
+
+            <thead>
+                <tr>
+                    <th>Expert</th>
+                    <th>Strategy</th>
+                    <th>Team Accuracy</th>
+                    <th>Macro F1</th>
+                    <th>Deferral Rate</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for expert_key, expert in result.experts.items %}
+
+                <tr class="{% if expert.confidence_strategy.is_best %}p3-row-best{% endif %}">
+
+                    <td>
+                        {{ expert.name }}
+                    </td>
+
+                    <td>
+                        Confidence Threshold
+
+                        {% if expert.confidence_strategy.is_best %}
+                            <span class="p3-best-badge">
+                                Best
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {{ expert.confidence_strategy.metrics.team_accuracy|floatformat:4 }}
+                    </td>
+
+                    <td>
+                        {{ expert.confidence_strategy.metrics.team_macro_f1|floatformat:4 }}
+                    </td>
+
+                    <td>
+                        {% widthratio expert.confidence_strategy.metrics.deferral_rate 1 100 %}%
+                    </td>
+
+                </tr>
+
+
+                <tr class="{% if expert.learned_strategy.is_best %}p3-row-best{% endif %}">
+
+                    <td>
+                        {{ expert.name }}
+                    </td>
+
+                    <td>
+                        Competence-Aware
+
+                        {% if expert.learned_strategy.is_best %}
+                            <span class="p3-best-badge">
+                                Best
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {{ expert.learned_strategy.metrics.team_accuracy|floatformat:4 }}
+                    </td>
+
+                    <td>
+                        {{ expert.learned_strategy.metrics.team_macro_f1|floatformat:4 }}
+                    </td>
+
+                    <td>
+                        {% widthratio expert.learned_strategy.metrics.deferral_rate 1 100 %}%
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+    <div class="p3-info-box">
+        <strong>Key finding:</strong>
+        The preferred deferral strategy depends on the expert competence
+        profile; a more complex learned policy is not always superior.
+    </div>
+
+</section>
+
+
+<!-- ============================================================= -->
+<!-- Coverage-Accuracy Trade-off                                   -->
+<!-- ============================================================= -->
+
+<section class="p3-card">
+
+    <h2>Coverage–Accuracy Trade-off</h2>
+
+    <p class="p3-muted">
+        These curves show how Human-AI team accuracy changes as a larger
+        share of articles is deferred to each simulated expert.
+    </p>
+
+
+    {% if coverage_figures %}
+
+        <div class="p3-coverage-grid">
+
+            {% for item in coverage_figures %}
+
+                <div class="p3-result-figure">
+
+
+
+                    <img
+                        src="{% static item.figure %}"
+                        alt="Coverage-accuracy trade-off for {{ item.name }}"
+                        class="p3-result-figure-image"
+                    >
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+
+        <div class="p3-info-box p3-coverage-finding">
+            <strong>Interpretation:</strong>
+            Selective deferral can slightly improve Human-AI team
+            performance, while excessive deferral reduces accuracy because
+            the simulated experts are weaker than the classifier outside
+            their specialist regions.
+        </div>
+
+
+    {% elif coverage_figures_stale %}
+
+        <div class="p3-info-box">
+            The coverage-accuracy figures are outdated because one or more
+            core experiment results have changed. Run Advanced Analysis
+            again to refresh the figures.
+        </div>
+
+
+    {% else %}
+
+        <div class="p3-info-box">
+            Run Advanced Analysis once to generate the coverage-accuracy
+            figures for both simulated experts.
+        </div>
+
+    {% endif %}
+
+</section>
+
+
+<!-- ============================================================= -->
+<!-- Individual Expert Results                                     -->
+<!-- ============================================================= -->
+
+{% for expert_key, expert in result.experts.items %}
+
+<section class="p3-card">
+
+    <div class="p3-expert-heading-row">
+
+        <div>
+            <h2>
+                {{ expert.name }}
+            </h2>
+
+            <p class="p3-muted">
+                {{ expert.description }}
+            </p>
+        </div>
+
+    </div>
+
 
     <div class="p3-stat-row">
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.learned_strategy.metrics.classifier_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Classifier Accuracy
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.learned_strategy.metrics.expert_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Expert Accuracy
+            </span>
+        </div>
+
+        <div class="p3-stat-box">
+            <span class="p3-stat-number">
+                {{ expert.learned_strategy.metrics.oracle_accuracy|floatformat:4 }}
+            </span>
+
+            <span class="p3-stat-label">
+                Oracle Accuracy
+            </span>
+        </div>
+
+    </div>
+
+
+    <hr class="p3-divider">
+
+
+    <div class="p3-method-grid">
+
+        <!-- Confidence Threshold -->
+
+        <article class="p3-method-card">
+
+            <div class="p3-expert-heading-row">
+
+                <h3>
+                    Confidence Threshold
+                </h3>
+
+                {% if expert.confidence_strategy.is_best %}
+                    <span class="p3-best-badge">
+                        Best for this expert
+                    </span>
+                {% endif %}
+
+            </div>
+
+            <p class="p3-muted">
+                Defers when classifier confidence is low.
+            </p>
+
+
+            <div class="p3-stat-row">
+
+                <div class="p3-stat-box">
+                    <span class="p3-stat-number">
+                        {{ expert.confidence_strategy.metrics.team_accuracy|floatformat:4 }}
+                    </span>
+
+                    <span class="p3-stat-label">
+                        Team Accuracy
+                    </span>
+                </div>
+
+                <div class="p3-stat-box">
+                    <span class="p3-stat-number">
+                        {% widthratio expert.confidence_strategy.metrics.deferral_rate 1 100 %}%
+                    </span>
+
+                    <span class="p3-stat-label">
+                        Deferral Rate
+                    </span>
+                </div>
+
+                <div class="p3-stat-box">
+                    <span class="p3-stat-number">
+                        {{ expert.confidence_strategy.metrics.beneficial_deferral_precision|floatformat:4 }}
+                    </span>
+
+                    <span class="p3-stat-label">
+                        Beneficial Precision
+                    </span>
+                </div>
+
+                <div class="p3-stat-box">
+                    <span class="p3-stat-number">
+                        {{ expert.confidence_strategy.metrics.missed_beneficial_deferrals }}
+                    </span>
+
+                    <span class="p3-stat-label">
+                        Missed Beneficial
+                    </span>
+                </div>
+
+            </div>
+
+        </article>
+
+
+        <!-- Competence-Aware -->
+
+        <article class="p3-method-card">
+
+            <div class="p3-expert-heading-row">
+
+                <h3>
+                    Competence-Aware
+                </h3>
+
+                {% if expert.learned_strategy.is_best %}
+                    <span class="p3-best-badge">
+                        Best for this expert
+                    </span>
+                {% endif %}
+
+            </div>
+
+            <p class="p3-muted">
+                Defers when the learned model predicts that expert help
+                is likely to improve the decision.
+            </p>
+
+
+            <div class="p3-stat-row">
+
+                <div class="p3-stat-box">
+                    <span class="p3-stat-number">
+                        {{ expert.learned_strategy.metrics.team_accuracy|floatformat:4 }}
+                    </span>
+
+                    <span class="p3-stat-label">
+                        Team Accuracy
+                    </span>
+                </div>
+
+                <div class="p3-stat-box">
+                    <span class="p3-stat-number">
+                        {% widthratio expert.learned_strategy.metrics.deferral_rate 1 100 %}%
+                    </span>
+
+                    <span class="p3-stat-label">
+                        Deferral Rate
+                    </span>
+                </div>
+
+                <div class="p3-stat-box">
+                    <span class="p3-stat-number">
+                        {{ expert.learned_strategy.metrics.beneficial_deferral_precision|floatformat:4 }}
+                    </span>
+
+                    <span class="p3-stat-label">
+                        Beneficial Precision
+                    </span>
+                </div>
+
+                <div class="p3-stat-box">
+                    <span class="p3-stat-number">
+                        {{ expert.learned_strategy.metrics.missed_beneficial_deferrals }}
+                    </span>
+
+                    <span class="p3-stat-label">
+                        Missed Beneficial
+                    </span>
+                </div>
+
+            </div>
+
+        </article>
+
+    </div>
+
+
+    <details class="p3-details">
+
+        <summary>
+            View detailed deferral metrics
+        </summary>
+
+
+        <div class="p3-table-scroll">
+
+            <table class="p3-table">
+
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Confidence Threshold</th>
+                        <th>Competence-Aware</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr>
+                        <td>Selected threshold</td>
+                        <td>
+                            {{ expert.confidence_strategy.selected_threshold|floatformat:2 }}
+                        </td>
+                        <td>
+                            {{ expert.learned_strategy.selected_threshold|floatformat:2 }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Beneficial deferrals</td>
+                        <td>
+                            {{ expert.confidence_strategy.metrics.beneficial_deferrals }}
+                        </td>
+                        <td>
+                            {{ expert.learned_strategy.metrics.beneficial_deferrals }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Harmful deferrals</td>
+                        <td>
+                            {{ expert.confidence_strategy.metrics.harmful_deferrals }}
+                        </td>
+                        <td>
+                            {{ expert.learned_strategy.metrics.harmful_deferrals }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Beneficial deferral precision</td>
+                        <td>
+                            {{ expert.confidence_strategy.metrics.beneficial_deferral_precision|floatformat:4 }}
+                        </td>
+                        <td>
+                            {{ expert.learned_strategy.metrics.beneficial_deferral_precision|floatformat:4 }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Beneficial deferral recall</td>
+                        <td>
+                            {{ expert.confidence_strategy.metrics.beneficial_deferral_recall|floatformat:4 }}
+                        </td>
+                        <td>
+                            {{ expert.learned_strategy.metrics.beneficial_deferral_recall|floatformat:4 }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Harmful deferral rate</td>
+                        <td>
+                            {{ expert.confidence_strategy.metrics.harmful_deferral_rate|floatformat:4 }}
+                        </td>
+                        <td>
+                            {{ expert.learned_strategy.metrics.harmful_deferral_rate|floatformat:4 }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Unnecessary deferral rate</td>
+                        <td>
+                            {{ expert.confidence_strategy.metrics.unnecessary_deferral_rate|floatformat:4 }}
+                        </td>
+                        <td>
+                            {{ expert.learned_strategy.metrics.unnecessary_deferral_rate|floatformat:4 }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Missed beneficial deferrals</td>
+                        <td>
+                            {{ expert.confidence_strategy.metrics.missed_beneficial_deferrals }}
+                        </td>
+                        <td>
+                            {{ expert.learned_strategy.metrics.missed_beneficial_deferrals }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Accuracy on deferred samples</td>
+                        <td>
+                            {{ expert.confidence_strategy.metrics.deferred_accuracy|floatformat:4 }}
+                        </td>
+                        <td>
+                            {{ expert.learned_strategy.metrics.deferred_accuracy|floatformat:4 }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Accuracy on AI-handled samples</td>
+                        <td>
+                            {{ expert.confidence_strategy.metrics.non_deferred_accuracy|floatformat:4 }}
+                        </td>
+                        <td>
+                            {{ expert.learned_strategy.metrics.non_deferred_accuracy|floatformat:4 }}
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </details>
+
+</section>
+
+{% endfor %}
+
+
+<!-- ============================================================= -->
+<!-- Experiment Details                                            -->
+<!-- ============================================================= -->
+
+<details class="p3-card p3-details">
+
+    <summary>
+        Experiment details
+    </summary>
+
+    <div class="p3-stat-row">
+
         <div class="p3-stat-box">
             <span class="p3-stat-number">
                 {{ result.development_split.classifier_train_samples }}
             </span>
+
             <span class="p3-stat-label">
-                Classifier training
+                Classifier Training
             </span>
         </div>
 
@@ -121,8 +599,9 @@
             <span class="p3-stat-number">
                 {{ result.development_split.deferral_train_samples }}
             </span>
+
             <span class="p3-stat-label">
-                Deferral training
+                Deferral Training
             </span>
         </div>
 
@@ -130,8 +609,9 @@
             <span class="p3-stat-number">
                 {{ result.development_split.deferral_validation_samples }}
             </span>
+
             <span class="p3-stat-label">
-                Deferral validation
+                Deferral Validation
             </span>
         </div>
 
@@ -139,261 +619,22 @@
             <span class="p3-stat-number">
                 {{ result.classifier.final_test_accuracy|floatformat:4 }}
             </span>
+
             <span class="p3-stat-label">
-                Classifier test accuracy
+                Classifier Test Accuracy
             </span>
         </div>
-    </div>
-</section>
 
-<section class="p3-card">
-    <h2>Strategy Comparison</h2>
-
-    <p class="p3-muted">
-        Team accuracy measures the final prediction after applying the
-        deferral decision. Oracle accuracy is the theoretical performance
-        obtainable if the system always knew which agent was correct.
-    </p>
-
-    <div class="p3-table-scroll">
-        <table class="p3-table">
-            <thead>
-                <tr>
-                    <th>Expert</th>
-                    <th>Strategy</th>
-                    <th>Threshold</th>
-                    <th>Team Accuracy</th>
-                    <th>Macro F1</th>
-                    <th>Deferral Rate</th>
-                    <th>Oracle Accuracy</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                {% for expert_key, expert in result.experts.items %}
-                <tr class="{% if expert.confidence_strategy.is_best %}p3-row-best{% endif %}">
-                    <td>{{ expert.name }}</td>
-
-                    <td>
-                        Confidence Threshold
-                        {% if expert.confidence_strategy.is_best %}
-                            <span class="p3-best-badge">Best</span>
-                        {% endif %}
-                    </td>
-
-                    <td>{{ expert.confidence_strategy.selected_threshold|floatformat:2 }}</td>
-                    <td>{{ expert.confidence_strategy.metrics.team_accuracy|floatformat:4 }}</td>
-                    <td>{{ expert.confidence_strategy.metrics.team_macro_f1|floatformat:4 }}</td>
-                    <td>{% widthratio expert.confidence_strategy.metrics.deferral_rate 1 100 %}%</td>
-                    <td>{{ expert.confidence_strategy.metrics.oracle_accuracy|floatformat:4 }}</td>
-                </tr>
-
-                <tr class="{% if expert.learned_strategy.is_best %}p3-row-best{% endif %}">
-                    <td>{{ expert.name }}</td>
-
-                    <td>
-                        Competence-Aware
-                        {% if expert.learned_strategy.is_best %}
-                            <span class="p3-best-badge">Best</span>
-                        {% endif %}
-                    </td>
-
-                    <td>{{ expert.learned_strategy.selected_threshold|floatformat:2 }}</td>
-                    <td>{{ expert.learned_strategy.metrics.team_accuracy|floatformat:4 }}</td>
-                    <td>{{ expert.learned_strategy.metrics.team_macro_f1|floatformat:4 }}</td>
-                    <td>{% widthratio expert.learned_strategy.metrics.deferral_rate 1 100 %}%</td>
-                    <td>{{ expert.learned_strategy.metrics.oracle_accuracy|floatformat:4 }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
     </div>
 
-    <div class="p3-info-box">
-        <strong>Key finding:</strong>
-        The best deferral strategy depends on the competence profile of the
-        selected expert. A more complex learned policy is therefore evaluated
-        against the transparent confidence-threshold baseline.
-    </div>
-</section>
-
-{% for expert_key, expert in result.experts.items %}
-
-<section class="p3-card">
-    <h2>{{ expert.name }}</h2>
-
-    <p>
-        {{ expert.description }}
-    </p>
-
-    <div class="p3-info-box">
-        The classifier alone reaches
-        <strong>
-            {{ expert.learned_strategy.metrics.classifier_accuracy|floatformat:4 }}
-        </strong>
-        accuracy, while this simulated expert alone reaches
-        <strong>
-            {{ expert.learned_strategy.metrics.expert_accuracy|floatformat:4 }}
-        </strong>.
-    </div>
-
-    <h3 class="p3-sub-heading">
-        Confidence-Threshold Strategy
-    </h3>
-
-    <div class="p3-stat-row">
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {{ expert.confidence_strategy.metrics.team_accuracy|floatformat:4 }}
-            </span>
-            <span class="p3-stat-label">
-                Team accuracy
-            </span>
-        </div>
-
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {% widthratio expert.confidence_strategy.metrics.deferral_rate 1 100 %}%
-            </span>
-            <span class="p3-stat-label">
-                Deferral rate
-            </span>
-        </div>
-
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {{ expert.confidence_strategy.metrics.beneficial_deferrals }}
-            </span>
-            <span class="p3-stat-label">
-                Beneficial deferrals
-            </span>
-        </div>
-
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {{ expert.confidence_strategy.metrics.harmful_deferrals }}
-            </span>
-            <span class="p3-stat-label">
-                Harmful deferrals
-            </span>
-        </div>
-    </div>
-
-    <h3 class="p3-sub-heading">
-        Competence-Aware Learned Strategy
-    </h3>
-
-    <div class="p3-stat-row">
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {{ expert.learned_strategy.metrics.team_accuracy|floatformat:4 }}
-            </span>
-            <span class="p3-stat-label">
-                Team accuracy
-            </span>
-        </div>
-
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {% widthratio expert.learned_strategy.metrics.deferral_rate 1 100 %}%
-            </span>
-            <span class="p3-stat-label">
-                Deferral rate
-            </span>
-        </div>
-
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {{ expert.learned_strategy.metrics.beneficial_deferrals }}
-            </span>
-            <span class="p3-stat-label">
-                Beneficial deferrals
-            </span>
-        </div>
-
-        <div class="p3-stat-box">
-            <span class="p3-stat-number">
-                {{ expert.learned_strategy.metrics.harmful_deferrals }}
-            </span>
-            <span class="p3-stat-label">
-                Harmful deferrals
-            </span>
-        </div>
-    </div>
-
-    <h3 class="p3-sub-heading">
-        Deferral Quality
-    </h3>
-
-    <div class="p3-table-scroll">
-        <table class="p3-table">
-            <thead>
-                <tr>
-                    <th>Metric</th>
-                    <th>Confidence Threshold</th>
-                    <th>Competence-Aware</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                <tr>
-                    <td>Beneficial deferral precision</td>
-                    <td>{{ expert.confidence_strategy.metrics.beneficial_deferral_precision|floatformat:4 }}</td>
-                    <td>{{ expert.learned_strategy.metrics.beneficial_deferral_precision|floatformat:4 }}</td>
-                </tr>
-
-                <tr>
-                    <td>Beneficial deferral recall</td>
-                    <td>{{ expert.confidence_strategy.metrics.beneficial_deferral_recall|floatformat:4 }}</td>
-                    <td>{{ expert.learned_strategy.metrics.beneficial_deferral_recall|floatformat:4 }}</td>
-                </tr>
-
-                <tr>
-                    <td>Harmful deferral rate</td>
-                    <td>{{ expert.confidence_strategy.metrics.harmful_deferral_rate|floatformat:4 }}</td>
-                    <td>{{ expert.learned_strategy.metrics.harmful_deferral_rate|floatformat:4 }}</td>
-                </tr>
-
-                <tr>
-                    <td>Unnecessary deferral rate</td>
-                    <td>{{ expert.confidence_strategy.metrics.unnecessary_deferral_rate|floatformat:4 }}</td>
-                    <td>{{ expert.learned_strategy.metrics.unnecessary_deferral_rate|floatformat:4 }}</td>
-                </tr>
-
-                <tr>
-                    <td>Missed beneficial deferrals</td>
-                    <td>{{ expert.confidence_strategy.metrics.missed_beneficial_deferrals }}</td>
-                    <td>{{ expert.learned_strategy.metrics.missed_beneficial_deferrals }}</td>
-                </tr>
-
-                <tr>
-                    <td>Accuracy on deferred samples</td>
-                    <td>{{ expert.confidence_strategy.metrics.deferred_accuracy|floatformat:4 }}</td>
-                    <td>{{ expert.learned_strategy.metrics.deferred_accuracy|floatformat:4 }}</td>
-                </tr>
-
-                <tr>
-                    <td>Accuracy on AI-handled samples</td>
-                    <td>{{ expert.confidence_strategy.metrics.non_deferred_accuracy|floatformat:4 }}</td>
-                    <td>{{ expert.learned_strategy.metrics.non_deferred_accuracy|floatformat:4 }}</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="p3-info-box p3-defer-explanation">
-        <strong>How to interpret these metrics:</strong>
-        Beneficial deferrals are cases where the classifier was wrong and
-        the expert corrected the decision. Harmful deferrals occur when the
-        classifier was correct but the expert was wrong. Unnecessary
-        deferrals consume expert effort without improving accuracy because
-        both agents were already correct.
-    </div>
-</section>
-
-{% endfor %}
+</details>
 
 {% endif %}
+
+
+<!-- ============================================================= -->
+<!-- Loading Overlay                                               -->
+<!-- ============================================================= -->
 
 <div
     id="defer-loading-overlay"
@@ -402,6 +643,7 @@
     aria-live="polite"
     aria-hidden="true"
 >
+
     <div class="p3-training-dialog">
 
         <div
@@ -410,7 +652,7 @@
         ></div>
 
         <h2>
-            Running the deferral experiment
+            Running Deferral Experiment
         </h2>
 
         <p id="defer-status-text">
@@ -421,18 +663,66 @@
             <div class="p3-progress-bar"></div>
         </div>
 
-        <p class="p3-muted">
-            Please keep this page open. Both deferral strategies and both
-            expert profiles are being evaluated.
-        </p>
-
     </div>
+
 </div>
+
+
+<!-- ============================================================= -->
+<!-- Page-specific styling                                         -->
+<!-- ============================================================= -->
+
+<style>
+
+.p3-coverage-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.p3-result-figure {
+    min-width: 0;
+    text-align: center;
+}
+
+.p3-result-figure h3 {
+    margin-top: 0;
+    margin-bottom: 14px;
+}
+
+.p3-result-figure-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.p3-coverage-finding {
+    margin-top: 24px;
+}
+
+@media (max-width: 900px) {
+
+    .p3-coverage-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+</style>
+
+
+<!-- ============================================================= -->
+<!-- Loading JavaScript                                            -->
+<!-- ============================================================= -->
 
 <script>
 document.addEventListener(
     "DOMContentLoaded",
     function () {
+
         const form = document.getElementById(
             "defer-experiment-form"
         );
@@ -451,7 +741,9 @@ document.addEventListener(
 
         let timer = null;
 
+
         function hideOverlay() {
+
             if (overlay) {
                 overlay.classList.remove(
                     "is-visible"
@@ -465,15 +757,29 @@ document.addEventListener(
 
             if (button) {
                 button.disabled = false;
+
+                {% if results_available %}
+                    button.textContent =
+                        "Re-run Experiment";
+                {% else %}
+                    button.textContent =
+                        "Run Experiment";
+                {% endif %}
             }
 
             if (timer !== null) {
-                window.clearInterval(timer);
+                window.clearInterval(
+                    timer
+                );
+
                 timer = null;
             }
+
         }
 
+
         hideOverlay();
+
 
         if (
             !form
@@ -484,11 +790,14 @@ document.addEventListener(
             return;
         }
 
+
         form.addEventListener(
             "submit",
             function () {
+
                 button.disabled = true;
-                button.textContent = "Running experiment...";
+                button.textContent =
+                    "Running...";
 
                 overlay.classList.add(
                     "is-visible"
@@ -499,37 +808,44 @@ document.addEventListener(
                     "false"
                 );
 
+
                 const messages = [
                     "Preparing the development datasets...",
-                    "Training the development news classifier...",
-                    "Measuring classifier uncertainty...",
+                    "Training the development classifier...",
                     "Simulating expert responses...",
                     "Selecting confidence thresholds...",
-                    "Training competence-aware deferral models...",
-                    "Evaluating both strategies on the test set...",
+                    "Training the competence-aware models...",
+                    "Evaluating deferral quality...",
                     "Saving the final results..."
                 ];
 
+
                 let index = 0;
+
 
                 timer = window.setInterval(
                     function () {
+
                         index = (
                             index + 1
                         ) % messages.length;
 
                         statusText.textContent =
                             messages[index];
+
                     },
                     3500
                 );
+
             }
         );
+
 
         window.addEventListener(
             "pageshow",
             hideOverlay
         );
+
     }
 );
 </script>

@@ -22,6 +22,8 @@ import random
 import re
 from typing import Iterable
 
+import matplotlib.pyplot as plt
+
 from .data_loader import load_ag_news
 from .evaluation import evaluate_predictions
 
@@ -33,9 +35,29 @@ from .evaluation import evaluate_predictions
 PROJECT3_DIR = Path(__file__).resolve().parent.parent
 
 EXPERT_METRICS_DIR = PROJECT3_DIR / "artifacts" / "metrics"
+
 EXPERT_METRICS_PATH = (
     EXPERT_METRICS_DIR / "simulated_experts_metrics.json"
 )
+
+EXPERT_FIGURE_DIR = (
+    PROJECT3_DIR
+    / "static"
+    / "project3"
+    / "figures"
+    / "experts"
+)
+
+EXPERT_REGION_FIGURE_PATH = (
+    EXPERT_FIGURE_DIR
+    / "expert_region_accuracy.png"
+)
+
+EXPERT_REGION_STATIC_PATH = (
+    "project3/figures/experts/"
+    "expert_region_accuracy.png"
+)
+
 
 CLASS_NAMES = {
     0: "World",
@@ -213,6 +235,7 @@ EXPERT_PROFILES = {
         general_accuracy=0.57,
         random_state=42,
     ),
+
     "technology_world": ExpertProfile(
         key="technology_world",
         name="Technology and World Affairs Specialist",
@@ -316,6 +339,7 @@ def get_region_accuracy(
         profile.general_accuracy,
     )
 
+
 # ---------------------------------------------------------------------------
 # Prediction simulation
 # ---------------------------------------------------------------------------
@@ -332,16 +356,9 @@ def _choose_incorrect_label(
     """
 
     confusion_options = {
-        # World is more often confused with Business or Sci/Tech.
         0: [2, 2, 3, 3, 1],
-
-        # Sports is usually distinctive, but mistakes may map elsewhere.
         1: [0, 0, 2, 3],
-
-        # Business is commonly confused with World and Sci/Tech.
         2: [0, 0, 3, 3, 1],
-
-        # Sci/Tech is commonly confused with Business.
         3: [2, 2, 2, 0, 1],
     }
 
@@ -383,6 +400,7 @@ def simulate_single_prediction(
 
     if expert_is_correct:
         prediction = true_label
+
     else:
         prediction = _choose_incorrect_label(
             true_label=true_label,
@@ -436,6 +454,7 @@ def simulate_expert_predictions(
         )
     ]
 
+
 # ---------------------------------------------------------------------------
 # Template-friendly formatting
 # ---------------------------------------------------------------------------
@@ -462,6 +481,7 @@ def build_confusion_matrix_rows(
         class_names,
         matrix,
     ):
+
         if len(matrix_row) != len(class_names):
             raise ValueError(
                 "Confusion matrix must be square."
@@ -476,12 +496,16 @@ def build_confusion_matrix_rows(
                         "count": int(count),
                     }
                     for predicted_class, count
-                    in zip(class_names, matrix_row)
+                    in zip(
+                        class_names,
+                        matrix_row,
+                    )
                 ],
             }
         )
 
     return rows
+
 
 # ---------------------------------------------------------------------------
 # Evaluation
@@ -497,6 +521,7 @@ def evaluate_one_expert(
     """
 
     text_list = list(texts)
+
     label_list = [
         int(label)
         for label in true_labels
@@ -529,12 +554,15 @@ def evaluate_one_expert(
         "classification_report": metrics[
             "classification_report"
         ],
-        "confusion_matrix": metrics["confusion_matrix"],
+        "confusion_matrix": metrics[
+            "confusion_matrix"
+        ],
         "confusion_matrix_rows": build_confusion_matrix_rows(
             matrix=metrics["confusion_matrix"],
             class_names=metrics["class_names"],
         ),
         "class_names": metrics["class_names"],
+
         "configuration": {
             **asdict(profile),
             "region_accuracies": {
@@ -543,14 +571,17 @@ def evaluate_one_expert(
                 in profile.region_accuracies.items()
             },
         },
+
         "region_analysis": calculate_region_analysis(
             true_labels=label_list,
             expert_outputs=expert_outputs,
             profile=profile,
         ),
+
         "strengths": get_profile_strengths(
             profile.key
         ),
+
         "weaknesses": get_profile_weaknesses(
             profile.key
         ),
@@ -564,8 +595,13 @@ def evaluate_all_simulated_experts() -> dict:
 
     dataset = load_ag_news()
 
-    texts = dataset.test["text"].tolist()
-    true_labels = dataset.test["label"].tolist()
+    texts = dataset.test[
+        "text"
+    ].tolist()
+
+    true_labels = dataset.test[
+        "label"
+    ].tolist()
 
     expert_results = {
         profile_key: evaluate_one_expert(
@@ -579,27 +615,49 @@ def evaluate_all_simulated_experts() -> dict:
 
     best_expert_key = max(
         expert_results,
-        key=lambda key: expert_results[key]["accuracy"],
+        key=lambda key: expert_results[
+            key
+        ]["accuracy"],
     )
 
-    for expert_key, expert_result in expert_results.items():
+    for (
+        expert_key,
+        expert_result,
+    ) in expert_results.items():
+
         expert_result["is_best"] = (
-            expert_key == best_expert_key
+            expert_key
+            == best_expert_key
         )
 
     result = {
-        "test_samples": len(true_labels),
-        "expert_count": len(expert_results),
-        "best_expert_key": best_expert_key,
-        "best_expert_name": expert_results[
+        "test_samples": len(
+            true_labels
+        ),
+        "expert_count": len(
+            expert_results
+        ),
+        "best_expert_key": (
             best_expert_key
-        ]["name"],
+        ),
+        "best_expert_name": (
+            expert_results[
+                best_expert_key
+            ]["name"]
+        ),
         "experts": expert_results,
     }
 
-    save_expert_results(result)
+    save_expert_results(
+        result
+    )
+
+    create_expert_region_plot(
+        result
+    )
 
     return result
+
 
 def calculate_region_analysis(
     true_labels: list[int],
@@ -610,7 +668,9 @@ def calculate_region_analysis(
     Calculate coverage and observed performance for each competence region.
     """
 
-    if len(true_labels) != len(expert_outputs):
+    if len(true_labels) != len(
+        expert_outputs
+    ):
         raise ValueError(
             "True labels and expert outputs must have equal length."
         )
@@ -620,21 +680,34 @@ def calculate_region_analysis(
         "General region",
     ]
 
-    total_samples = len(expert_outputs)
+    total_samples = len(
+        expert_outputs
+    )
+
     analysis = {}
 
     for region_name in region_names:
+
         matching_indices = [
             index
-            for index, output in enumerate(expert_outputs)
-            if output.region == region_name
+            for index, output
+            in enumerate(
+                expert_outputs
+            )
+            if output.region
+            == region_name
         ]
 
-        sample_count = len(matching_indices)
+        sample_count = len(
+            matching_indices
+        )
 
         correct_count = sum(
-            expert_outputs[index].was_correct
-            for index in matching_indices
+            expert_outputs[
+                index
+            ].was_correct
+            for index
+            in matching_indices
         )
 
         observed_accuracy = (
@@ -649,41 +722,280 @@ def calculate_region_analysis(
             else 0.0
         )
 
-        configured_accuracy = get_region_accuracy(
-            region=region_name,
-            profile=profile,
+        configured_accuracy = (
+            get_region_accuracy(
+                region=region_name,
+                profile=profile,
+            )
         )
 
-        analysis[region_name] = {
-            "internal_name": region_name,
-            "display_name": REGION_DISPLAY_NAMES.get(
-                region_name,
-                region_name,
+        analysis[
+            region_name
+        ] = {
+            "internal_name": (
+                region_name
             ),
-            "samples": sample_count,
-            "correct_predictions": correct_count,
-            "coverage": float(coverage),
+
+            "display_name": (
+                REGION_DISPLAY_NAMES.get(
+                    region_name,
+                    region_name,
+                )
+            ),
+
+            "samples": (
+                sample_count
+            ),
+
+            "correct_predictions": (
+                correct_count
+            ),
+
+            "coverage": float(
+                coverage
+            ),
+
             "coverage_percent": round(
-                float(coverage * 100),
+                float(
+                    coverage * 100
+                ),
                 2,
             ),
+
             "configured_accuracy": float(
                 configured_accuracy
             ),
+
             "configured_percent": round(
-                float(configured_accuracy * 100),
+                float(
+                    configured_accuracy
+                    * 100
+                ),
                 2,
             ),
+
             "observed_accuracy": float(
                 observed_accuracy
             ),
+
             "observed_percent": round(
-                float(observed_accuracy * 100),
+                float(
+                    observed_accuracy
+                    * 100
+                ),
                 2,
             ),
         }
 
     return analysis
+
+
+# ---------------------------------------------------------------------------
+# Figure generation
+# ---------------------------------------------------------------------------
+
+def create_expert_region_plot(
+    result: dict,
+) -> None:
+    """
+    Create one combined figure showing the observed accuracy
+    of both simulated experts across their competence regions.
+
+    The graph uses previously computed region-analysis values.
+    """
+
+    EXPERT_FIGURE_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    expert_order = [
+        "sports_business",
+        "technology_world",
+    ]
+
+    fig, axes = plt.subplots(
+        1,
+        2,
+        figsize=(12, 5.2),
+        sharey=True,
+    )
+
+    for (
+        ax,
+        expert_key,
+    ) in zip(
+        axes,
+        expert_order,
+    ):
+
+        expert = result[
+            "experts"
+        ][expert_key]
+
+        region_analysis = (
+            expert[
+                "region_analysis"
+            ]
+        )
+
+        labels = []
+        accuracies = []
+
+        for region in (
+            region_analysis.values()
+        ):
+
+            display_name = (
+                region[
+                    "display_name"
+                ]
+            )
+
+            display_name = (
+                display_name
+                .replace(
+                    "-focused articles",
+                    "",
+                )
+                .replace(
+                    "General articles",
+                    "General",
+                )
+            )
+
+            labels.append(
+                display_name
+            )
+
+            accuracies.append(
+                float(
+                    region[
+                        "observed_percent"
+                    ]
+                )
+            )
+
+        bars = ax.bar(
+            labels,
+            accuracies,
+            width=0.62,
+            color="#2f6fa7",
+        )
+
+        ax.set_title(
+            expert["name"],
+            fontsize=11,
+            fontweight="bold",
+            pad=12,
+        )
+
+        ax.set_ylim(
+            50,
+            100,
+        )
+
+        ax.set_xlabel(
+            "Input Region",
+            fontsize=9,
+        )
+
+        ax.grid(
+            axis="y",
+            linestyle="--",
+            linewidth=0.7,
+            alpha=0.25,
+        )
+
+        ax.set_axisbelow(
+            True
+        )
+
+        ax.spines[
+            "top"
+        ].set_visible(
+            False
+        )
+
+        ax.spines[
+            "right"
+        ].set_visible(
+            False
+        )
+
+        ax.tick_params(
+            axis="x",
+            labelrotation=0,
+            labelsize=8,
+        )
+
+        for (
+            bar,
+            accuracy,
+        ) in zip(
+            bars,
+            accuracies,
+        ):
+
+            ax.text(
+                bar.get_x()
+                + bar.get_width() / 2,
+                accuracy + 1.0,
+                f"{accuracy:.1f}%",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+                fontweight="bold",
+            )
+
+    axes[0].set_ylabel(
+        "Observed Accuracy (%)",
+        fontsize=10,
+    )
+
+    fig.suptitle(
+        "Simulated Expert Competence by Input Region",
+        fontsize=14,
+        fontweight="bold",
+        y=1.02,
+    )
+
+    fig.tight_layout()
+
+    fig.savefig(
+        EXPERT_REGION_FIGURE_PATH,
+        dpi=180,
+        bbox_inches="tight",
+        facecolor="white",
+    )
+
+    plt.close(
+        fig
+    )
+
+
+def ensure_expert_region_plot(
+    result: dict,
+) -> str:
+    """
+    Ensure the expert-region figure exists.
+
+    The saved expert metrics are sufficient to generate the figure,
+    so expert evaluation does not need to run again.
+    """
+
+    if not (
+        EXPERT_REGION_FIGURE_PATH.exists()
+    ):
+
+        create_expert_region_plot(
+            result
+        )
+
+    return (
+        EXPERT_REGION_STATIC_PATH
+    )
+
 
 # ---------------------------------------------------------------------------
 # Human-readable analysis
@@ -710,6 +1022,7 @@ def get_profile_strengths(
                 "Its expertise regions are transparent and easy to inspect."
             ),
         ],
+
         "technology_world": [
             (
                 "Very high reliability for articles containing explicit "
@@ -727,7 +1040,9 @@ def get_profile_strengths(
     }
 
     try:
-        return strengths[profile_key]
+        return strengths[
+            profile_key
+        ]
 
     except KeyError as exc:
         raise ValueError(
@@ -757,6 +1072,7 @@ def get_profile_weaknesses(
                 "regions."
             ),
         ],
+
         "technology_world": [
             (
                 "Lower reliability for Sports and Business articles outside "
@@ -774,12 +1090,15 @@ def get_profile_weaknesses(
     }
 
     try:
-        return weaknesses[profile_key]
+        return weaknesses[
+            profile_key
+        ]
 
     except KeyError as exc:
         raise ValueError(
             f"No weaknesses are defined for profile '{profile_key}'."
         ) from exc
+
 
 # ---------------------------------------------------------------------------
 # Persistence
@@ -797,15 +1116,20 @@ def save_expert_results(
         exist_ok=True,
     )
 
-    temporary_path = EXPERT_METRICS_PATH.with_suffix(
-        ".json.tmp"
+    temporary_path = (
+        EXPERT_METRICS_PATH
+        .with_suffix(
+            ".json.tmp"
+        )
     )
 
     try:
+
         with temporary_path.open(
             "w",
             encoding="utf-8",
         ) as file:
+
             json.dump(
                 result,
                 file,
@@ -818,6 +1142,7 @@ def save_expert_results(
         )
 
     except Exception:
+
         if temporary_path.exists():
             temporary_path.unlink()
 
@@ -829,14 +1154,19 @@ def load_expert_results() -> dict | None:
     Load saved expert evaluation results.
     """
 
-    if not EXPERT_METRICS_PATH.exists():
+    if not (
+        EXPERT_METRICS_PATH.exists()
+    ):
         return None
 
     with EXPERT_METRICS_PATH.open(
         "r",
         encoding="utf-8",
     ) as file:
-        return json.load(file)
+
+        return json.load(
+            file
+        )
 
 
 def get_expert_profile(
@@ -849,9 +1179,12 @@ def get_expert_profile(
     """
 
     try:
-        return EXPERT_PROFILES[profile_key]
+        return EXPERT_PROFILES[
+            profile_key
+        ]
 
     except KeyError as exc:
+
         valid_keys = ", ".join(
             EXPERT_PROFILES.keys()
         )

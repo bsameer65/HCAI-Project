@@ -732,22 +732,634 @@
   margin-top: 22px;
 }
 
-/* ---------- Active learning ---------- */
+/* ============================================================
+   ACTIVE LEARNING
+============================================================ */
 
-.p3-al-strategy {
-  margin-top: 26px;
-  padding-top: 6px;
+/* ------------------------------------------------------------
+   Shared Active Learning actions
+------------------------------------------------------------ */
+
+.p3-primary-btn,
+.p3-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 9px 17px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
-.p3-al-strategy + .p3-al-strategy {
-  border-top: 2px solid #e8edf5;
-  padding-top: 24px;
+.p3-primary-btn {
+  border: 1px solid #1a4f8a;
+  background: #1a4f8a;
+  color: #ffffff;
 }
 
-.p3-al-strategy h3 {
+.p3-primary-btn:hover {
+  background: #133d6e;
+  border-color: #133d6e;
+  transform: translateY(-1px);
+}
+
+.p3-primary-btn:focus-visible,
+.p3-secondary-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px
+    rgba(26, 79, 138, 0.14);
+}
+
+.p3-primary-btn:disabled {
+  background: #9aa9bd;
+  border-color: #9aa9bd;
+  cursor: not-allowed;
+  opacity: 0.8;
+  transform: none;
+}
+
+.p3-secondary-btn {
+  border: 1px solid #1a4f8a;
+  background: #ffffff;
   color: #1a4f8a;
-  font-size: 1rem;
 }
+
+.p3-secondary-btn:hover {
+  background: #eef4fb;
+  color: #133d6e;
+  transform: translateY(-1px);
+}
+
+
+/* ------------------------------------------------------------
+   Active Learning header
+------------------------------------------------------------ */
+
+.p3-al-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.p3-al-header-row > div {
+  min-width: 0;
+}
+
+.p3-al-header-row h2 {
+  margin-top: 0;
+}
+
+.p3-al-header-row p {
+  margin-bottom: 0;
+}
+
+
+/* ------------------------------------------------------------
+   Configuration controls
+------------------------------------------------------------ */
+
+.p3-al-control-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.p3-al-control {
+  min-width: 0;
+}
+
+.p3-al-control label {
+  display: block;
+  margin-bottom: 7px;
+  color: #1a4f8a;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.p3-al-control select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 36px 10px 12px;
+  border: 1px solid #cbd8e6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #253c52;
+  font-family: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.p3-al-control select:hover {
+  border-color: #8aa7c3;
+}
+
+.p3-al-control select:focus {
+  outline: none;
+  border-color: #1a4f8a;
+  box-shadow:
+    0 0 0 3px
+    rgba(26, 79, 138, 0.10);
+}
+
+.p3-control-help {
+  display: block;
+  margin-top: 6px;
+  color: #718296;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.p3-al-run-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+
+/* ------------------------------------------------------------
+   Selected configuration
+------------------------------------------------------------ */
+
+.p3-al-selection-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.p3-al-selection-item {
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid #dce5ef;
+  border-radius: 9px;
+  background: #f8fafd;
+}
+
+.p3-al-selection-item span {
+  display: block;
+  margin-bottom: 5px;
+  color: #718296;
+  font-size: 0.76rem;
+}
+
+.p3-al-selection-item strong {
+  display: block;
+  color: #174f88;
+  font-size: 0.94rem;
+  overflow-wrap: anywhere;
+}
+
+
+/* ------------------------------------------------------------
+   Final metrics
+------------------------------------------------------------ */
+
+.p3-al-metric-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(0, 1fr)
+    );
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.p3-al-metric-card {
+  min-width: 0;
+  padding: 18px 14px;
+  border: 1px solid #dce5ef;
+  border-radius: 10px;
+  background: #f7f9fc;
+  text-align: center;
+}
+
+.p3-al-metric-card span {
+  display: block;
+  margin-bottom: 7px;
+  color: #65788c;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.p3-al-metric-card strong {
+  display: block;
+  color: #174f88;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.p3-al-secondary-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  margin-top: 16px;
+  padding: 13px 15px;
+  border: 1px solid #e4eaf1;
+  border-radius: 8px;
+  background: #f8fafd;
+  color: #65788c;
+  font-size: 0.8rem;
+}
+
+.p3-al-secondary-metrics strong {
+  color: #344f69;
+}
+
+
+/* ------------------------------------------------------------
+   Active Learning tables
+------------------------------------------------------------ */
+
+.p3-table-wrap {
+  width: 100%;
+  margin-top: 18px;
+  overflow-x: auto;
+  border: 1px solid #e1e8f0;
+  border-radius: 10px;
+}
+
+.p3-al-table {
+  width: 100%;
+  min-width: 720px;
+  margin-top: 0;
+  border-collapse: collapse;
+}
+
+.p3-al-table th,
+.p3-al-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid #e1e8f0;
+  font-size: 0.82rem;
+  vertical-align: middle;
+}
+
+.p3-al-table th {
+  background: #eef3fb;
+  color: #174f88;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.p3-al-table td {
+  color: #34495e;
+}
+
+.p3-al-table td:not(:first-child),
+.p3-al-table th:not(:first-child) {
+  text-align: center;
+}
+
+.p3-al-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.p3-al-table tbody tr:hover {
+  background: #f7f9fc;
+}
+
+
+/* ------------------------------------------------------------
+   Comparison call-to-action
+------------------------------------------------------------ */
+
+.p3-al-comparison-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 22px;
+  padding: 17px 18px;
+  border: 1px solid #d4e0ec;
+  border-radius: 9px;
+  background: #f5f8fc;
+}
+
+.p3-al-comparison-cta > div {
+  min-width: 0;
+}
+
+.p3-al-comparison-cta strong {
+  color: #174f88;
+  font-size: 0.85rem;
+}
+
+.p3-al-comparison-cta p {
+  max-width: 720px;
+  margin: 5px 0 0;
+  color: #65788c;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+/* Compact Back to Active Learning button */
+.p3-al-header-row .p3-secondary-btn {
+    flex-shrink: 0;
+    width: auto;
+    min-width: 0;
+    min-height: 38px;
+
+    padding: 8px 16px;
+
+    white-space: nowrap;
+
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.p3-al-back-row {
+    margin-top: 18px;
+}
+
+.p3-al-back-row .p3-secondary-btn {
+    width: auto;
+    min-height: 38px;
+    padding: 8px 16px;
+
+    white-space: nowrap;
+
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.p3-al-fixed-strategy {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    min-height: 42px;
+    box-sizing: border-box;
+
+    padding: 9px 12px;
+
+    border: 1px solid #cbd8e6;
+    border-radius: 8px;
+
+    background: #f5f8fc;
+}
+
+.p3-al-fixed-strategy strong {
+    color: #174f88;
+
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.p3-al-fixed-strategy span {
+    padding: 3px 8px;
+
+    border-radius: 999px;
+
+    background: #e5edf7;
+
+    color: #536b82;
+
+    font-size: 0.68rem;
+    font-weight: 700;
+
+    white-space: nowrap;
+}
+
+/* ---------- Active Learning page introduction ---------- */
+
+.p3-al-intro h1 {
+    margin: 0 0 12px;
+
+    color: #1f5f9d;
+
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.p3-al-intro p {
+    margin: 0;
+
+    color: #4f6275;
+
+    font-size: 0.92rem;
+    line-height: 1.6;
+}
+
+.p3-result-figure {
+    margin: 22px 0 26px;
+    padding: 18px;
+    background: #ffffff;
+    border: 1px solid #dbe5ef;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.p3-result-figure-image {
+    display: block;
+    width: 100%;
+    max-width: 900px;
+    height: auto;
+    margin: 0 auto;
+}
+
+.p3-figure-caption {
+    margin: 12px 0 0;
+    color: #6b7f92;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+
+.p3-al-learning-figure {
+    margin-top: 24px;
+    text-align: center;
+}
+
+.p3-al-learning-figure .p3-result-figure-image {
+    display: block;
+    width: 100%;
+    max-width: 850px;
+    height: auto;
+    margin: 0 auto;
+}
+
+.p3-active-figure-finding {
+    margin-top: 24px;
+}
+/* ============================================================
+   ACTIVE LEARNING COMPARISON
+============================================================ */
+
+/* ------------------------------------------------------------
+   Comparison toolbar
+------------------------------------------------------------ */
+
+.p3-al-compare-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.p3-al-compare-toolbar form {
+  margin: 0;
+}
+
+.p3-al-compare-toolbar label {
+  display: block;
+  margin-bottom: 6px;
+  color: #174f88;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.p3-al-compare-toolbar select {
+  min-width: 260px;
+  box-sizing: border-box;
+  padding: 9px 34px 9px 11px;
+  border: 1px solid #cbd8e6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #253c52;
+  font-family: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.p3-al-compare-toolbar select:focus {
+  outline: none;
+  border-color: #1a4f8a;
+  box-shadow:
+    0 0 0 3px
+    rgba(26, 79, 138, 0.10);
+}
+
+
+/* ------------------------------------------------------------
+   Best strategy
+------------------------------------------------------------ */
+
+.p3-al-best-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 20px 0;
+  padding: 15px 17px;
+  border-left: 4px solid #4b8c5a;
+  border-radius: 8px;
+  background: #f2f8f3;
+}
+
+.p3-al-best-box span {
+  color: #526b5a;
+  font-size: 0.82rem;
+}
+
+.p3-al-best-box strong {
+  color: #2f6d3d;
+  font-size: 0.92rem;
+}
+
+.p3-al-best-row {
+  background: #f2f8f3 !important;
+}
+
+.p3-al-best-badge {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #dcefe0;
+  color: #2f6d3d;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+
+/* ------------------------------------------------------------
+   Responsive
+------------------------------------------------------------ */
+
+@media (max-width: 900px) {
+
+  .p3-al-control-grid,
+  .p3-al-selection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .p3-al-metric-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+
+}
+
+@media (max-width: 700px) {
+
+  .p3-al-header-row,
+  .p3-al-comparison-cta,
+  .p3-al-compare-toolbar,
+  .p3-al-best-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .p3-al-compare-toolbar select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .p3-al-run-row {
+    align-items: stretch;
+  }
+
+}
+
+@media (max-width: 500px) {
+
+  .p3-al-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .p3-primary-btn,
+  .p3-secondary-btn {
+    width: 100%;
+  }
+
+}
+
+
 
 /* ---------- Results comparison ---------- */
 
@@ -893,4 +1505,1525 @@
 .p3-human-wrong {
   color: #b71c1c;
   font-weight: 700;
+}
+
+/* =========================================================
+   Human Expert - Strategy Selection
+========================================================= */
+
+.p3-human-strategy-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin: 22px 0 34px;
+}
+
+.p3-human-strategy-card {
+    position: relative;
+    display: block;
+    cursor: pointer;
+}
+
+.p3-human-strategy-card input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.p3-human-strategy-content {
+    height: 100%;
+    box-sizing: border-box;
+
+    padding: 22px;
+
+    border: 2px solid #d7e1ee;
+    border-radius: 12px;
+
+    background: #ffffff;
+
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease,
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.p3-human-strategy-content strong {
+    display: block;
+
+    margin-bottom: 10px;
+
+    color: #174f88;
+    font-size: 1.05rem;
+}
+
+.p3-human-strategy-content p {
+    margin: 0;
+
+    color: #5c6f82;
+    line-height: 1.55;
+}
+
+.p3-human-strategy-card:hover
+.p3-human-strategy-content {
+    border-color: #1a4f8a;
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 6px 18px
+        rgba(27, 79, 138, 0.08);
+}
+
+.p3-human-strategy-card input:checked
++ .p3-human-strategy-content {
+    border-color: #1a4f8a;
+    background: #eef4fb;
+
+    box-shadow:
+        0 0 0 1px #1a4f8a;
+}
+
+/* =========================================================
+   Human Expert - Introduction
+========================================================= */
+
+.p3-human-intro-card {
+    padding-top: 28px;
+    padding-bottom: 28px;
+}
+
+.p3-human-intro {
+    margin: 0;
+
+    color: #26384a;
+
+    font-size: 1.04rem;
+    line-height: 1.65;
+}
+
+
+/* =========================================================
+   Human Expert - Session Setup
+========================================================= */
+
+.p3-human-session-form {
+    margin-top: 28px;
+    max-width: 620px;
+}
+
+
+.p3-human-field {
+    margin-bottom: 26px;
+}
+
+
+.p3-human-field-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    margin-bottom: 9px;
+}
+
+
+.p3-human-field-label label {
+    margin: 0;
+
+    color: #174f88;
+
+    font-size: 0.98rem;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   Info icon
+========================================================= */
+
+.p3-info-icon {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width: 18px;
+    height: 18px;
+
+    border: 1px solid #1a4f8a;
+    border-radius: 50%;
+
+    color: #1a4f8a;
+
+    font-size: 11px;
+    font-weight: 700;
+    font-style: normal;
+
+    cursor: help;
+
+    user-select: none;
+}
+
+
+/* =========================================================
+   Dropdowns
+========================================================= */
+
+.p3-human-select {
+    display: block;
+
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 13px 42px 13px 14px;
+
+    border: 1px solid #bccada;
+    border-radius: 9px;
+
+    background-color: #ffffff;
+
+    color: #26384a;
+
+    font-family: inherit;
+    font-size: 0.98rem;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+
+.p3-human-select:hover {
+    border-color: #7f9fbe;
+}
+
+
+.p3-human-select:focus {
+    outline: none;
+
+    border-color: #1a4f8a;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(26, 79, 138, 0.10);
+}
+
+
+/* =========================================================
+   Start Button
+========================================================= */
+
+.p3-human-actions {
+    margin-top: 6px;
+}
+
+
+/* =========================================================
+   Responsive
+========================================================= */
+
+@media (max-width: 700px) {
+
+    .p3-human-session-form {
+        max-width: 100%;
+    }
+
+}
+
+/* ============================================================
+   HUMAN EXPERT - ANNOTATION PROGRESS
+============================================================ */
+
+.p3-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    margin-bottom: 18px;
+
+    color: #174f88;
+}
+
+.p3-progress-header strong {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.p3-progress-header span {
+    color: #174f88;
+    font-size: 0.95rem;
+}
+
+
+.p3-progress-track {
+    width: 100%;
+    height: 12px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background: #dfe8f4;
+}
+
+
+.p3-progress-fill {
+    height: 100%;
+
+    border-radius: 999px;
+
+    background: #1a4f8a;
+
+    transition: width 0.25s ease;
+}
+
+
+/* ============================================================
+   HUMAN EXPERT - ARTICLE
+============================================================ */
+
+.p3-article-box {
+    margin: 22px 0 28px;
+
+    padding: 24px 26px;
+
+    border: 1px solid #d5e0ec;
+    border-left: 5px solid #1a4f8a;
+    border-radius: 10px;
+
+    background: #f8fafd;
+
+    color: #17212b;
+
+    font-size: 1rem;
+    line-height: 1.7;
+}
+
+
+/* ============================================================
+   HUMAN EXPERT - CATEGORY BUTTONS
+============================================================ */
+
+.p3-label-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+
+    gap: 16px;
+
+    width: 100%;
+}
+
+
+.p3-label-btn {
+    appearance: none;
+    -webkit-appearance: none;
+
+    width: 100%;
+
+    padding: 16px 18px;
+
+    box-sizing: border-box;
+
+    border: 1.5px solid #1a4f8a;
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    color: #174f88;
+
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+
+    text-align: center;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
+}
+
+
+.p3-label-btn:hover {
+    background: #1a4f8a;
+    color: #ffffff;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 5px 14px
+        rgba(26, 79, 138, 0.14);
+}
+
+
+.p3-label-btn:focus-visible {
+    outline: none;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(26, 79, 138, 0.18);
+}
+
+
+.p3-label-btn:active {
+    transform: translateY(0);
+}
+
+
+/* ============================================================
+   HUMAN EXPERT - RESULT STATUS
+============================================================ */
+
+.p3-correct,
+.p3-wrong {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 86px;
+
+    padding: 5px 10px;
+
+    border-radius: 999px;
+
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+
+.p3-correct {
+    background: #e7f6ec;
+    color: #18783d;
+}
+
+
+.p3-wrong {
+    background: #fdeaea;
+    color: #b42318;
+}
+
+
+/* ============================================================
+   HUMAN EXPERT - RESULTS TABLE
+============================================================ */
+
+.p3-table-scroll {
+    width: 100%;
+
+    overflow-x: auto;
+
+    margin-top: 20px;
+}
+
+
+.p3-table {
+    width: 100%;
+
+    border-collapse: collapse;
+
+    background: #ffffff;
+}
+
+
+.p3-table thead th {
+    padding: 14px 16px;
+
+    background: #1f5a96;
+
+    color: #ffffff;
+
+    font-size: 0.9rem;
+    font-weight: 700;
+
+    text-align: left;
+
+    white-space: nowrap;
+}
+
+
+.p3-table tbody td {
+    padding: 14px 16px;
+
+    border-bottom: 1px solid #e1e8f0;
+
+    color: #26384a;
+
+    vertical-align: middle;
+}
+
+
+.p3-table tbody tr:nth-child(even) {
+    background: #f8fafd;
+}
+
+
+.p3-table tbody tr:hover {
+    background: #f1f5fa;
+}
+
+
+/* ============================================================
+   HUMAN EXPERT - RESPONSIVE
+============================================================ */
+
+@media (max-width: 850px) {
+
+    .p3-label-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+
+@media (max-width: 520px) {
+
+    .p3-label-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .p3-progress-header {
+        align-items: flex-start;
+        flex-direction: column;
+
+        gap: 6px;
+    }
+
+}
+
+/* =========================================================
+   Query Analysis spacing fix
+========================================================= */
+
+.p3-stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.p3-stat-box {
+    position: relative;
+    z-index: 1;
+}
+
+.p3-info-box {
+    clear: both;
+    margin-top: 18px;
+}
+
+@media (max-width: 850px) {
+    .p3-stat-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================================
+   ADVANCED ANALYSIS
+============================================================ */
+
+/* ============================================================
+   ADVANCED ANALYSIS INTRO
+============================================================ */
+
+.p3-analysis-intro {
+    padding-top: 24px;
+    padding-bottom: 24px;
+}
+
+
+/* Heading - same visual language as other Project 3 pages */
+
+.p3-analysis-intro-header {
+    margin-bottom: 18px;
+    padding-bottom: 13px;
+
+    border-bottom: 1px solid #dce5ef;
+}
+
+.p3-analysis-intro-header h1 {
+    margin: 0;
+
+    color: #174f88;
+
+    font-size: 1.2rem;
+    font-weight: 700;
+
+    line-height: 1.3;
+}
+
+
+/* Short page explanation */
+
+.p3-analysis-intro-text {
+    max-width: 1050px;
+
+    margin: 0;
+
+    color: #263f57;
+
+    font-size: 0.93rem;
+    line-height: 1.6;
+}
+
+
+/* ============================================================
+   METHODOLOGY NOTE
+============================================================ */
+
+.p3-analysis-method-note {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 12px;
+
+    margin-top: 18px;
+    padding: 13px 15px;
+
+    border-left: 3px solid #2163a1;
+    border-radius: 7px;
+
+    background: #eef4fb;
+}
+
+
+/* Information icon */
+
+.p3-analysis-method-icon {
+    display: flex;
+
+    flex: 0 0 23px;
+
+    align-items: center;
+    justify-content: center;
+
+    width: 23px;
+    height: 23px;
+
+    margin-top: 1px;
+
+    border: 1px solid #91aecb;
+    border-radius: 50%;
+
+    background: #ffffff;
+
+    color: #174f88;
+
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+
+.p3-analysis-method-content {
+    min-width: 0;
+}
+
+
+.p3-analysis-method-content strong {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color: #174f88;
+
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+
+.p3-analysis-method-content p {
+    margin: 0;
+
+    color: #536b82;
+
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+
+@media (max-width: 600px) {
+
+    .p3-analysis-intro {
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .p3-analysis-intro-header h1 {
+        font-size: 1.08rem;
+    }
+
+    .p3-analysis-method-note {
+        padding: 12px 13px;
+    }
+
+}
+
+
+/* ============================================================
+   ANALYSIS STATUS / RUN CARD
+============================================================ */
+
+.p3-analysis-status-card {
+    padding-top: 26px;
+    padding-bottom: 26px;
+}
+
+.p3-analysis-status-header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 24px;
+
+    padding-bottom: 18px;
+
+    border-bottom: 1px solid #e1e8f0;
+}
+
+.p3-analysis-status-header h2 {
+    margin: 0 0 5px;
+}
+
+.p3-analysis-status-header p {
+    margin: 0;
+
+    color: #65788c;
+
+    font-size: 0.86rem;
+}
+
+
+/* Run form */
+
+.p3-analysis-run-form {
+    flex-shrink: 0;
+
+    margin: 0;
+}
+
+
+/* Run button */
+
+.p3-analysis-run-button {
+    padding: 10px 18px;
+
+    border: 0;
+    border-radius: 8px;
+
+    background: #174f88;
+
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.p3-analysis-run-button:hover {
+    background: #123f6e;
+
+    transform: translateY(-1px);
+}
+
+.p3-analysis-run-button:disabled {
+    opacity: 0.65;
+
+    cursor: not-allowed;
+
+    transform: none;
+}
+
+
+/* Analysis status */
+
+.p3-analysis-status-message {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 11px;
+
+    margin-top: 18px;
+    padding: 14px 16px;
+
+    border: 1px solid #dce5ef;
+    border-radius: 9px;
+
+    background: #f7f9fc;
+}
+
+.p3-analysis-status-dot {
+    flex: 0 0 9px;
+
+    width: 9px;
+    height: 9px;
+
+    margin-top: 5px;
+
+    border-radius: 50%;
+
+    background: #667c91;
+}
+
+.p3-analysis-status-message strong {
+    display: block;
+
+    margin-bottom: 2px;
+
+    color: #344f69;
+
+    font-size: 0.84rem;
+}
+
+.p3-analysis-status-message p {
+    margin: 0;
+
+    color: #65788c;
+
+    font-size: 0.82rem;
+}
+
+
+/* Available / current */
+
+.p3-analysis-status-ready {
+    border-color: #cfe1d4;
+
+    background: #f2f8f4;
+}
+
+.p3-analysis-status-ready
+.p3-analysis-status-dot {
+    background: #4f8b5e;
+}
+
+
+/* Outdated */
+
+.p3-analysis-status-warning {
+    border-color: #ead7ad;
+
+    background: #fff9ed;
+}
+
+.p3-analysis-status-warning
+.p3-analysis-status-dot {
+    background: #c28a2c;
+}
+
+
+/* ============================================================
+   WARNING BOX
+============================================================ */
+
+.p3-warning-box {
+    margin-top: 18px;
+
+    padding: 18px 20px;
+
+    border: 1px solid #e4b96f;
+    border-radius: 10px;
+
+    background: #fff8ea;
+
+    color: #6d4c1d;
+}
+
+.p3-warning-box strong {
+    display: block;
+
+    margin-bottom: 6px;
+}
+
+.p3-warning-box p {
+    margin: 8px 0;
+}
+
+.p3-warning-box ul {
+    margin: 10px 0 0 20px;
+}
+
+
+/* ============================================================
+   PREREQUISITE LINKS
+============================================================ */
+
+.p3-action-row {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-top: 18px;
+}
+
+
+/* ============================================================
+   CLASSIFIER CALIBRATION
+============================================================ */
+
+.p3-calibration-grid {
+    display: grid;
+
+    grid-template-columns:
+        minmax(230px, 0.65fr)
+        minmax(0, 1.6fr);
+
+    gap: 28px;
+
+    margin-top: 24px;
+
+    align-items: stretch;
+}
+
+
+/* Left column */
+
+.p3-calibration-summary {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 16px;
+}
+
+
+/* ECE metric */
+
+.p3-calibration-score-card {
+    display: flex;
+
+    flex: 1;
+
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 160px;
+
+    padding: 22px 18px;
+
+    border: 1px solid #d7e2ee;
+    border-radius: 12px;
+
+    background: #f4f7fb;
+
+    text-align: center;
+}
+
+.p3-calibration-score-label {
+    margin-bottom: 10px;
+
+    color: #5d758d;
+
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.p3-calibration-score {
+    color: #174f88;
+
+    font-size: 2rem;
+    font-weight: 800;
+
+    line-height: 1;
+}
+
+.p3-calibration-score-hint {
+    margin-top: 10px;
+
+    color: #8191a2;
+
+    font-size: 0.72rem;
+}
+
+
+/* Calibration explanation */
+
+.p3-calibration-explanation {
+    padding: 16px;
+
+    border-left: 3px solid #8fb0d1;
+    border-radius: 7px;
+
+    background: #f8fafc;
+}
+
+.p3-calibration-explanation strong {
+    display: block;
+
+    margin-bottom: 6px;
+
+    color: #174f88;
+
+    font-size: 0.8rem;
+}
+
+.p3-calibration-explanation p {
+    margin: 0;
+
+    color: #65788c;
+
+    font-size: 0.78rem;
+    line-height: 1.55;
+}
+
+
+/* Calibration graph */
+
+.p3-calibration-plot {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    min-width: 0;
+
+    padding: 12px;
+
+    border: 1px solid #dce5ef;
+    border-radius: 12px;
+
+    background: #ffffff;
+
+    overflow: hidden;
+}
+
+.p3-calibration-plot img {
+    display: block;
+
+    width: 100%;
+    max-width: 570px;
+
+    height: auto;
+    max-height: 430px;
+
+    margin: 0 auto;
+
+    object-fit: contain;
+}
+
+
+/* ============================================================
+   EXPERT COMPARISON GRID
+============================================================ */
+
+.p3-expert-comparison-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 24px;
+
+    margin-top: 24px;
+
+    align-items: stretch;
+}
+
+
+/* Individual expert card */
+
+.p3-expert-analysis-card {
+    min-width: 0;
+
+    padding: 22px;
+
+    border: 1px solid #dde6ef;
+    border-radius: 14px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 4px 14px
+        rgba(25, 55, 85, 0.06);
+}
+
+.p3-expert-analysis-card h3 {
+    margin: 0 0 18px;
+    padding-bottom: 13px;
+
+    border-bottom: 1px solid #e0e7ef;
+
+    color: #174f88;
+
+    font-size: 1.03rem;
+    font-weight: 700;
+}
+
+
+/* ============================================================
+   EXPERT MINI METRICS
+============================================================ */
+
+.p3-mini-stat-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 12px;
+}
+
+.p3-mini-stat {
+    min-width: 0;
+
+    padding: 14px 12px;
+
+    border: 1px solid #e0e7ef;
+    border-radius: 9px;
+
+    background: #f7f9fc;
+
+    text-align: center;
+}
+
+.p3-mini-stat span {
+    display: block;
+
+    margin-bottom: 5px;
+
+    color: #65788c;
+
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.p3-mini-stat strong {
+    display: block;
+
+    color: #174f88;
+
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+
+/* ============================================================
+   COLLABORATION HEADROOM
+============================================================ */
+
+.p3-compact-highlight {
+    margin-top: 16px;
+
+    padding: 14px 16px;
+
+    border-radius: 9px;
+
+    background: #edf4fb;
+
+    text-align: center;
+}
+
+.p3-compact-highlight strong {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color: #174f88;
+
+    font-size: 1.3rem;
+    font-weight: 800;
+}
+
+.p3-compact-highlight span {
+    color: #536b82;
+
+    font-size: 0.8rem;
+}
+
+.p3-card-note {
+    margin: 12px 0 0;
+
+    color: #65788c;
+
+    font-size: 0.8rem;
+
+    text-align: center;
+}
+
+.p3-card-note strong {
+    color: #344f69;
+}
+
+
+/* ============================================================
+   EXPERT COMPARISON PLOTS
+============================================================ */
+
+.p3-comparison-plot {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+
+    margin-top: 18px;
+    padding: 10px;
+
+    overflow: hidden;
+
+    border: 1px solid #dce5ef;
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    box-sizing: border-box;
+}
+
+.p3-comparison-plot img {
+    display: block;
+
+    width: 100%;
+    max-width: 500px;
+    max-height: 330px;
+
+    height: auto;
+
+    margin: 0 auto;
+
+    object-fit: contain;
+}
+
+
+/* ============================================================
+   ACTIVE LEARNING PLOTS
+============================================================ */
+
+.p3-small-analysis-plot {
+    margin-top: 18px;
+    padding: 10px;
+
+    overflow: hidden;
+
+    border: 1px solid #dce5ef;
+    border-radius: 10px;
+
+    background: #ffffff;
+}
+
+.p3-small-analysis-plot
++ .p3-small-analysis-plot {
+    margin-top: 14px;
+}
+
+.p3-plot-title {
+    margin: 2px 0 9px;
+
+    color: #536b82;
+
+    font-size: 0.8rem;
+    font-weight: 700;
+
+    text-align: center;
+}
+
+.p3-small-analysis-plot img {
+    display: block;
+
+    width: 100%;
+    max-width: 480px;
+    max-height: 300px;
+
+    height: auto;
+
+    margin: 0 auto;
+
+    object-fit: contain;
+}
+
+
+/* ============================================================
+   INTERPRETATION SUMMARY
+============================================================ */
+
+.p3-analysis-summary-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+
+    gap: 16px;
+
+    margin-top: 22px;
+}
+
+.p3-analysis-summary-card {
+    padding: 18px;
+
+    border: 1px solid #dce5ef;
+    border-radius: 10px;
+
+    background: #f8fafd;
+}
+
+.p3-analysis-summary-card strong {
+    color: #174f88;
+
+    font-size: 0.9rem;
+}
+
+.p3-analysis-summary-card p {
+    margin: 8px 0 0;
+
+    color: #536b82;
+
+    font-size: 0.84rem;
+    line-height: 1.55;
+}
+
+
+/* ============================================================
+   ABLATION STUDY
+============================================================ */
+
+.p3-ablation-expert {
+    margin-top: 26px;
+}
+
+.p3-ablation-expert
++ .p3-ablation-expert {
+    margin-top: 30px;
+    padding-top: 26px;
+
+    border-top: 1px solid #e1e8f0;
+}
+
+.p3-ablation-expert h3 {
+    margin: 0 0 16px;
+
+    color: #1a4f8a;
+
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+
+/* Table wrapper */
+
+.p3-table-wrap {
+    width: 100%;
+
+    overflow-x: auto;
+
+    border: 1px solid #e1e8f0;
+    border-radius: 10px;
+}
+
+
+/* Ablation table */
+
+.p3-ablation-table {
+    width: 100%;
+    min-width: 780px;
+
+    border-collapse: collapse;
+}
+
+.p3-ablation-table th,
+.p3-ablation-table td {
+    padding: 11px 12px;
+
+    border-bottom: 1px solid #e2e8f0;
+
+    vertical-align: middle;
+}
+
+.p3-ablation-table th {
+    background: #eef3fb;
+
+    color: #1a4f8a;
+
+    font-size: 0.8rem;
+    font-weight: 700;
+
+    text-align: left;
+
+    white-space: nowrap;
+}
+
+.p3-ablation-table td {
+    color: #34495e;
+
+    font-size: 0.84rem;
+}
+
+.p3-ablation-table td:not(:first-child),
+.p3-ablation-table th:not(:first-child) {
+    text-align: center;
+}
+
+.p3-ablation-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+
+/* Ablation description */
+
+.p3-ablation-description {
+    display: block;
+
+    max-width: 390px;
+
+    margin-top: 4px;
+
+    color: #6b7a90;
+
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+
+/* Best variant */
+
+.p3-ablation-best {
+    background: #f2f8f3;
+}
+
+.p3-ablation-best td:first-child {
+    border-left: 4px solid #4b8c5a;
+}
+
+
+/* Ablation interpretation */
+
+.p3-ablation-interpretation {
+    margin-top: 24px;
+}
+
+.p3-ablation-interpretation p {
+    margin-bottom: 0;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+
+@media (max-width: 1000px) {
+
+    .p3-analysis-summary-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+}
+
+
+@media (max-width: 900px) {
+
+    .p3-expert-comparison-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .p3-comparison-plot img {
+        max-width: 620px;
+    }
+
+    .p3-small-analysis-plot img {
+        max-width: 620px;
+    }
+
+}
+
+
+@media (max-width: 850px) {
+
+    .p3-analysis-status-header {
+        flex-direction: column;
+
+        align-items: flex-start;
+    }
+
+    .p3-calibration-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .p3-calibration-score-card {
+        min-height: auto;
+    }
+
+    .p3-calibration-plot img {
+        max-width: 620px;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .p3-analysis-run-form {
+        width: 100%;
+    }
+
+    .p3-analysis-run-button {
+        width: 100%;
+    }
+
+    .p3-action-row {
+        flex-direction: column;
+
+        align-items: stretch;
+    }
+
+    .p3-action-row a {
+        width: 100%;
+
+        box-sizing: border-box;
+
+        text-align: center;
+    }
+
+    .p3-analysis-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+@media (max-width: 500px) {
+
+    .p3-expert-analysis-card {
+        padding: 17px;
+    }
+
+    .p3-mini-stat-grid {
+        grid-template-columns: 1fr;
+    }
+
 }
