@@ -1,22 +1,10 @@
-{% load static %}
-<!DOCTYPE html>
+{% extends "project1/base.html" %}
 
-<html>
+{% block title %}
+    Test Classification Model - Project 1
+{% endblock %}
 
-<head>
-
-    <title>Test Classification Model</title>
-
-    <link
-        rel="stylesheet"
-        href="{% static 'project1/style.css' %}"
-    >
-
-</head>
-
-
-<body>
-
+{% block content %}
 
 <div class="page-container">
 
@@ -358,72 +346,9 @@
         {% endif %}
 
 
-        <!-- =================================================
-             Actions
-             ================================================= -->
-
-        <div class="card centered-text">
-
-            <h2>
-                Continue
-            </h2>
-
-
-            <p class="help-text">
-
-                Try another observation, inspect the model explanation,
-                or compare this model with other algorithms.
-
-            </p>
-
-
-            <div class="action-row">
-
-
-                <a
-                    href="{% url 'project1:classification_test' %}"
-                    class="button"
-                >
-                    Test Another Observation
-                </a>
-
-
-                <a
-                    href="{% url 'project1:classification_explain' %}"
-                    class="button"
-                >
-                    Explain Model
-                </a>
-
-
-                <a
-                    href="{% url 'project1:classification_compare' %}"
-                    class="button"
-                >
-                    Compare Models
-                </a>
-
-
-                <a
-                    href="{% url 'project1:classification_analyze' %}"
-                    class="button secondary-button"
-                >
-                    Back to Analysis
-                </a>
-
-
-            </div>
-
-
-        </div>
-
-
     {% endif %}
 
 
 </div>
 
-
-</body>
-
-</html>
+{% endblock %}

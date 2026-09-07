@@ -1,0 +1,206 @@
+/* =========================================================
+   Shared HCAI Navigation Bar
+   ========================================================= */
+
+.hcai-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 2000;
+
+    width: 100%;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.hcai-navbar-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0.75rem 1.5rem;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.hcai-navbar-brand {
+    color: #1f2937;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.hcai-navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.hcai-navbar-link {
+    color: #374151;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-decoration: none;
+
+    padding: 0.55rem 0.85rem;
+    border-radius: 8px;
+
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
+}
+
+.hcai-navbar-link:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+
+/* =========================================================
+   Project Dropdown
+   ========================================================= */
+
+.hcai-dropdown {
+    position: relative;
+}
+
+.hcai-dropdown-button {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+
+    padding: 0.55rem 0.9rem;
+
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+
+    background: #ffffff;
+    color: #374151;
+
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.hcai-dropdown-button:hover {
+    background: #f9fafb;
+}
+
+.hcai-dropdown-arrow {
+    font-size: 0.8rem;
+}
+
+
+/* Dropdown menu */
+
+.hcai-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+
+    min-width: 230px;
+
+    padding: 0.4rem;
+
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+
+    box-shadow:
+        0 10px 25px rgba(0, 0, 0, 0.10);
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-5px);
+
+    transition:
+        opacity 0.15s ease,
+        transform 0.15s ease,
+        visibility 0.15s ease;
+}
+
+
+/* Show dropdown */
+
+.hcai-dropdown:hover .hcai-dropdown-menu,
+.hcai-dropdown:focus-within .hcai-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+
+/* Dropdown links */
+
+.hcai-dropdown-menu a {
+    display: block;
+
+    padding: 0.65rem 0.8rem;
+
+    color: #374151;
+    text-decoration: none;
+
+    font-size: 0.92rem;
+    font-weight: 500;
+
+    border-radius: 7px;
+}
+
+.hcai-dropdown-menu a:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.hcai-dropdown-menu a.active {
+    background: #eef2ff;
+    color: #3730a3;
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   Responsive
+   ========================================================= */
+
+@media (max-width: 640px) {
+
+    .hcai-navbar-inner {
+        padding: 0.65rem 1rem;
+    }
+
+    .hcai-navbar-brand {
+        font-size: 0.95rem;
+    }
+
+    .hcai-navbar-link {
+        padding: 0.5rem 0.65rem;
+        font-size: 0.88rem;
+    }
+
+    .hcai-dropdown-button {
+        padding: 0.5rem 0.65rem;
+        font-size: 0.88rem;
+    }
+
+    .hcai-dropdown-menu {
+        min-width: 210px;
+    }
+}
+
+/* ========================================================= */
+/* ACTIVE NAVIGATION ITEM                                    */
+/* ========================================================= */
+
+.hcai-navbar-link.active {
+    background: #1f5d9b;
+    color: #ffffff;
+}
+
+.hcai-navbar-link.active:hover {
+    background: #174d82;
+    color: #ffffff;
+}

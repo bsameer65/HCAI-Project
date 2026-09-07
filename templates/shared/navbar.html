@@ -1,0 +1,608 @@
+<nav class="hcai-navbar">
+
+    <div class="hcai-navbar-inner">
+
+        {# ===================================================== #}
+        {# PROJECT 1                                             #}
+        {# ===================================================== #}
+
+        {% if request.resolver_match.namespace == "project1" %}
+
+            <a
+                href="{% url 'project1:index' %}"
+                class="hcai-navbar-brand"
+            >
+                {% if "classification" in request.resolver_match.url_name %}
+                    Project 1 · Classification
+                {% elif "regression" in request.resolver_match.url_name %}
+                    Project 1 · Regression
+                {% else %}
+                    Project 1
+                {% endif %}
+            </a>
+
+
+            <div class="hcai-navbar-actions">
+
+                {# ============================================= #}
+                {# PROJECT 1 LANDING                             #}
+                {# ============================================= #}
+
+                {% if request.resolver_match.url_name == "index" %}
+
+                    <a
+                        href="{% url 'home:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        All Projects
+                    </a>
+
+
+                {# ============================================= #}
+                {# CLASSIFICATION LANDING                        #}
+                {# ============================================= #}
+
+                {% elif request.resolver_match.url_name == "classification" %}
+
+                    <a
+                        href="{% url 'project1:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Home
+                    </a>
+
+                    <a
+                        href="{% url 'home:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        All Projects
+                    </a>
+
+
+                {# ============================================= #}
+                {# CLASSIFICATION ANALYZE                        #}
+                {# ============================================= #}
+
+                {% elif request.resolver_match.url_name == "classification_analyze" %}
+
+                    <a
+                        href="{% url 'project1:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Home
+                    </a>
+
+                    <a
+                        href="{% url 'project1:classification_analyze' %}"
+                        class="hcai-navbar-link active"
+                    >
+                        Analyze
+                    </a>
+
+                    {# Opens the training configuration popup #}
+                    <a
+                        href="{% url 'project1:classification_analyze' %}?open_train=1"
+                        class="hcai-navbar-link"
+                    >
+                        Train Model
+                    </a>
+
+                    <a
+                        href="{% url 'home:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        All Projects
+                    </a>
+
+
+                {# ============================================= #}
+                {# CLASSIFICATION TRAIN                          #}
+                {# ============================================= #}
+
+                {% elif request.resolver_match.url_name == "classification_train" %}
+
+                    <a
+                        href="{% url 'project1:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Home
+                    </a>
+
+                    <a
+                        href="{% url 'project1:classification_analyze' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Analyze
+                    </a>
+
+                    <a
+                        href="{% url 'project1:classification_analyze' %}?open_train=1"
+                        class="hcai-navbar-link active"
+                    >
+                        Train Model
+                    </a>
+
+                    <a
+                        href="{% url 'home:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        All Projects
+                    </a>
+
+
+                {# ============================================= #}
+                {# CLASSIFICATION POST-TRAINING                  #}
+                {# ============================================= #}
+
+                {% elif request.resolver_match.url_name == "classification_result" or request.resolver_match.url_name == "classification_test" or request.resolver_match.url_name == "classification_explain" or request.resolver_match.url_name == "classification_compare" %}
+
+                    <a
+                        href="{% url 'project1:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Home
+                    </a>
+
+                    <a
+                        href="{% url 'project1:classification_result' %}"
+                        class="hcai-navbar-link {% if request.resolver_match.url_name == 'classification_result' %}active{% endif %}"
+                    >
+                        Results
+                    </a>
+
+                    <a
+                        href="{% url 'project1:classification_test' %}"
+                        class="hcai-navbar-link {% if request.resolver_match.url_name == 'classification_test' %}active{% endif %}"
+                    >
+                        Test Model
+                    </a>
+
+                    <a
+                        href="{% url 'project1:classification_explain' %}"
+                        class="hcai-navbar-link {% if request.resolver_match.url_name == 'classification_explain' %}active{% endif %}"
+                    >
+                        Explain Model
+                    </a>
+
+                    <a
+                        href="{% url 'project1:classification_compare' %}"
+                        class="hcai-navbar-link {% if request.resolver_match.url_name == 'classification_compare' %}active{% endif %}"
+                    >
+                        Compare Models
+                    </a>
+
+                    <a
+                        href="{% url 'home:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        All Projects
+                    </a>
+
+
+                {# ============================================= #}
+                {# REGRESSION LANDING                            #}
+                {# ============================================= #}
+
+                {% elif request.resolver_match.url_name == "regression" %}
+
+                    <a
+                        href="{% url 'project1:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Home
+                    </a>
+
+                    <a
+                        href="{% url 'home:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        All Projects
+                    </a>
+
+
+                {# ============================================= #}
+                {# REGRESSION SETUP                              #}
+                {# ============================================= #}
+
+                {% elif request.resolver_match.url_name == "regression_setup" %}
+
+                    <a
+                        href="{% url 'project1:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Home
+                    </a>
+
+                    <a
+                        href="{% url 'project1:regression_setup' %}"
+                        class="hcai-navbar-link active"
+                    >
+                        Setup
+                    </a>
+
+                    <a
+                        href="{% url 'home:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        All Projects
+                    </a>
+
+
+                {# ============================================= #}
+                {# REGRESSION ANALYZE                            #}
+                {# ============================================= #}
+
+                {% elif request.resolver_match.url_name == "regression_analyze" %}
+
+                    <a
+                        href="{% url 'project1:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Home
+                    </a>
+
+                    <a
+                        href="{% url 'project1:regression_setup' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Setup
+                    </a>
+
+                    <a
+                        href="{% url 'project1:regression_analyze' %}"
+                        class="hcai-navbar-link active"
+                    >
+                        Analyze
+                    </a>
+
+                    {# Opens the regression training popup #}
+                    <a
+                        href="{% url 'project1:regression_analyze' %}?open_train=1"
+                        class="hcai-navbar-link"
+                    >
+                        Train Model
+                    </a>
+
+                    <a
+                        href="{% url 'home:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        All Projects
+                    </a>
+
+
+                {# ============================================= #}
+                {# REGRESSION TRAIN                              #}
+                {# ============================================= #}
+
+                {% elif request.resolver_match.url_name == "regression_train" %}
+
+                    <a
+                        href="{% url 'project1:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Home
+                    </a>
+
+                    <a
+                        href="{% url 'project1:regression_setup' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Setup
+                    </a>
+
+                    <a
+                        href="{% url 'project1:regression_analyze' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Analyze
+                    </a>
+
+                    <a
+                        href="{% url 'project1:regression_analyze' %}?open_train=1"
+                        class="hcai-navbar-link active"
+                    >
+                        Train Model
+                    </a>
+
+                    <a
+                        href="{% url 'home:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        All Projects
+                    </a>
+
+
+                {# ============================================= #}
+                {# REGRESSION POST-TRAINING                      #}
+                {# ============================================= #}
+
+                {% elif request.resolver_match.url_name == "regression_result" or request.resolver_match.url_name == "regression_test" or request.resolver_match.url_name == "regression_explain" or request.resolver_match.url_name == "regression_compare" %}
+
+                    <a
+                        href="{% url 'project1:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        Home
+                    </a>
+
+                    <a
+                        href="{% url 'project1:regression_result' %}"
+                        class="hcai-navbar-link {% if request.resolver_match.url_name == 'regression_result' %}active{% endif %}"
+                    >
+                        Results
+                    </a>
+
+                    <a
+                        href="{% url 'project1:regression_test' %}"
+                        class="hcai-navbar-link {% if request.resolver_match.url_name == 'regression_test' %}active{% endif %}"
+                    >
+                        Test Model
+                    </a>
+
+                    <a
+                        href="{% url 'project1:regression_explain' %}"
+                        class="hcai-navbar-link {% if request.resolver_match.url_name == 'regression_explain' %}active{% endif %}"
+                    >
+                        Explain Model
+                    </a>
+
+                    <a
+                        href="{% url 'project1:regression_compare' %}"
+                        class="hcai-navbar-link {% if request.resolver_match.url_name == 'regression_compare' %}active{% endif %}"
+                    >
+                        Compare Models
+                    </a>
+
+                    <a
+                        href="{% url 'home:index' %}"
+                        class="hcai-navbar-link"
+                    >
+                        All Projects
+                    </a>
+
+                {% endif %}
+
+            </div>
+
+
+        {# ===================================================== #}
+        {# PROJECT 2                                             #}
+        {# ===================================================== #}
+
+        {% elif request.resolver_match.namespace == "project2" %}
+
+            <a
+                href="{% url 'project2:index' %}"
+                class="hcai-navbar-brand"
+            >
+                Project 2
+            </a>
+
+            <div class="hcai-navbar-actions">
+
+                <a
+                    href="{% url 'home:index' %}"
+                    class="hcai-navbar-link"
+                >
+                    All Projects
+                </a>
+
+                <div class="hcai-dropdown">
+
+                    <button
+                        class="hcai-dropdown-button"
+                        type="button"
+                    >
+                        {% if request.resolver_match.url_name == "index" %}
+                            Overview
+                        {% elif request.resolver_match.url_name == "train" %}
+                            Train Model
+                        {% elif request.resolver_match.url_name == "counterfactual" %}
+                            Counterfactuals
+                        {% elif request.resolver_match.url_name == "pdp_ale" %}
+                            PDP / ALE
+                        {% elif request.resolver_match.url_name == "model_comparison" %}
+                            Model Comparison
+                        {% else %}
+                            Project 2
+                        {% endif %}
+
+                        <span class="hcai-dropdown-arrow">
+                            ▾
+                        </span>
+                    </button>
+
+                    <div class="hcai-dropdown-menu">
+
+                        <a
+                            href="{% url 'project2:index' %}"
+                            class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}"
+                        >
+                            Overview
+                        </a>
+
+                        <a
+                            href="{% url 'project2:train' %}"
+                            class="{% if request.resolver_match.url_name == 'train' %}active{% endif %}"
+                        >
+                            Train Model
+                        </a>
+
+                        <a
+                            href="{% url 'project2:counterfactual' %}"
+                            class="{% if request.resolver_match.url_name == 'counterfactual' %}active{% endif %}"
+                        >
+                            Counterfactuals
+                        </a>
+
+                        <a
+                            href="{% url 'project2:pdp_ale' %}"
+                            class="{% if request.resolver_match.url_name == 'pdp_ale' %}active{% endif %}"
+                        >
+                            PDP / ALE
+                        </a>
+
+                        <a
+                            href="{% url 'project2:model_comparison' %}"
+                            class="{% if request.resolver_match.url_name == 'model_comparison' %}active{% endif %}"
+                        >
+                            Model Comparison
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        {# ===================================================== #}
+        {# PROJECT 3                                             #}
+        {# ===================================================== #}
+
+        {% elif request.resolver_match.namespace == "project3" %}
+
+            <a
+                href="{% url 'project3:index' %}"
+                class="hcai-navbar-brand"
+            >
+                Project 3
+            </a>
+
+            <div class="hcai-navbar-actions">
+
+                <a
+                    href="{% url 'home:index' %}"
+                    class="hcai-navbar-link"
+                >
+                    All Projects
+                </a>
+
+                <div class="hcai-dropdown">
+
+                    <button
+                        class="hcai-dropdown-button"
+                        type="button"
+                    >
+                        {% if request.resolver_match.url_name == "index" %}
+                            Overview
+                        {% elif request.resolver_match.url_name == "baseline" %}
+                            Baseline Classifier
+                        {% elif request.resolver_match.url_name == "expert" %}
+                            Simulated Expert
+                        {% elif request.resolver_match.url_name == "learning_to_defer" %}
+                            Learning to Defer
+                        {% elif request.resolver_match.url_name == "active_learning" %}
+                            Active Learning
+                        {% elif request.resolver_match.url_name == "active_learning_compare" %}
+                            Compare Strategies
+                        {% elif request.resolver_match.url_name == "human_expert" %}
+                            Human Expert
+                        {% elif request.resolver_match.url_name == "advanced_analysis" %}
+                            Advanced Analysis
+                        {% elif request.resolver_match.url_name == "compare_results" %}
+                            Results
+                        {% else %}
+                            Project 3
+                        {% endif %}
+
+                        <span class="hcai-dropdown-arrow">
+                            ▾
+                        </span>
+                    </button>
+
+                    <div class="hcai-dropdown-menu">
+
+                        <a
+                            href="{% url 'project3:index' %}"
+                            class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}"
+                        >
+                            Overview
+                        </a>
+
+                        <a
+                            href="{% url 'project3:baseline' %}"
+                            class="{% if request.resolver_match.url_name == 'baseline' %}active{% endif %}"
+                        >
+                            Baseline Classifier
+                        </a>
+
+                        <a
+                            href="{% url 'project3:expert' %}"
+                            class="{% if request.resolver_match.url_name == 'expert' %}active{% endif %}"
+                        >
+                            Simulated Expert
+                        </a>
+
+                        <a
+                            href="{% url 'project3:learning_to_defer' %}"
+                            class="{% if request.resolver_match.url_name == 'learning_to_defer' %}active{% endif %}"
+                        >
+                            Learning to Defer
+                        </a>
+
+                        <a
+                            href="{% url 'project3:active_learning' %}"
+                            class="{% if request.resolver_match.url_name == 'active_learning' %}active{% endif %}"
+                        >
+                            Active Learning
+                        </a>
+
+                        <a
+                            href="{% url 'project3:human_expert' %}?new=1"
+                            class="{% if request.resolver_match.url_name == 'human_expert' %}active{% endif %}"
+                        >
+                            Human Expert
+                        </a>
+
+                        <a
+                            href="{% url 'project3:advanced_analysis' %}"
+                            class="{% if request.resolver_match.url_name == 'advanced_analysis' %}active{% endif %}"
+                        >
+                            Advanced Analysis
+                        </a>
+
+                        <a
+                            href="{% url 'project3:compare_results' %}"
+                            class="{% if request.resolver_match.url_name == 'compare_results' %}active{% endif %}"
+                        >
+                            Results
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        {# ===================================================== #}
+        {# FALLBACK                                              #}
+        {# ===================================================== #}
+
+        {% else %}
+
+            <a
+                href="{% url 'home:index' %}"
+                class="hcai-navbar-brand"
+            >
+                HCAI Projects
+            </a>
+
+            <div class="hcai-navbar-actions">
+
+                <a
+                    href="{% url 'home:index' %}"
+                    class="hcai-navbar-link"
+                >
+                    All Projects
+                </a>
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+</nav>

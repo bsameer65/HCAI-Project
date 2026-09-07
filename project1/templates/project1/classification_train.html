@@ -1,19 +1,10 @@
-{% load static %}
-<!DOCTYPE html>
+{% extends "project1/base.html" %}
 
-<html>
-<head>
+{% block title %}
+    Classification Training Results - Project 1
+{% endblock %}
 
-    <title>Classification Training Results</title>
-
-    <link
-        rel="stylesheet"
-        href="{% static 'project1/style.css' %}"
-    >
-
-</head>
-
-<body>
+{% block content %}
 
 <div class="page-container">
 
@@ -313,62 +304,9 @@
         </div>
 
 
-        <!-- ==================================================
-             NEXT ACTIONS
-             ================================================== -->
-
-        <div class="card centered-text">
-
-            <h2>
-                Continue Experimenting
-            </h2>
-
-            <p class="help-text">
-                You can test the trained model on new input,
-                inspect its explanation, compare it with other
-                algorithms, or train another configuration.
-            </p>
-
-            <div class="action-row">
-
-                <a
-                    href="{% url 'project1:classification_test' %}"
-                    class="button"
-                >
-                    Test Model
-                </a>
-
-
-                <a
-                    href="{% url 'project1:classification_explain' %}"
-                    class="button"
-                >
-                    Explain Model
-                </a>
-
-
-                <a
-                    href="{% url 'project1:classification_compare' %}"
-                    class="button"
-                >
-                    Compare Models
-                </a>
-
-
-                <a
-                    href="{% url 'project1:classification_analyze' %}"
-                    class="button secondary-button"
-                >
-                    Train Another Model
-                </a>
-
-            </div>
-
-        </div>
-
+       
     {% endif %}
 
 </div>
 
-</body>
-</html>
+{% endblock %}

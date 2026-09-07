@@ -1,4 +1,13 @@
 {% extends "project3/base.html" %}
+
+{% block page_heading %}
+    Learning to Defer
+{% endblock %}
+
+{% block page_description %}
+    Learn when the classifier should make the prediction itself
+    and when expert involvement may improve the decision.
+{% endblock %}
 {% load static %}
 
 {% block title %}
@@ -7,14 +16,7 @@
 
 {% block content %}
 
-<section class="p3-card">
-    <h2>Learning to Defer</h2>
 
-    <p>
-        The system decides whether to return the classifier prediction
-        or defer the article to a simulated expert.
-    </p>
-</section>
 
 
 <section class="p3-card">
@@ -668,50 +670,6 @@
 </div>
 
 
-<!-- ============================================================= -->
-<!-- Page-specific styling                                         -->
-<!-- ============================================================= -->
-
-<style>
-
-.p3-coverage-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px;
-    margin-top: 24px;
-}
-
-.p3-result-figure {
-    min-width: 0;
-    text-align: center;
-}
-
-.p3-result-figure h3 {
-    margin-top: 0;
-    margin-bottom: 14px;
-}
-
-.p3-result-figure-image {
-    display: block;
-    width: 100%;
-    height: auto;
-    max-width: 760px;
-    margin: 0 auto;
-}
-
-.p3-coverage-finding {
-    margin-top: 24px;
-}
-
-@media (max-width: 900px) {
-
-    .p3-coverage-grid {
-        grid-template-columns: 1fr;
-    }
-
-}
-
-</style>
 
 
 <!-- ============================================================= -->

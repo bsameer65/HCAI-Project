@@ -1,25 +1,21 @@
 {% extends "project3/base.html" %}
 
+{% block page_heading %}
+    Experiment Results
+{% endblock %}
+
+{% block page_description %}
+    Compare the main results from the baseline, simulated experts,
+    learning-to-defer, and active learning experiments.
+{% endblock %}
+
 {% block title %}
     Results Comparison
 {% endblock %}
 
 {% block content %}
 
-<section class="p3-card">
-    <h2>Results Comparison</h2>
 
-    <p>
-        This page summarizes the complete human–AI collaboration pipeline,
-        from autonomous classification to expert simulation, learning to
-        defer, and active learning for expert competence discovery.
-    </p>
-
-    <div class="p3-info-box">
-        The central goal is not only to maximize classification accuracy, but
-        to use expert intervention selectively and efficiently.
-    </div>
-</section>
 
 
 {% if not results_available %}

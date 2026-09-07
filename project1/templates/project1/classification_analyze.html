@@ -1,24 +1,10 @@
-{% load static %}
-<!DOCTYPE html>
+{% extends "project1/base.html" %}
 
-<html>
+{% block title %}
+    Analyze Classification Dataset - Project 1
+{% endblock %}
 
-<head>
-
-    <title>
-        Analyze Classification Dataset
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="{% static 'project1/style.css' %}"
-    >
-
-</head>
-
-
-<body>
-
+{% block content %}
 
 <div class="page-container">
 
@@ -840,9 +826,16 @@ document.getElementById("trainPopup").addEventListener(
         }
     }
 );
+
+/* Open training popup when requested from the navbar */
+document.addEventListener("DOMContentLoaded", function () {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("open_train") === "1") {
+        openTrainPopup();
+    }
+});
+
 </script>
 
-
-</body>
-
-</html>
+{% endblock %}
