@@ -1,39 +1,33 @@
 # HCAI Project
 
-This repository contains the web applications developed for the Human-Centric
-Artificial Intelligence course.
+Django web application containing four Human-Centric Artificial Intelligence coursework projects. It uses SQLite and includes the datasets required by Projects 3 and 4; no external database, API credentials, Node.js runtime, or dataset download is required.
 
-## Run Project 4
+## Prerequisites
 
-Project 4 is a Django study prototype comparing pairwise movie choices with
-complete ten-movie rankings. Its standalone configuration avoids loading the
-earlier coursework applications and their separate dependencies.
+- Python 3.13
 
-Requirements:
+## Setup and run
 
-- Python 3.10 or newer
-- `project4/data/movie_metadata.csv` (included in this branch)
-
-From the repository root on Windows PowerShell:
+Run the following commands from the repository root.
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -r requirements-project4.txt
-python manage.py migrate --settings=project4.standalone_settings
-python manage.py runserver --settings=project4.standalone_settings
+python -m pip install -r requirements.txt
+python manage.py migrate
+python manage.py check
+python manage.py runserver
 ```
 
-Open <http://127.0.0.1:8000/project4/>. The landing page starts the study and
-provides the Tasks 1--3 report as a PDF download.
+On macOS or Linux, activate the environment with `source .venv/bin/activate` instead.
 
-Run all Project 4 checks with:
+The development server listens on <http://127.0.0.1:8000/>. Available application entry points are:
 
-```powershell
-python manage.py check --settings=project4.standalone_settings
-python manage.py test project4 --settings=project4.standalone_settings
-```
-
-The full shared site still uses `pbl.settings`; its earlier projects may require
-additional packages that are outside the Project 4 dependency set.
+| Application | URL |
+| --- | --- |
+| Project index | <http://127.0.0.1:8000/home/> |
+| Project 1 | <http://127.0.0.1:8000/project1/> |
+| Project 2 | <http://127.0.0.1:8000/project2/> |
+| Project 3 | <http://127.0.0.1:8000/project3/> |
+| Project 4 | <http://127.0.0.1:8000/project4/> |
