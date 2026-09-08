@@ -1,6 +1,6 @@
 # HCAI Project
 
-Django web application containing four Human-Centric Artificial Intelligence coursework projects. It uses SQLite and includes the datasets required by Projects 3 and 4; no external database, API credentials, Node.js runtime, or dataset download is required.
+Django web application containing four Human-Centric Artificial Intelligence coursework projects. It uses SQLite and includes the datasets required by Projects 3 and 4; no external database, API credentials, Node.js runtime, or dataset download is required. The dataset for Project-1 is already available in the repository.
 
 ## Prerequisites
 
