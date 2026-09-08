@@ -10,7 +10,7 @@
     body {
       margin: 0;
       color: #242033;
-      font: 10.3pt/1.46 Arial, Helvetica, sans-serif;
+      font: 10.1pt/1.43 Arial, Helvetica, sans-serif;
     }
     h1, h2, h3 { color: #33276f; line-height: 1.18; page-break-after: avoid; }
     h1 { margin: 0; font-size: 30pt; letter-spacing: -0.7pt; }
@@ -88,17 +88,16 @@
     <p><strong>PDF report for Tasks 1–3</strong></p>
     <p class="small">The corresponding participant interface implements Task 4.</p>
     <div class="author">
-      <strong>Muhammad Haseeb</strong>
-      <span>Matriculation number: 642790</span>
+      <strong>Muhammad Haseeb - 642790</strong>
+      <strong>Muhammad Sameer Lund Baloch - 641441</strong>
       <span>Technische Universität Hamburg</span>
-      <span>September 2026</span>
     </div>
   </section>
 
   <main>
     <h2>Scope and summary</h2>
     <div class="summary-box">
-      This project designs—but does not conduct—a study comparing two cold-start
+      This project designs but does not conduct a study comparing two cold-start
       preference elicitation methods. Each participant completes 27 binary movie
       choices and three complete rankings of ten movies. A separate linear utility
       model is fitted from each method, and both models make predictions for the
@@ -190,8 +189,13 @@
       participant’s preference. Titles and URLs are identifiers, not transferable
       content features. Director and actor names are shown to participants but excluded
       from the vector because thousands of sparse identity columns cannot be estimated
-      reliably from only 27 likelihood contributions. Country is similarly omitted to
-      keep the cold-start model compact; language and genre retain more direct signals.
+      reliably from only 27 likelihood contributions. Director and cast are nevertheless
+      displayed in the interface to help participants recognise movies and make informed
+      choices. Preferences driven specifically by those identities are therefore a
+      deliberate source of model error: the study accepts that limitation in exchange for
+      keeping the representation compact and estimable from the limited interaction budget.
+      Country is similarly omitted to keep the cold-start model compact; language and genre
+      retain more direct signals.
     </p>
     <div class="note">
       This is a transparent baseline, not a claim that 53 hand-designed features are
@@ -241,7 +245,11 @@
       utility interpretation instead of inventing unrelated pair labels. It defines a
       valid probability distribution over all permutations and uses the information in
       the complete ordering. A ten-movie ranking contributes nine sequential choice
-      terms; three rankings contribute 27 terms, matching the 27 binary comparisons.
+      terms; three rankings therefore contribute 27 likelihood terms, matching the 27
+      terms contributed by the binary-comparison condition. This equalises the number of
+      likelihood contributions used for model fitting, but it does not imply equal
+      statistical information or equal cognitive effort per contribution; participant
+      burden is therefore measured explicitly as a secondary outcome.
     </p>
 
     <h3>2.3 Estimation</h3>
@@ -257,8 +265,11 @@
     </div>
     <p>
       Positive L2 regularisation is important because the feature representation is
-      larger than the interaction budget and includes correlated indicators. The code
-      uses analytic gradients, stable log-sum-exp computations, and L-BFGS-B. Tests
+      larger than the interaction budget and includes correlated indicators. The same
+      moderate value λ = 1 is fixed a priori for both elicitation methods so that the
+      comparison is symmetric and does not tune hyperparameters on the held-out validation
+      choices, which would leak evaluation information into model fitting. The code uses analytic gradients, stable log-sum-exp computations,
+      and L-BFGS-B. Tests
       verify numerical stability, gradients, fitting behaviour, and that a two-item
       Plackett–Luce ranking reduces to Bradley–Terry.
     </p>
@@ -311,8 +322,8 @@
       </tbody>
     </table>
     <p>
-      The prototype maps its random seed uniformly to one of the four cells and makes
-      each plan reproducible. In real recruitment, a concealed permuted-block schedule
+      The current implementation maps its random seed uniformly to one of the four cells
+      and makes each plan reproducible. In real recruitment, a concealed permuted-block schedule
       with one assignment to each cell per block should maintain equal cell sizes.
       Counterbalancing separates interface effects from order, fatigue, practice, and
       the particular movies assigned to a method.
@@ -321,8 +332,14 @@
     <h3>3.3 Movie sampling and task budget</h3>
     <p>
       For each participant, 100 unique movies are sampled uniformly without replacement:
-      30 in pool A, 30 in pool B, and 40 in a disjoint validation pool. Pairwise tasks
-      comprise 27 distinct pairs. All 30 pairwise-pool movies appear at least once, 24
+      30 in pool A, 30 in pool B, and 40 in a disjoint validation pool. Thirty movies per
+      elicitation pool naturally support three non-overlapping ten-movie ranking tasks while
+      still giving broad catalogue coverage to the 27 pairwise comparisons. Forty separate
+      validation movies provide 20 completely unseen pairs without repeating a validation
+      movie, reducing repeated-exposure effects. Uniform random sampling is used for both
+      methods so that movie selection itself does not adapt to one interface and confound the
+      comparison of elicitation formats. Pairwise tasks comprise 27 distinct pairs. All 30
+      pairwise-pool movies appear at least once, 24
       appear twice, and six appear once; left/right orientation and task order are
       randomised. Ranking comprises three disjoint sets of ten, so every movie in its
       30-item pool appears exactly once. Validation has 20 pairs and uses each of its 40
@@ -405,7 +422,7 @@
       all otherwise usable sessions.
     </p>
     <p>
-      The prototype asks for no name or email and uses an anonymous UUID. A real study
+      The participant implementation asks for no name or email and uses an anonymous UUID. A real study
       requires institutional ethics review where applicable, a controller/contact and
       retention period in the information sheet, encrypted transport, access controls,
       and a persistent research database separated from identifying recruitment records.
@@ -438,27 +455,13 @@
       </tbody>
     </table>
     <p>
-      The implementation is a study prototype. It demonstrates the full participant
-      sequence and computes a personal descriptive result, but no participants were
-      recruited and no group-level experimental results are reported.
+      The implementation provides the complete participant-facing study sequence and
+      computes a personal descriptive result. No participants were recruited and no
+      group-level experimental results are reported, because conducting the study is
+      outside the scope of the assignment.
     </p>
 
-    <h2>References</h2>
-    <ol class="references">
-      <li>
-        Bradley, R. A., &amp; Terry, M. E. (1952). Rank analysis of incomplete block
-        designs: I. The method of paired comparisons. <em>Biometrika, 39</em>(3/4),
-        324–345. <a href="https://doi.org/10.1093/biomet/39.3-4.324">https://doi.org/10.1093/biomet/39.3-4.324</a>
-      </li>
-      <li>
-        Plackett, R. L. (1975). The analysis of permutations. <em>Applied Statistics,
-        24</em>(2), 193–202. <a href="https://doi.org/10.2307/2346567">https://doi.org/10.2307/2346567</a>
-      </li>
-      <li>
-        IMDb 5000 Movie Dataset. Dataset supplied for the course project; public
-        catalogue listing: <a href="https://www.kaggle.com/datasets/carolzhangdc/imdb-5000-movie-dataset">Kaggle dataset page</a>.
-      </li>
-    </ol>
+    
   </main>
 </body>
 </html>
