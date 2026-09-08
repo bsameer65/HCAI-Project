@@ -1,13 +1,10 @@
-{% load static %}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Classification Task</title>
+{% extends "project1/base.html" %}
 
-    <link rel="stylesheet" href="{% static 'project1/style.css' %}">
-</head>
+{% block title %}
+    Classification Task - Project 1
+{% endblock %}
 
-<body>
+{% block content %}
 
 <div class="page-container">
 
@@ -61,5 +58,4 @@
 
 </div>
 
-</body>
-</html>
+{% endblock %}

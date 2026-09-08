@@ -1,5 +1,14 @@
 {% extends "project3/base.html" %}
 
+{% block page_heading %}
+    Human Expert Study
+{% endblock %}
+
+{% block page_description %}
+    Participate as the expert and provide labels for actively
+    selected news articles.
+{% endblock %}
+
 {% block title %}
 Human Expert
 {% endblock %}
@@ -9,23 +18,6 @@ Human Expert
 
 {% if not session_active %}
 
-<!-- ================================================================
-     INTRODUCTION
-================================================================ -->
-
-<section class="p3-card">
-
-    <h2>
-        Human Expert
-    </h2>
-
-    <p>
-        Participate as the human expert in the classification system.
-        Choose how the system should select articles and how many
-        annotations you want to provide.
-    </p>
-
-</section>
 
 
 <!-- ================================================================

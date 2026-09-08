@@ -32,13 +32,25 @@
 }
 
 .p4-site-header {
-  width: min(1120px, calc(100% - 40px));
-  margin: 0 auto;
-  padding: 26px 0;
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+
+  width: 100%;
+  margin: 0;
+  padding: 20px max(20px, calc((100% - 1120px) / 2));
+
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
+
+  background: rgba(245, 243, 250, 0.96);
+  border-bottom: 1px solid rgba(101, 70, 215, 0.08);
+  box-shadow: 0 2px 10px rgba(49, 37, 91, 0.04);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .p4-brand {
@@ -79,6 +91,11 @@
 }
 
 .p4-nav a:hover {
+  background: var(--p4-primary-light);
+  color: var(--p4-primary-dark);
+}
+
+.p4-nav a.active {
   background: var(--p4-primary-light);
   color: var(--p4-primary-dark);
 }
@@ -1409,3 +1426,5 @@ a.p4-button-primary:hover {
     grid-template-columns: 1fr;
   }
 }
+
+

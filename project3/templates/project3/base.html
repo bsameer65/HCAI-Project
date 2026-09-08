@@ -20,18 +20,33 @@
         rel="stylesheet"
         href="{% static 'project3/css/style.css' %}"
     >
+
+    <link
+        rel="stylesheet"
+        href="{% static 'navbar.css' %}"
+    >
 </head>
 
 <body class="p3-page">
+
+    {% include "shared/navbar.html" %}
     <div class="p3-container">
 
         <header class="p3-header">
-            <h1>Active Learning for Learning-to-Defer</h1>
+
+            <h1>
+                {% block page_heading %}
+                    Active Learning for Learning-to-Defer
+                {% endblock %}
+            </h1>
 
             <p>
-                A human-AI collaboration system for news classification,
-                expert deferral, and efficient expert competence discovery.
+                {% block page_description %}
+                    A human-AI collaboration system for news classification,
+                    expert deferral, and efficient expert competence discovery.
+                {% endblock %}
             </p>
+
         </header>
 
         <nav class="p3-nav">
@@ -111,9 +126,7 @@
         {% block content %}
         {% endblock %}
 
-        <a href="{% url 'home:index' %}" class="p3-back">
-            Back to all projects
-        </a>
+    
     </div>
 </body>
 </html>

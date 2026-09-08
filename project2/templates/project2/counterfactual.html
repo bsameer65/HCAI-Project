@@ -1,29 +1,11 @@
-{% load static project2_tags %}
-<!DOCTYPE html>
-<html lang="en">
+{% extends "project2/base.html" %}
+{% load project2_tags %}
 
-<head>
+{% block title %}
+    Counterfactual Explanations - Project 2
+{% endblock %}
 
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        {{ page_title }}
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="{% static 'project2/style.css' %}"
-    >
-
-</head>
-
-
-<body class="p2-page">
+{% block content %}
 
 <div class="p2-container">
 
@@ -51,7 +33,7 @@
     <nav class="p2-nav">
 
         <a href="{% url 'project2:index' %}">
-            Home
+            Overview
         </a>
 
         <a href="{% url 'project2:train' %}">
@@ -826,17 +808,6 @@
 
 
     {% endif %}
-
-
-    <a
-        href="{% url 'home:index' %}"
-        class="p2-back"
-    >
-        ← Back to Project Hub
-    </a>
-
-
 </div>
 
-</body>
-</html>
+{% endblock %}

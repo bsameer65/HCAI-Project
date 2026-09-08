@@ -1,4 +1,12 @@
 {% extends "project3/base.html" %}
+{% block page_heading %}
+    Simulated Experts
+{% endblock %}
+
+{% block page_description %}
+    Explore experts with specialized competence across different
+    regions of the AG News input space.
+{% endblock %}
 {% load static %}
 
 {% block title %}
@@ -8,19 +16,6 @@
 {% block content %}
 
 
-<!-- =========================================================
-     PAGE INTRODUCTION
-========================================================= -->
-<section class="p3-card">
-
-    <h2>Simulated Experts</h2>
-
-    <p>
-        Two imperfect simulated experts represent different areas of
-        expertise on AG News.
-    </p>
-
-</section>
 
 
 <!-- =========================================================
@@ -167,7 +162,7 @@
             <img
                 src="{% static expert_region_plot %}"
                 alt="Observed accuracy of both simulated experts across their competence regions"
-                class="p3-result-figure-image"
+                class="p3-result-figure-image p3-result-figure-image-wide"
             >
 
             <p class="p3-figure-caption">
@@ -614,49 +609,7 @@
 </div>
 
 
-<!-- =========================================================
-     PAGE-SPECIFIC FIGURE STYLING
-========================================================= -->
-<style>
 
-    .p3-result-figure {
-        margin: 22px 0 8px;
-        padding: 18px;
-
-        background: #ffffff;
-
-        border: 1px solid #dbe5ef;
-        border-radius: 10px;
-
-        text-align: center;
-    }
-
-
-    .p3-result-figure-image {
-        display: block;
-
-        width: 100%;
-        max-width: 1100px;
-        height: auto;
-
-        margin: 0 auto;
-    }
-
-
-    .p3-figure-caption {
-        max-width: 800px;
-
-        margin: 12px auto 0;
-
-        color: #6b7f92;
-
-        font-size: 0.82rem;
-        line-height: 1.5;
-
-        text-align: center;
-    }
-
-</style>
 
 
 <!-- =========================================================

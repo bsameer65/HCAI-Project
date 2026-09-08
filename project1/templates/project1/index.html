@@ -1,54 +1,50 @@
-{% load static %}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Project 1</title>
+{% extends "project1/base.html" %}
 
-    <link rel="stylesheet" href="{% static 'project1/style.css' %}">
-</head>
+{% block title %}
+    Project 1 - Supervised Learning
+{% endblock %}
 
-<body>
+
+{% block content %}
 
 <div class="page-container">
 
     <div class="card centered-text">
 
-        <h1>Project 1: Supervised Learning Interface</h1>
+        <h1>
+            Project 1: Supervised Learning Interface
+        </h1>
 
-        <h2>Select your problem</h2>
+        <h2>
+            Select your problem
+        </h2>
 
         <p class="help-text">
             Please choose what type of supervised learning problem
             you want to work on.
         </p>
 
+
         <div class="action-row">
 
-            <a href="{% url 'project1:classification' %}">
-                <button class="button">
-                    Classification
-                </button>
+            <a
+                href="{% url 'project1:classification' %}"
+                class="button"
+            >
+                Classification
             </a>
 
-            <a href="{% url 'project1:regression' %}">
-                <button class="button secondary-button">
-                    Regression
-                </button>
+            <a
+                href="{% url 'project1:regression' %}"
+                class="button secondary-button"
+            >
+                Regression
             </a>
 
         </div>
-
-        <br>
-
-        <a href="{% url 'home:index' %}">
-            <button class="button secondary-button">
-                Back to Home
-            </button>
-        </a>
 
     </div>
 
 </div>
 
-</body>
-</html>
+{% endblock %}

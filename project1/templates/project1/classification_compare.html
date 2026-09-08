@@ -1,19 +1,10 @@
-{% load static %}
-<!DOCTYPE html>
+{% extends "project1/base.html" %}
 
-<html>
-<head>
+{% block title %}
+    Compare Classification Models - Project 1
+{% endblock %}
 
-    <title>Compare Classification Models</title>
-
-    <link
-        rel="stylesheet"
-        href="{% static 'project1/style.css' %}"
-    >
-
-</head>
-
-<body>
+{% block content %}
 
 <div class="page-container">
 
@@ -259,43 +250,5 @@
 
 </div>
 
-<div class="card centered-text">
 
-    <h2>
-        Continue
-    </h2>
-
-    <p class="help-text">
-        Return to your trained model results, inspect its
-        explanation, or test it on a new observation.
-    </p>
-
-    <div class="action-row">
-
-        <a
-            href="{% url 'project1:classification_result' %}"
-            class="button secondary-button"
-        >
-            Training Results
-        </a>
-
-        <a
-            href="{% url 'project1:classification_explain' %}"
-            class="button"
-        >
-            Explain Model
-        </a>
-
-        <a
-            href="{% url 'project1:classification_test' %}"
-            class="button"
-        >
-            Test Model
-        </a>
-
-    </div>
-
-</div>
-
-</body>
-</html>
+{% endblock %}

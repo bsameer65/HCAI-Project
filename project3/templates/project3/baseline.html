@@ -1,4 +1,12 @@
 {% extends "project3/base.html" %}
+{% block page_heading %}
+    Baseline Classifier
+{% endblock %}
+
+{% block page_description %}
+    Train and evaluate the initial news classification model
+    before introducing expert collaboration.
+{% endblock %}
 {% load static %}
 
 {% block title %}
@@ -7,22 +15,7 @@
 
 {% block content %}
 
-<!-- =========================================================
-     PAGE INTRODUCTION
-========================================================= -->
-<section class="p3-card">
-    <h2>Baseline Classifier</h2>
 
-    <p>
-        The baseline combines TF-IDF text features with Logistic Regression
-        to classify AG News articles as World, Sports, Business, or Sci/Tech.
-    </p>
-
-    <div class="p3-info-box">
-        The model is trained on the complete official training split and
-        evaluated on the untouched official test split.
-    </div>
-</section>
 
 
 <!-- =========================================================
@@ -342,50 +335,6 @@
 
 {% endif %}
 
-
-<!-- =========================================================
-     PAGE-SPECIFIC STYLING
-========================================================= -->
-<style>
-
-    .p3-result-figure {
-        margin: 22px 0 28px;
-        padding: 18px;
-
-        background: #ffffff;
-
-        border: 1px solid #dbe5ef;
-        border-radius: 10px;
-
-        text-align: center;
-    }
-
-
-    .p3-result-figure-image {
-        display: block;
-
-        width: 100%;
-        max-width: 900px;
-        height: auto;
-
-        margin: 0 auto;
-    }
-
-
-    .p3-figure-caption {
-        margin: 12px auto 0;
-
-        max-width: 760px;
-
-        color: #6b7f92;
-
-        font-size: 0.82rem;
-        line-height: 1.5;
-
-        text-align: center;
-    }
-
-</style>
 
 
 <!-- =========================================================

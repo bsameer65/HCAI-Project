@@ -1,30 +1,10 @@
-{% load static %}
-<!DOCTYPE html>
+{% extends "project2/base.html" %}
 
-<html lang="en">
+{% block title %}
+    ALE Method Validation - Project 2
+{% endblock %}
 
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        {{ page_title }}
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="{% static 'project2/style.css' %}?v=9"
-    >
-
-</head>
-
-
-<body class="p2-page">
+{% block content %}
 
 <div class="p2-container">
 
@@ -55,7 +35,7 @@
     <nav class="p2-nav">
 
         <a href="{% url 'project2:index' %}">
-            Home
+            Overview
         </a>
 
         <a href="{% url 'project2:train' %}">
@@ -687,6 +667,4 @@
 
 </div>
 
-</body>
-
-</html>
+{% endblock %}
